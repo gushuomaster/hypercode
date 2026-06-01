@@ -15,8 +15,8 @@ Options:
       --hostname     hostname to listen on                           [string] [default: "127.0.0.1"]
       --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)
                                                                           [boolean] [default: false]
-      --mdns-domain  custom domain name for mDNS service (default: opencode.local)
-                                                                [string] [default: "opencode.local"]
+      --mdns-domain  custom domain name for mDNS service (default: hypercode.local)
+                                                                [string] [default: "hypercode.local"]
       --cors         additional domains to allow for CORS                      [array] [default: []]
       --cwd          working directory [string] [default: "<HOME>"]"
 `;
@@ -44,7 +44,7 @@ Options:
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode attach --help 1`] = `
 "opencode attach <url>
 
-attach to a running opencode server
+attach to a running HyperCode server
 
 Positionals:
   url  http://localhost:4096                                                     [string] [required]
@@ -66,7 +66,7 @@ Options:
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode run --help 1`] = `
 "opencode run [message..]
 
-run opencode with a message
+run HyperCode with a message
 
 Positionals:
   message  message to send                                                     [array] [default: []]
@@ -90,7 +90,7 @@ Options:
   -f, --file                          file(s) to attach to message                           [array]
       --title                         title for the session (uses truncated prompt if no value
                                       provided)                                             [string]
-      --attach                        attach to a running opencode server (e.g.,
+      --attach                        attach to a running HyperCode server (e.g.,
                                       http://localhost:4096)                                [string]
   -p, --password                      basic auth password (defaults to OPENCODE_SERVER_PASSWORD)
                                                                                             [string]
@@ -181,7 +181,7 @@ Options:
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode upgrade --help 1`] = `
 "opencode upgrade [target]
 
-upgrade opencode to the latest or a specific version
+upgrade HyperCode to the latest or a specific version
 
 Positionals:
   target  version to upgrade to, for ex '0.1.48' or 'v0.1.48'                               [string]
@@ -199,7 +199,7 @@ Options:
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode uninstall --help 1`] = `
 "opencode uninstall
 
-uninstall opencode and remove all related files
+uninstall HyperCode and remove all related files
 
 Options:
   -h, --help         show help                                                             [boolean]
@@ -216,7 +216,7 @@ Options:
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode serve --help 1`] = `
 "opencode serve
 
-starts a headless opencode server
+start a headless HyperCode server
 
 Options:
   -h, --help         show help                                                             [boolean]
@@ -228,15 +228,15 @@ Options:
       --hostname     hostname to listen on                           [string] [default: "127.0.0.1"]
       --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)
                                                                           [boolean] [default: false]
-      --mdns-domain  custom domain name for mDNS service (default: opencode.local)
-                                                                [string] [default: "opencode.local"]
+      --mdns-domain  custom domain name for mDNS service (default: hypercode.local)
+                                                                [string] [default: "hypercode.local"]
       --cors         additional domains to allow for CORS                      [array] [default: []]"
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode web --help 1`] = `
 "opencode web
 
-start opencode server and open web interface
+start HyperCode server and open the web interface
 
 Options:
   -h, --help         show help                                                             [boolean]
@@ -248,8 +248,8 @@ Options:
       --hostname     hostname to listen on                           [string] [default: "127.0.0.1"]
       --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)
                                                                           [boolean] [default: false]
-      --mdns-domain  custom domain name for mDNS service (default: opencode.local)
-                                                                [string] [default: "opencode.local"]
+      --mdns-domain  custom domain name for mDNS service (default: hypercode.local)
+                                                                [string] [default: "hypercode.local"]
       --cors         additional domains to allow for CORS                      [array] [default: []]"
 `;
 
@@ -342,7 +342,7 @@ Options:
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode pr --help 1`] = `
 "opencode pr <number>
 
-fetch and checkout a GitHub PR branch, then run opencode
+fetch and checkout a GitHub PR branch, then run HyperCode
 
 Positionals:
   number  PR number to checkout                                                  [number] [required]

@@ -458,6 +458,7 @@
       "name": "opencode",
       "version": "1.15.13",
       "bin": {
+        "hypercode": "./bin/opencode",
         "opencode": "./bin/opencode",
       },
       "dependencies": {

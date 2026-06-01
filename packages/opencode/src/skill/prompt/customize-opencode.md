@@ -31,7 +31,7 @@ mistakes as they type.
 
 Config is loaded once when opencode starts and is not hot-reloaded. After
 saving changes to `opencode.json`, an agent file, a skill, a plugin, or any
-other config-time file, **tell the user to quit and restart opencode** for
+other config-time file, **tell the user to quit and restart HyperCode** for
 the changes to take effect. The running session will keep using the
 already-loaded config until then.
 
@@ -373,5 +373,5 @@ When a user's config is broken and opencode won't start, these env vars help:
 - If the user's existing config is malformed, point them at the env-var escape
   hatches above so they can edit from inside opencode without breaking their
   session.
-- After saving any config change, remind the user to quit and restart opencode
+- After saving any config change, remind the user to quit and restart HyperCode
   — running sessions keep using the already-loaded config.
