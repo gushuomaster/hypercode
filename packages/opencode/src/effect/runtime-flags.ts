@@ -1,12 +1,16 @@
 import { Config, ConfigProvider, Context, Effect, Layer, Option } from "effect"
 import { ConfigService } from "@/effect/config-service"
 
-const bool = (name: string) => Config.boolean(name).pipe(Config.withDefault(false))
-const positiveInteger = (name: string) =>
-  Config.number(name).pipe(
-    Config.map((value) => (Number.isInteger(value) && value > 0 ? value : undefined)),
-    Config.orElse(() => Config.succeed(undefined)),
-  )
+function env(name: string) {
+  const alias = name.startsWith("OPENCODE_") ? `HYPERCODE_${name.slice("OPENCODE_".length)}` : undefined
+  return (alias ? process.env[alias] : undefined) ?? process.env[name]
+}
+
+const bool = (name: string) => Config.succeed(["true", "1"].includes(env(name)?.toLowerCase() ?? ""))
+const positiveInteger = (name: string) => {
+  const value = Number(env(name))
+  return Config.succeed(Number.isInteger(value) && value > 0 ? value : undefined)
+}
 const experimental = bool("OPENCODE_EXPERIMENTAL")
 const enabledByExperimental = (name: string) =>
   Config.all({ experimental, enabled: Config.boolean(name).pipe(Config.option) }).pipe(
@@ -52,7 +56,7 @@ export class Service extends ConfigService.Service<Service>()("@opencode/Runtime
   bashDefaultTimeoutMs: positiveInteger("OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS"),
   experimentalNativeLlm: bool("OPENCODE_EXPERIMENTAL_NATIVE_LLM"),
   experimentalWebSockets: bool("OPENCODE_EXPERIMENTAL_WEBSOCKETS"),
-  client: Config.string("OPENCODE_CLIENT").pipe(Config.withDefault("cli")),
+  client: Config.succeed(env("OPENCODE_CLIENT") ?? "cli"),
 }) {}
 
 export type Info = Context.Service.Shape<typeof Service>
