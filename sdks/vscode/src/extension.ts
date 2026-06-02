@@ -3,7 +3,8 @@ export function deactivate() {}
 
 import * as vscode from "vscode"
 
-const TERMINAL_NAME = "hypercode"
+const CLI_COMMAND = "hypercode"
+const TERMINAL_NAME = "HyperCode"
 
 export function activate(context: vscode.ExtensionContext) {
   const openNewTerminalDisposable = vscode.commands.registerCommand("opencode.openNewTerminal", async () => {
@@ -62,7 +63,7 @@ export function activate(context: vscode.ExtensionContext) {
     })
 
     terminal.show()
-    terminal.sendText(`opencode --port ${port}`)
+    terminal.sendText(`${CLI_COMMAND} --port ${port}`)
 
     const fileRef = getActiveFile()
     if (!fileRef) {
