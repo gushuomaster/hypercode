@@ -1118,6 +1118,7 @@ function fromModelsDevModel(provider: ModelsDev.Provider, model: ModelsDev.Model
 }
 
 export function fromModelsDevProvider(provider: ModelsDev.Provider): Info {
+  const displayName = provider.id === "opencode" ? "HyperCode Zen" : provider.name
   const models: Record<string, Model> = {}
   for (const [key, model] of Object.entries(provider.models)) {
     models[key] = fromModelsDevModel(provider, model)
@@ -1144,7 +1145,7 @@ export function fromModelsDevProvider(provider: ModelsDev.Provider): Info {
   return {
     id: ProviderV2.ID.make(provider.id),
     source: "custom",
-    name: provider.name,
+    name: displayName,
     env: [...(provider.env ?? [])],
     options: {},
     models,
