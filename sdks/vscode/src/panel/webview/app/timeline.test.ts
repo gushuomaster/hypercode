@@ -1,0 +1,396 @@
+import assert from "node:assert/strict"
+import { describe, test } from "node:test"
+import type { FilePart, MessageInfo, MessagePart, SessionMessage, TextPart, ToolPart } from "../../../core/sdk"
+import { assistantCopyText, attachmentOpenPath, attachmentPreviewSource, createTimelineDerivationCache, findSkillLocation, reconcileTimelineBlocks } from "./timeline"
+
+function messageInfo(id: string, role: "user" | "assistant", extras?: Partial<MessageInfo>): MessageInfo {
+  return {
+    id,
+    sessionID: "session-1",
+    role,
+    time: {
+      created: 0,
+      completed: role === "assistant" ? 1 : undefined,
+    },
+    ...extras,
+  }
+}
+
+function textPart(id: string, messageID: string, text: string): TextPart {
+  return {
+    id,
+    sessionID: "session-1",
+    messageID,
+    type: "text",
+    text,
+  }
+}
+
+function toolPart(id: string, messageID: string, tool: string, status: ToolPart["state"]["status"] = "completed"): ToolPart {
+  return {
+    id,
+    sessionID: "session-1",
+    messageID,
+    type: "tool",
+    tool,
+    state: {
+      status,
+    },
+  }
+}
+
+function toolPartWithState(id: string, messageID: string, tool: string, state: Partial<ToolPart["state"]>): ToolPart {
+  return {
+    id,
+    sessionID: "session-1",
+    messageID,
+    type: "tool",
+    tool,
+    state: {
+      status: "completed",
+      ...state,
+    },
+  }
+}
+
+function filePart(id: string, messageID: string, extras?: Partial<FilePart>): FilePart {
+  return {
+    id,
+    sessionID: "session-1",
+    messageID,
+    type: "file",
+    mime: "text/plain",
+    url: "file:///workspace/notes.txt",
+    ...extras,
+  }
+}
+
+function sessionMessage(info: MessageInfo, parts: MessagePart[]): SessionMessage {
+  return { info, parts }
+}
+
+const defaultOptions = {
+  showThinking: true,
+  showInternals: false,
+}
+
+describe("timeline block reconciliation", () => {
+  test("delta-like updates rebuild only affected assistant blocks", () => {
+    const user = sessionMessage(messageInfo("m1", "user"), [textPart("p1", "m1", "hello")])
+    const assistantText = textPart("p2", "m2", "before")
+    const assistantTool = toolPart("p3", "m2", "bash")
+    const assistant = sessionMessage(messageInfo("m2", "assistant", { agent: "build" }), [assistantText, assistantTool])
+
+    const cache = createTimelineDerivationCache()
+    const first = reconcileTimelineBlocks(cache, [user, assistant], defaultOptions)
+
+    const nextAssistantText = { ...assistantText, text: "before and after" }
+    const nextAssistant = sessionMessage(assistant.info, [nextAssistantText, assistantTool])
+    const second = reconcileTimelineBlocks(cache, [user, nextAssistant], defaultOptions)
+
+    assert.equal(second.length, first.length)
+    assert.strictEqual(second[0], first[0], "user block should be reused")
+    assert.notStrictEqual(second[1], first[1], "changed assistant text block should be rebuilt")
+    assert.strictEqual(second[2], first[2], "unchanged assistant tool block should be reused")
+    assert.notStrictEqual(second[3], first[3], "assistant meta block should update for changed assistant message group")
+    assert.equal(second[1]?.kind, "assistant-part")
+    assert.equal(second[1]?.kind === "assistant-part" ? second[1].part.type : undefined, "text")
+    assert.equal(second[1]?.kind === "assistant-part" && second[1].part.type === "text" ? second[1].part.text : undefined, "before and after")
+    assert.equal(second[3]?.kind === "assistant-meta" ? second[3].messages[0] : undefined, nextAssistant)
+  })
+
+  test("reuses all block objects when inputs are identical", () => {
+    const user = sessionMessage(messageInfo("m1", "user"), [textPart("p1", "m1", "hello")])
+    const assistant = sessionMessage(messageInfo("m2", "assistant", { agent: "build" }), [textPart("p2", "m2", "done")])
+
+    const cache = createTimelineDerivationCache()
+    const first = reconcileTimelineBlocks(cache, [user, assistant], defaultOptions)
+    const second = reconcileTimelineBlocks(cache, [user, assistant], defaultOptions)
+
+    assert.equal(second.length, first.length)
+    second.forEach((block, index) => {
+      assert.strictEqual(block, first[index], `block ${index} should be reused`)
+    })
+  })
+
+  test("appending a new assistant part preserves earlier block reuse", () => {
+    const user = sessionMessage(messageInfo("m1", "user"), [textPart("p1", "m1", "hello")])
+    const assistantText = textPart("p2", "m2", "before")
+    const assistant = sessionMessage(messageInfo("m2", "assistant", { agent: "build" }), [assistantText])
+
+    const cache = createTimelineDerivationCache()
+    const first = reconcileTimelineBlocks(cache, [user, assistant], defaultOptions)
+
+    const appendedTool = toolPart("p3", "m2", "bash")
+    const nextAssistant = sessionMessage(assistant.info, [assistantText, appendedTool])
+    const second = reconcileTimelineBlocks(cache, [user, nextAssistant], defaultOptions)
+
+    assert.equal(second.length, first.length + 1)
+    assert.strictEqual(second[0], first[0], "user block should be reused")
+    assert.strictEqual(second[1], first[1], "existing assistant text block should be reused")
+    assert.notStrictEqual(second[2], first[2], "assistant meta block should rebuild when the assistant message group changes")
+    assert.equal(second[2]?.kind, "assistant-part")
+    assert.equal(second[2]?.kind === "assistant-part" ? second[2].part : undefined, appendedTool)
+    assert.equal(second[3]?.kind === "assistant-meta" ? second[3].messages[0] : undefined, nextAssistant)
+  })
+
+  test("adds an assistant error block ahead of assistant metadata", () => {
+    const user = sessionMessage(messageInfo("m1", "user"), [textPart("p1", "m1", "hello")])
+    const assistant = sessionMessage({
+      ...messageInfo("m2", "assistant", { agent: "build" }),
+      error: {
+        name: "UnknownError",
+        data: {
+          message: "unknown certificate verification error",
+        },
+      },
+    } as MessageInfo, [])
+
+    const blocks = reconcileTimelineBlocks(createTimelineDerivationCache(), [user, assistant], defaultOptions)
+
+    assert.equal(blocks.length, 3)
+    assert.equal(blocks[1]?.kind, "assistant-error")
+    assert.equal(blocks[1]?.kind === "assistant-error" ? blocks[1].message.info.id : undefined, "m2")
+    assert.equal(blocks[2]?.kind, "assistant-meta")
+  })
+
+  test("groups codex assistant exploration, search, and command tools into one activity block", () => {
+    const assistant = sessionMessage(messageInfo("m2", "assistant", { agent: "build" }), [
+      toolPartWithState("p1", "m2", "read", { input: { filePath: "src/a.ts" } }),
+      toolPartWithState("p2", "m2", "read", { input: { filePath: "src/b.ts" } }),
+      toolPartWithState("p3", "m2", "glob", { input: { pattern: "**/*.tsx" } }),
+      toolPartWithState("p4", "m2", "grep", { input: { pattern: "renderToolRowTitle" } }),
+      toolPartWithState("p5", "m2", "bash", { input: { command: "echo hi" }, metadata: { output: "hi" } }),
+    ])
+
+    const blocks = reconcileTimelineBlocks(createTimelineDerivationCache(), [assistant], {
+      ...defaultOptions,
+      panelTheme: "codex",
+    })
+
+    assert.equal(blocks[0]?.kind, "assistant-activity")
+    assert.equal(blocks[0]?.kind === "assistant-activity" ? blocks[0].summary : undefined, "Explored 2 files, 2 searches, Ran 1 command")
+    assert.equal(blocks[0]?.kind === "assistant-activity" ? blocks[0].parts.length : undefined, 5)
+    assert.equal(blocks[1]?.kind, "assistant-meta")
+  })
+
+  test("keeps codex activity expanded until text arrives", () => {
+    const toolOnly = sessionMessage(messageInfo("m1", "assistant", { agent: "build" }), [
+      toolPartWithState("p1", "m1", "bash", { status: "completed", input: { command: "bun test" } }),
+    ])
+    const toolThenText = sessionMessage(messageInfo("m2", "assistant", { agent: "build" }), [
+      toolPartWithState("p2", "m2", "bash", { status: "completed", input: { command: "bun test" } }),
+      textPart("p3", "m2", "Tests are still running."),
+    ])
+
+    const toolOnlyBlocks = reconcileTimelineBlocks(createTimelineDerivationCache(), [toolOnly], {
+      ...defaultOptions,
+      panelTheme: "codex",
+    })
+    const textBlocks = reconcileTimelineBlocks(createTimelineDerivationCache(), [toolThenText], {
+      ...defaultOptions,
+      panelTheme: "codex",
+    })
+
+    assert.equal(toolOnlyBlocks[0]?.kind, "assistant-activity")
+    assert.equal(toolOnlyBlocks[0]?.kind === "assistant-activity" ? toolOnlyBlocks[0].initiallyExpanded : undefined, true)
+    assert.equal(textBlocks[0]?.kind, "assistant-activity")
+    assert.equal(textBlocks[0]?.kind === "assistant-activity" ? textBlocks[0].initiallyExpanded : undefined, false)
+    assert.equal(textBlocks[1]?.kind, "assistant-part")
+  })
+
+  test("groups MCP tools by server name in codex activity block", () => {
+    const assistant = sessionMessage(messageInfo("m2", "assistant", { agent: "build" }), [
+      toolPart("p1", "m2", "websearch_web_search_exa"),
+      toolPart("p2", "m2", "websearch_web_search_exa"),
+      toolPart("p3", "m2", "websearch_web_search_exa"),
+      toolPart("p4", "m2", "grep_app_searchGitHub"),
+      toolPart("p5", "m2", "grep_app_searchGitHub"),
+    ])
+
+    const blocks = reconcileTimelineBlocks(createTimelineDerivationCache(), [assistant], {
+      ...defaultOptions,
+      panelTheme: "codex",
+    })
+
+    assert.equal(blocks[0]?.kind, "assistant-activity")
+    assert.equal(blocks[0]?.kind === "assistant-activity" ? blocks[0].summary : undefined, "Websearch: 3 calls, grep: 2 calls")
+    assert.equal(blocks[0]?.kind === "assistant-activity" ? blocks[0].parts.length : undefined, 5)
+  })
+
+  test("mixes MCP and built-in tools in a single codex activity block", () => {
+    const assistant = sessionMessage(messageInfo("m2", "assistant", { agent: "build" }), [
+      toolPartWithState("p1", "m2", "read", { input: { filePath: "src/a.ts" } }),
+      toolPart("p2", "m2", "websearch_web_search_exa"),
+      toolPart("p3", "m2", "websearch_web_search_exa"),
+      toolPartWithState("p4", "m2", "grep", { input: { pattern: "foo" } }),
+      toolPart("p5", "m2", "grep_app_searchGitHub"),
+    ])
+
+    const blocks = reconcileTimelineBlocks(createTimelineDerivationCache(), [assistant], {
+      ...defaultOptions,
+      panelTheme: "codex",
+    })
+
+    assert.equal(blocks[0]?.kind, "assistant-activity")
+    assert.equal(blocks[0]?.kind === "assistant-activity" ? blocks[0].summary : undefined, "Explored 1 file, 1 search, websearch: 2 calls, grep: 1 call")
+    assert.equal(blocks[0]?.kind === "assistant-activity" ? blocks[0].parts.length : undefined, 5)
+  })
+
+  test("does not group MCP tools outside codex theme", () => {
+    const assistant = sessionMessage(messageInfo("m2", "assistant", { agent: "build" }), [
+      toolPart("p1", "m2", "websearch_web_search_exa"),
+      toolPart("p2", "m2", "websearch_web_search_exa"),
+    ])
+
+    const blocks = reconcileTimelineBlocks(createTimelineDerivationCache(), [assistant], defaultOptions)
+
+    assert.equal(blocks.filter((block) => block.kind === "assistant-activity").length, 0)
+    assert.equal(blocks.filter((block) => block.kind === "assistant-part").length, 2)
+  })
+
+  test("keeps assistant tools on the existing part path outside codex theme", () => {
+    const assistant = sessionMessage(messageInfo("m2", "assistant", { agent: "build" }), [
+      toolPartWithState("p1", "m2", "read", { input: { filePath: "src/a.ts" } }),
+      toolPartWithState("p2", "m2", "grep", { input: { pattern: "renderToolRowTitle" } }),
+      toolPartWithState("p3", "m2", "bash", { input: { command: "echo hi" }, metadata: { output: "hi" } }),
+    ])
+
+    const blocks = reconcileTimelineBlocks(createTimelineDerivationCache(), [assistant], defaultOptions)
+
+    assert.equal(blocks.filter((block) => block.kind === "assistant-activity").length, 0)
+    assert.equal(blocks.filter((block) => block.kind === "assistant-part").length, 3)
+    assert.equal(blocks.at(-1)?.kind, "assistant-meta")
+  })
+
+  test("ignores codex placeholder text so activity can merge across assistant messages", () => {
+    const first = sessionMessage(messageInfo("m1", "assistant", { agent: "build" }), [
+      toolPartWithState("p1", "m1", "edit", { input: { filePath: "src/a.ts" } }),
+    ])
+    const placeholder = sessionMessage(messageInfo("m2", "assistant", { agent: "build" }), [
+      textPart("p2", "m2", "..."),
+    ])
+    const second = sessionMessage(messageInfo("m3", "assistant", { agent: "build" }), [
+      toolPartWithState("p3", "m3", "edit", { input: { filePath: "src/b.ts" } }),
+    ])
+
+    const blocks = reconcileTimelineBlocks(createTimelineDerivationCache(), [first, placeholder, second], {
+      ...defaultOptions,
+      panelTheme: "codex",
+    })
+
+    assert.equal(blocks.length, 2)
+    assert.equal(blocks[0]?.kind, "assistant-activity")
+    assert.equal(blocks[0]?.kind === "assistant-activity" ? blocks[0].summary : undefined, "Edited 2 files")
+    assert.equal(blocks[1]?.kind, "assistant-meta")
+  })
+
+  test("suppresses assistant-meta block while the turn is still streaming", () => {
+    const user = sessionMessage(messageInfo("m1", "user"), [textPart("p1", "m1", "hello")])
+    const streaming = sessionMessage(
+      messageInfo("m2", "assistant", { agent: "build", time: { created: 0, completed: undefined } }),
+      [textPart("p2", "m2", "partial response")],
+    )
+
+    const blocks = reconcileTimelineBlocks(createTimelineDerivationCache(), [user, streaming], defaultOptions)
+
+    assert.equal(blocks.filter((b) => b.kind === "assistant-meta").length, 0, "no meta block during streaming")
+  })
+
+  test("creates assistant-meta block once the turn completes", () => {
+    const user = sessionMessage(messageInfo("m1", "user"), [textPart("p1", "m1", "hello")])
+    const streaming = sessionMessage(
+      messageInfo("m2", "assistant", { agent: "build", time: { created: 0, completed: undefined } }),
+      [textPart("p2", "m2", "partial response")],
+    )
+
+    const cache = createTimelineDerivationCache()
+    const first = reconcileTimelineBlocks(cache, [user, streaming], defaultOptions)
+    assert.equal(first.filter((b) => b.kind === "assistant-meta").length, 0, "no meta while streaming")
+
+    const completed = sessionMessage(
+      messageInfo("m2", "assistant", { agent: "build", time: { created: 0, completed: 1 } }),
+      [textPart("p2", "m2", "final response")],
+    )
+    const second = reconcileTimelineBlocks(cache, [user, completed], defaultOptions)
+    assert.equal(second.filter((b) => b.kind === "assistant-meta").length, 1, "meta block after completion")
+  })
+
+  test("hides assistant placeholder text in every theme", () => {
+    const placeholder = sessionMessage(messageInfo("m1", "assistant", { agent: "build" }), [
+      textPart("p1", "m1", "。。。"),
+    ])
+
+    const blocks = reconcileTimelineBlocks(createTimelineDerivationCache(), [placeholder], defaultOptions)
+
+    assert.equal(blocks.filter((block) => block.kind === "assistant-part").length, 0)
+    assert.equal(blocks.at(-1)?.kind, "assistant-meta")
+  })
+})
+
+describe("timeline attachment helpers", () => {
+  test("returns the original assistant markdown text for copy actions", () => {
+    assert.equal(assistantCopyText(textPart("p1", "m1", "# 标题\n\n- 条目")), "# 标题\n\n- 条目")
+  })
+
+  test("does not expose synthetic assistant text to the copy action", () => {
+    assert.equal(assistantCopyText({
+      ...textPart("p2", "m2", "hidden"),
+      synthetic: true,
+    }), "")
+  })
+
+  test("finds the configured skill file location", () => {
+    assert.equal(findSkillLocation("brainstorming", [
+      {
+        name: "brainstorming",
+        content: "# Brainstorming",
+        location: "/Users/lantingxin/.codex/superpowers/skills/brainstorming/SKILL.md",
+      },
+    ]), "/Users/lantingxin/.codex/superpowers/skills/brainstorming/SKILL.md")
+  })
+
+  test("prefers the original source path when opening file attachments", () => {
+    assert.equal(attachmentOpenPath(filePart("f1", "m1", {
+      source: {
+        type: "file",
+        path: "src/app.tsx",
+        text: {
+          value: "@src/app.tsx",
+          start: 0,
+          end: 12,
+        },
+      },
+    })), "src/app.tsx")
+  })
+
+  test("returns a preview source for inline image attachments", () => {
+    assert.equal(attachmentPreviewSource(filePart("f2", "m1", {
+      mime: "image/png",
+      filename: "image.png",
+      url: "data:image/png;base64,abc123",
+    })), "data:image/png;base64,abc123")
+  })
+
+  test("does not inline-preview local image files without a webview-safe source", () => {
+    assert.equal(attachmentPreviewSource(filePart("f3", "m1", {
+      mime: "image/png",
+      filename: "image.png",
+      url: "file:///workspace/image.png",
+    })), undefined)
+  })
+
+  test("does not inline-preview insecure http image sources", () => {
+    assert.equal(attachmentPreviewSource(filePart("f4", "m1", {
+      mime: "image/png",
+      filename: "image.png",
+      url: "http://example.com/image.png",
+    })), undefined)
+  })
+
+  test("does not route remote urls through the local file opener", () => {
+    assert.equal(attachmentOpenPath(filePart("f5", "m1", {
+      url: "https://example.com/file.txt",
+    })), undefined)
+  })
+})

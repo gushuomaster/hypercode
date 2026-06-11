@@ -1,0 +1,1327 @@
+.oc-toolRowWrap,
+.oc-toolRow,
+.oc-toolRowMain,
+.oc-toolRowMeta,
+.oc-toolHeaderMain,
+.oc-toolHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.oc-toolRowWrap {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 10px;
+  background: var(--oc-palette-tool-bg);
+}
+
+.oc-toolRowWrap-read,
+.oc-toolRowWrap-glob,
+.oc-toolRowWrap-grep,
+.oc-toolRowWrap-bash,
+.oc-toolRowWrap-mcp {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.oc-toolRowWrap-mcp {
+  background: var(--oc-palette-tool-bg);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.oc-toolRowWrap-task,
+.oc-toolRowBtn.oc-toolRowBtn-task {
+  padding-left: 11px;
+  padding-right: 11px;
+}
+
+.oc-toolRowBtn {
+  width: 100%;
+  padding: 0;
+  border: 1px solid transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.oc-toolRowBtn:hover {
+  border-color: color-mix(in srgb, var(--oc-accent) 38%, transparent 62%);
+}
+
+.oc-toolRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.oc-toolRow-mcp {
+  flex-wrap: nowrap;
+}
+
+.oc-toolRowMain {
+  min-width: 0;
+  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.oc-toolRowMain.is-error {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.oc-toolRowMain-mcp {
+  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.oc-toolRowMain-mcp .oc-kicker {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.oc-toolRowMeta-mcp {
+  flex: 0 0 18px;
+  width: 18px;
+  min-width: 18px;
+  display: inline-flex;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.oc-toolRowTitle-mcp {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-taskRow {
+  display: grid;
+  gap: 4px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.oc-taskLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.oc-taskLineSecondary {
+  padding-left: 16px;
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.5;
+}
+
+.oc-agentSwatch {
+  position: static;
+  width: 10px;
+  height: 10px;
+  border-radius: 1px;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--oc-accent) 72%, transparent 28%);
+}
+
+.oc-agentBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.oc-agentName {
+  font-size: var(--oc-font-size);
+  font-weight: 500;
+  color: var(--oc-fg-primary);
+}
+
+.oc-turnMeta .oc-agentName {
+  font-size: var(--oc-font-size-sm);
+}
+
+.oc-taskColon,
+.oc-taskBranch {
+  flex: 0 0 auto;
+}
+
+.oc-taskSessionTitle,
+.oc-taskBody {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-taskSessionTitle {
+  font-size: var(--oc-font-size);
+  color: var(--oc-fg-primary);
+}
+
+.oc-taskSessionTitle.is-error,
+.oc-taskBody.is-error {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.oc-toolSpinner {
+  display: inline-flex;
+  width: 12px;
+  height: 12px;
+  color: var(--oc-warning);
+}
+
+.oc-toolSpinner svg {
+  width: 100%;
+  height: 100%;
+  animation: oc-spin 0.8s linear infinite;
+}
+
+.oc-toolSpinnerTrack {
+  fill: none;
+  stroke: color-mix(in srgb, var(--oc-warning) 28%, transparent 72%);
+  stroke-width: 2;
+}
+
+.oc-toolSpinnerHead {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.oc-toolRowTitle {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--oc-font-size);
+  color: var(--oc-fg-muted);
+}
+
+.oc-toolRowMeta {
+  flex: 0 0 14px;
+  width: 14px;
+  min-width: 14px;
+  display: inline-flex;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.oc-toolPanelTitle,
+.oc-fileToolPath {
+  font-size: var(--oc-font-size);
+  color: var(--oc-fg-primary);
+}
+
+.oc-toolRowMeta,
+.oc-toolHeaderMeta {
+  justify-content: flex-end;
+}
+
+.oc-toolPanel {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border-color: color-mix(in srgb, var(--oc-palette-tool-border) 76%, transparent 24%);
+}
+
+.oc-toolPanel.is-completed,
+.oc-toolRowWrap.is-completed {
+  border-color: color-mix(in srgb, var(--oc-border) 54%, transparent 46%);
+}
+
+.oc-toolPanel.is-active,
+.oc-toolRowWrap.is-active {
+  opacity: 1;
+}
+
+.oc-toolPanel.is-active {
+  border-color: color-mix(in srgb, var(--oc-accent) 56%, var(--oc-border) 44%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--oc-accent) 18%, transparent 82%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolRowWrap {
+  border: 1px solid color-mix(in srgb, var(--oc-palette-tool-border) 58%, transparent 42%);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--oc-palette-tool-bg) 78%, var(--oc-surface-elevated) 22%);
+  box-shadow: var(--oc-tool-shadow), inset 0 1px 0 color-mix(in srgb, white 18%, transparent 82%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolPanel {
+  border-color: color-mix(in srgb, var(--oc-palette-tool-border) 62%, transparent 38%);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--oc-palette-tool-bg) 80%, var(--oc-surface-elevated) 20%);
+  box-shadow: var(--oc-card-shadow);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolPanel.is-active {
+  border-color: color-mix(in srgb, var(--oc-accent) 34%, var(--oc-border) 66%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--oc-accent) 10%, transparent 90%), var(--oc-card-shadow);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolRowTitle {
+  color: color-mix(in srgb, var(--oc-fg-primary) 74%, var(--oc-fg-muted) 26%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolRowSummary,
+.oc-shell[data-oc-theme="claude"] .oc-toolRowExtra {
+  color: color-mix(in srgb, var(--oc-fg-muted) 88%, var(--oc-accent) 12%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-toolRowWrap {
+  border: 1px solid color-mix(in srgb, var(--oc-palette-tool-border) 76%, transparent 24%);
+  border-radius: calc(var(--oc-radius-sm) + 2px);
+  background: color-mix(in srgb, var(--oc-palette-tool-bg) 94%, var(--oc-surface-elevated) 6%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent 96%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-toolPanel {
+  position: relative;
+  overflow: hidden;
+  border-radius: calc(var(--oc-radius-md) + 2px);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--oc-palette-tool-bg) 92%, var(--oc-surface-elevated) 8%) 0%, var(--oc-palette-tool-bg) 100%);
+  box-shadow: var(--oc-native-inset);
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-toolPanel-todos {
+  display: none;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-toolPanel.is-active {
+  border-color: color-mix(in srgb, var(--oc-accent) 40%, var(--oc-border) 60%);
+  box-shadow: var(--oc-native-inset), 0 0 0 1px color-mix(in srgb, var(--oc-accent) 10%, transparent 90%);
+  transform: translateY(-1px);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-toolPanel.is-active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 0%, color-mix(in srgb, var(--oc-accent-strong) 14%, transparent 86%) 42%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-100%);
+  animation: oc-codexToolSweep 900ms ease-out;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-outputWindow {
+  border-color: color-mix(in srgb, var(--oc-border-strong) 48%, transparent 52%);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--oc-outputWindow-body-bg) 94%, var(--oc-surface-elevated) 6%);
+  box-shadow: var(--oc-card-shadow);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-outputWindowHead {
+  padding: 7px 10px;
+  background: color-mix(in srgb, var(--oc-outputWindow-head-bg) 84%, var(--oc-surface-elevated) 16%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-outputWindowAction {
+  letter-spacing: 0.04em;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-outputWindowCopyBtn {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: color-mix(in srgb, white 10%, transparent 90%);
+}
+
+.oc-toolTodoHeader {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+button.oc-toolTodoHeader {
+  cursor: pointer;
+}
+
+.oc-toolTodoSummary {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolPanel-todos {
+  gap: 0;
+  padding: 0;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolPanel-todos .oc-toolTodoHeader {
+  gap: 8px;
+  padding: 7px 10px;
+  flex-wrap: nowrap;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolPanel-todos .oc-toolHeaderMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolPanel-todos .oc-kicker {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolPanel-todos .oc-toolPanelTitle {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 36%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolPanel-todos .oc-toolTodoSummary {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.35;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolPanel-todos .oc-toolHeaderMeta {
+  flex: 0 0 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolTodoToggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--oc-fg-muted);
+  cursor: pointer;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolTodoToggle:hover,
+.oc-shell[data-oc-theme="claude"] .oc-toolTodoToggle:focus-visible {
+  color: var(--oc-fg-primary);
+  outline: none;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolTodoToggleIcon {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 160ms ease;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toolTodoHeader[aria-expanded="true"] .oc-toolTodoToggleIcon {
+  transform: rotate(180deg);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-outputWindowContent-shell,
+.oc-shell[data-oc-theme="claude"] .oc-outputWindowContent-diff {
+  padding: 10px 12px 12px;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-outputWindow {
+  border-color: color-mix(in srgb, var(--oc-outputWindow-border) 88%, transparent 12%);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent 95%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-outputWindowHead {
+  padding: 4px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--oc-outputWindow-border) 78%, transparent 22%);
+  background: color-mix(in srgb, var(--oc-outputWindow-head-bg) 92%, var(--oc-surface-control) 8%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-outputWindowTitle {
+  font-weight: 500;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-outputWindowAction {
+  color: color-mix(in srgb, var(--oc-accent-strong) 82%, var(--oc-outputWindow-head-fg) 18%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-outputWindowAction::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--oc-accent) 78%, transparent 22%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--oc-accent) 18%, transparent 82%);
+  vertical-align: middle;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-outputWindowCopyBtn {
+  width: 20px;
+  height: 20px;
+  border: 1px solid color-mix(in srgb, var(--oc-outputWindow-border) 72%, transparent 28%);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--oc-surface-control) 84%, transparent 16%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-outputWindowCopyBtn:hover {
+  background: color-mix(in srgb, var(--oc-accent) 10%, var(--oc-surface-control) 90%);
+}
+
+@keyframes oc-codexToolSweep {
+  0% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+
+  18% {
+    opacity: 0.8;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+
+.oc-shell[data-oc-theme="codex"] .oc-outputWindowContent-shell,
+.oc-shell[data-oc-theme="codex"] .oc-outputWindowContent-diff {
+  padding: 7px 10px;
+  line-height: 1.58;
+}
+
+.oc-toolPanel-lsp {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.oc-toolPanel-lsp .oc-partHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.oc-toolPanel-lsp .oc-toolHeaderMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.oc-toolPanel-lsp .oc-toolHeaderMain .oc-kicker {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.oc-toolPanel-lsp .oc-toolPanelTitle {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-toolPanel-lsp .oc-toolHeaderMeta {
+  flex: 0 1 auto;
+  min-width: 14px;
+  max-width: 40%;
+  flex-wrap: nowrap;
+}
+
+.oc-toolPanel-lsp .oc-toolHeaderMeta .oc-partMeta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-toolPanel-lsp.is-active {
+  border: 0;
+  box-shadow: none;
+}
+
+.oc-toolPanel-lsp .oc-partTerminal,
+.oc-toolPanel-lsp .oc-diagnosticsList,
+.oc-toolPanel-lsp .oc-diagnosticItem {
+  background: transparent;
+}
+
+.oc-toolPanel-lsp .oc-diagnosticItem.is-error,
+.oc-toolPanel-lsp .oc-errorBlock {
+  color: var(--oc-error);
+}
+
+.oc-toolPanel-lsp .oc-partTerminal {
+  padding: 0;
+  border-left: 0;
+}
+
+.oc-toolPanel-todos {
+  padding: 0;
+  background: color-mix(in srgb, var(--oc-accent) 10%, var(--oc-palette-tool-bg) 90%);
+}
+
+.oc-toolPanel-todos .oc-toolTodoHeader {
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 10px;
+  flex-wrap: nowrap;
+}
+
+.oc-toolPanel-todos .oc-toolHeaderMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.oc-toolPanel-todos .oc-kicker {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.oc-toolPanel-todos .oc-toolPanelTitle {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 36%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.oc-toolPanel-todos .oc-toolTodoSummary {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.oc-toolPanel-todos .oc-toolHeaderMeta {
+  flex: 0 0 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.oc-toolPanel-files {
+  gap: 10px;
+}
+
+.oc-patchPanel {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.oc-outputWindow {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--oc-outputWindow-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--oc-outputWindow-body-bg);
+}
+
+.oc-outputWindow.is-active {
+  border-color: color-mix(in srgb, var(--oc-accent) 56%, var(--oc-outputWindow-border) 44%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--oc-accent) 18%, transparent 82%);
+}
+
+.oc-outputWindowHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 5px 8px;
+  background: var(--oc-outputWindow-head-bg);
+  color: var(--oc-outputWindow-head-fg);
+}
+
+.oc-outputWindowTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.oc-outputWindowAction,
+.oc-outputWindowTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-outputWindowAction {
+  flex: 0 0 auto;
+  font-size: var(--oc-font-size-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.oc-outputWindowTitle {
+  font-size: var(--oc-font-size);
+  font-weight: 600;
+}
+
+.oc-outputWindowSpinnerSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  min-width: 14px;
+  height: 14px;
+}
+
+.oc-outputWindowCopyBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--oc-outputWindow-head-fg) 84%, transparent 16%);
+  cursor: pointer;
+}
+
+.oc-outputWindowCopyBtn:hover {
+  color: var(--oc-outputWindow-head-fg);
+}
+
+.oc-outputWindowCopyTip {
+  animation: none;
+}
+
+@keyframes oc-copyTipFade {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(2px);
+  }
+
+  15% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+
+  75% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-2px);
+  }
+}
+
+.oc-outputWindowCopyTip {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 6px);
+  transform: translateY(-50%);
+  font-size: var(--oc-font-size-xs);
+  line-height: 1;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--oc-outputWindow-head-fg) 68%, var(--oc-surface-canvas) 32%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.oc-outputWindowCopyBtn[data-copied="true"] .oc-outputWindowCopyTip {
+  opacity: 1;
+  animation: oc-copyTipFade 1.2s ease;
+}
+
+.oc-outputWindowCopyIcon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.oc-outputWindowBody {
+  min-width: 0;
+  background: var(--oc-outputWindow-body-bg);
+  color: var(--oc-outputWindow-body-fg);
+}
+
+.oc-outputWindowBody.is-collapsible {
+  overflow: hidden;
+  transition: max-height 180ms ease, opacity 160ms ease;
+}
+
+.oc-outputWindow-markdownCode .oc-outputWindowBody {
+  background: var(--oc-outputWindow-body-bg);
+}
+
+.oc-outputWindow-markdownCode,
+.oc-outputWindow-markdownCode .oc-outputWindowBody,
+.oc-outputWindow-markdownCode .oc-outputWindowBodyInner,
+.oc-outputWindow-markdownCode .oc-codeWindowBody,
+.oc-outputWindow-markdownCode pre,
+.oc-outputWindow-markdownCode pre code {
+  background: var(--oc-outputWindow-body-bg);
+}
+
+.oc-outputWindowBodyInner {
+  min-width: 0;
+}
+
+.oc-outputWindowBody.is-collapsed {
+  overflow: hidden;
+  max-height: 222px;
+}
+
+.oc-outputWindowBody.is-expanded {
+  max-height: var(--oc-outputWindow-body-expanded-height);
+  opacity: 1;
+}
+
+.oc-outputWindowBody.is-scrollable {
+  overflow-y: auto;
+  max-height: 2004px;
+}
+
+.oc-copyScratchpad {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+}
+
+.oc-outputWindowContent,
+.oc-outputWindowContent-shell,
+.oc-outputWindowContent-diff {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.65;
+  font-size: var(--oc-font-size);
+  font-family: var(--oc-mono);
+}
+
+.oc-outputWindowContent-shell,
+.oc-outputWindowContent-diff {
+  padding: 8px 10px;
+}
+
+.oc-outputWindowToggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 18px;
+  padding: 2px 8px;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--oc-outputWindow-border) 72%, transparent 28%);
+  background: var(--oc-outputWindow-toggle-bg);
+  color: var(--oc-outputWindow-head-fg);
+  cursor: pointer;
+}
+
+.oc-outputWindowToggle:hover {
+  background: var(--oc-outputWindow-toggle-hover);
+}
+
+.oc-outputWindowToggleIcon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 160ms ease;
+}
+
+.oc-outputWindowToggle[aria-expanded="true"] .oc-outputWindowToggleIcon {
+  transform: rotate(180deg);
+}
+
+.oc-outputWindowToggleMeta {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--oc-font-size-xs);
+  line-height: 1;
+  color: color-mix(in srgb, var(--oc-outputWindow-head-fg) 72%, transparent 28%);
+  pointer-events: none;
+}
+
+.oc-toolRowSummary {
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.5;
+}
+
+.oc-toolRowExtras {
+  display: grid;
+  gap: 2px;
+  padding-left: 0;
+}
+
+.oc-toolRowExtra {
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.45;
+}
+
+.oc-taskBody {
+  font-size: var(--oc-font-size);
+  line-height: 1.5;
+}
+
+.oc-linkList,
+.oc-fileToolList,
+.oc-toolAnswerList,
+.oc-patchList,
+.oc-diagnosticsList {
+  display: grid;
+  gap: 8px;
+}
+
+.oc-linkItem {
+  color: var(--vscode-textLink-foreground);
+  text-decoration: none;
+  font-size: var(--oc-font-size);
+  line-height: 1.55;
+}
+
+.oc-linkItem:hover {
+  text-decoration: underline;
+}
+
+.oc-fileToolItem {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--oc-border) 70%, transparent 30%);
+}
+
+.oc-patchItem {
+  display: grid;
+  gap: 8px;
+}
+
+.oc-patchHeader,
+.oc-patchMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.oc-fileToolSummary,
+.oc-toolAnswerItem {
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.5;
+}
+
+.oc-toolTodoItem {
+  font-size: var(--oc-font-size);
+  line-height: 1.6;
+}
+
+.oc-toolTodoItem.is-completed {
+  color: var(--oc-muted);
+}
+
+.oc-toolTodoItem.is-in_progress {
+  color: var(--oc-md-emph);
+}
+
+.oc-toolTodoList {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  opacity: 0;
+  background: color-mix(in srgb, var(--oc-accent) 10%, var(--oc-surface-block) 90%);
+  transition: grid-template-rows 160ms ease, opacity 160ms ease;
+}
+
+.oc-toolTodoHeader[aria-expanded="true"] + .oc-toolTodoList {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.oc-toolTodoListClip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.oc-toolTodoListInner {
+  display: grid;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.oc-diagnosticItem {
+  padding: 6px 8px;
+  border-left: 2px solid color-mix(in srgb, var(--oc-warning) 64%, transparent 36%);
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.5;
+}
+
+.oc-diagnosticItem.is-error {
+  padding: 0;
+  border-left: 0;
+  color: var(--oc-error);
+  line-height: 1.5;
+}
+
+.oc-errorBlock {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--oc-error);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  font-size: var(--oc-font-size);
+}
+
+.oc-detailList,
+.oc-diffList {
+  display: grid;
+  gap: 8px;
+}
+
+.oc-patternRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.oc-patternRow .oc-help {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.oc-diffItem {
+  display: grid;
+  gap: 8px;
+}
+
+.oc-modeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border: 1px solid var(--oc-border-strong);
+  font-size: var(--oc-font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.oc-mode-plan {
+  color: var(--oc-warning);
+}
+
+.oc-mode-build {
+  color: var(--oc-accent);
+}
+
+.oc-pill.is-added {
+  color: var(--vscode-terminal-ansiGreen);
+}
+
+.oc-pill.is-removed {
+  color: var(--vscode-terminal-ansiRed);
+}
+
+.oc-toolRowWrap.oc-toolRowBtn-task:hover,
+.oc-toolRowWrap.oc-toolRowBtn-task:focus-visible,
+.oc-toolRowWrap.oc-toolRowBtn-task.is-completed:hover,
+.oc-toolRowWrap.oc-toolRowBtn-task.is-active:hover,
+.oc-toolRowWrap.oc-toolRowWrap-task:hover {
+  background: var(--oc-hover-block);
+  box-shadow: inset 0 0 0 1px var(--oc-hover-block-inset);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexActivityToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: currentColor;
+  opacity: 0.72;
+  transition: opacity 140ms ease, transform 160ms ease;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexActivitySummary:hover .oc-codexActivityToggle,
+.oc-shell[data-oc-theme="codex"] .oc-codexActivitySummary:focus-visible .oc-codexActivityToggle {
+  opacity: 1;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexActivitySummary[aria-expanded="true"] .oc-codexActivityToggle {
+  transform: rotate(90deg);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexActivityToggle svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexActivityDetails {
+  display: grid;
+  padding-left: 0;
+  border-left: 0;
+}
+
+.oc-shellBlock {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--oc-outputWindow-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--oc-outputWindow-body-bg);
+}
+
+.oc-shellBlock.is-active {
+  border-color: color-mix(in srgb, var(--oc-accent) 56%, var(--oc-outputWindow-border) 44%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--oc-accent) 18%, transparent 82%);
+}
+
+.oc-shellBlockHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  background: var(--oc-outputWindow-head-bg);
+  color: var(--oc-outputWindow-head-fg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.oc-shellBlockHeader:hover {
+  background: color-mix(in srgb, var(--oc-outputWindow-head-bg) 92%, var(--oc-accent) 8%);
+}
+
+.oc-shellBlockHeaderMain {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.oc-shellBlockHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.oc-shellBlockAction,
+.oc-shellBlockTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-shellBlockAction {
+  flex: 0 0 auto;
+  font-size: var(--oc-font-size-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.oc-shellBlockTitle {
+  font-size: var(--oc-font-size);
+  font-weight: 600;
+}
+
+.oc-shellBlockSpinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  min-width: 14px;
+  height: 14px;
+}
+
+.oc-shellBlockToggleIcon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 160ms ease;
+}
+
+.oc-shellBlock.is-expanded .oc-shellBlockToggleIcon {
+  transform: rotate(180deg);
+}
+
+.oc-shellBlockBody {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  opacity: 0;
+  background: var(--oc-outputWindow-body-bg);
+  color: var(--oc-outputWindow-body-fg);
+  transition: grid-template-rows 160ms ease, opacity 160ms ease;
+}
+
+.oc-shellBlock.is-expanded .oc-shellBlockBody {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.oc-shellBlockBodyClip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.oc-shellBlockContent {
+  margin: 0;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.65;
+  font-size: var(--oc-font-size);
+  font-family: var(--oc-mono);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-shellBlock {
+  border-color: color-mix(in srgb, var(--oc-border-strong) 48%, transparent 52%);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--oc-outputWindow-body-bg) 94%, var(--oc-surface-elevated) 6%);
+  box-shadow: var(--oc-card-shadow);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-shellBlockHeader {
+  padding: 7px 10px;
+  background: color-mix(in srgb, var(--oc-outputWindow-head-bg) 84%, var(--oc-surface-elevated) 16%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-shellBlockAction {
+  letter-spacing: 0.04em;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-shellBlockContent {
+  padding: 10px 12px 12px;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-shellBlock {
+  border-color: color-mix(in srgb, var(--oc-outputWindow-border) 88%, transparent 12%);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent 95%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-shellBlockHeader {
+  padding: 4px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--oc-outputWindow-border) 78%, transparent 22%);
+  background: color-mix(in srgb, var(--oc-outputWindow-head-bg) 92%, var(--oc-surface-control) 8%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-shellBlockTitle {
+  font-weight: 500;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-shellBlockAction {
+  color: color-mix(in srgb, var(--oc-accent-strong) 82%, var(--oc-outputWindow-head-fg) 18%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-shellBlockAction::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--oc-accent) 78%, transparent 22%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--oc-accent) 18%, transparent 82%);
+  vertical-align: middle;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-shellBlockContent {
+  padding: 7px 10px;
+  line-height: 1.58;
+}
+

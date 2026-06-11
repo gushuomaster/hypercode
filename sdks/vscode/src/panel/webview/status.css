@@ -1,0 +1,1719 @@
+.oc-composerInput,
+.oc-answerInput {
+  width: 100%;
+  border: 1px solid var(--oc-border-strong);
+  background: var(--oc-palette-input-bg);
+  color: var(--oc-fg-primary);
+  padding: 10px 12px;
+  border-radius: var(--oc-radius-sm);
+}
+
+.oc-composerInput {
+  display: block;
+  width: 100%;
+  min-height: calc(1.65em + 20px);
+  max-height: calc(50vh - (1.65em * 2) - 10px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 0;
+  background: transparent;
+  outline: none;
+  cursor: text;
+  box-sizing: border-box;
+}
+
+.oc-composerInput.is-shell {
+  font-family: var(--vscode-editor-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+}
+
+.oc-composerInput[contenteditable="false"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.oc-composerInputWrap {
+  position: relative;
+  min-height: 0;
+}
+
+.oc-composerLeaderOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--vscode-focusBorder, var(--oc-accent)) 18%, transparent 82%);
+  background: color-mix(in srgb, var(--vscode-editorWidget-background, var(--oc-surface-control)) 72%, transparent 28%);
+  backdrop-filter: blur(6px) saturate(1.05);
+  -webkit-backdrop-filter: blur(6px) saturate(1.05);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent 92%);
+  pointer-events: auto;
+  transition: opacity 140ms ease, backdrop-filter 140ms ease;
+}
+
+.oc-composerLeaderOverlayText {
+  color: color-mix(in srgb, var(--vscode-foreground, var(--oc-fg-primary)) 88%, var(--oc-accent) 12%);
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.oc-composerBody {
+  position: relative;
+  border: 1px solid var(--oc-palette-composer-border);
+  border-radius: var(--oc-radius-md);
+  background: color-mix(in srgb, var(--oc-accent) 8%, var(--oc-palette-composer-bg) 92%);
+  padding-bottom: 58px;
+  box-shadow: var(--oc-composer-shadow);
+}
+
+.oc-composer.is-leaderPending .oc-composerBody {
+  border-color: color-mix(in srgb, var(--vscode-focusBorder, var(--oc-accent)) 26%, var(--oc-border-strong) 74%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--vscode-focusBorder, var(--oc-accent)) 8%, transparent 92%);
+}
+
+.oc-composer.is-shell:not(.is-leaderPending) .oc-composerBody {
+  border-color: color-mix(in srgb, var(--oc-warning) 68%, var(--oc-border-strong) 32%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--oc-warning) 18%, transparent 82%);
+}
+
+.oc-composerDropOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed color-mix(in srgb, var(--oc-info) 50%, var(--oc-border-strong) 50%);
+  background: color-mix(in srgb, var(--oc-info) 12%, var(--oc-surface-control) 88%);
+  color: var(--oc-fg-primary);
+  border-radius: var(--oc-radius-md);
+  font-size: var(--oc-font-size-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.oc-composerPlaceholder {
+  position: absolute;
+  inset: 10px 12px auto 12px;
+  color: var(--oc-fg-muted);
+  pointer-events: none;
+  white-space: pre-wrap;
+  font-size: var(--oc-font-size);
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+.oc-composerPill {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 1px;
+  padding: 0 6px;
+  border: 1px solid var(--oc-border-strong);
+  background: color-mix(in srgb, var(--oc-accent) 14%, var(--oc-palette-selection-bg) 86%);
+  color: var(--oc-fg-primary);
+  border-radius: var(--oc-radius-sm);
+  white-space: nowrap;
+}
+
+.oc-composerPill::selection {
+  background: transparent;
+  color: inherit;
+}
+
+.oc-composerPill.is-selected {
+  background: var(--vscode-editor-selectionBackground);
+  border-color: color-mix(in srgb, var(--vscode-editor-selectionBackground) 72%, var(--oc-border-strong) 28%);
+  color: var(--vscode-editor-selectionForeground, var(--oc-fg-primary));
+}
+
+.oc-composerPill.is-agent {
+  border-color: color-mix(in srgb, var(--oc-accent) 42%, var(--oc-border-strong) 58%);
+}
+
+.oc-composerPill.is-file {
+  border-color: color-mix(in srgb, var(--oc-info) 40%, var(--oc-border-strong) 60%);
+}
+
+.oc-composerPill.is-resource {
+  border-color: color-mix(in srgb, var(--oc-warning) 42%, var(--oc-border-strong) 58%);
+}
+
+.oc-composerAutocomplete {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--oc-border-strong);
+  background: var(--oc-status-popover-bg);
+  border-radius: var(--oc-radius-md);
+  box-shadow: var(--oc-shadow-floating);
+  z-index: 3;
+  max-height: min(18rem, 48vh);
+  overflow: hidden;
+}
+
+.oc-composerAutocompleteHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.45;
+}
+
+.oc-composerAutocompleteTrigger {
+  color: var(--oc-accent);
+  font-weight: 700;
+}
+
+.oc-composerAutocompleteList {
+  display: grid;
+  gap: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.oc-composerAutocompleteItem,
+.oc-composerAutocompleteEmpty {
+  padding: 5px 8px;
+  border: 1px solid var(--oc-border);
+  background: color-mix(in srgb, var(--oc-surface-control) 82%, transparent 18%);
+  border-radius: var(--oc-radius-sm);
+}
+
+.oc-composerAutocompleteItem {
+  width: 100%;
+  display: flex;
+  position: relative;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.oc-composerAutocompleteItem.is-active {
+  border-color: var(--oc-border-strong);
+  background: color-mix(in srgb, var(--oc-accent) 18%, var(--oc-surface-control) 82%);
+}
+
+.oc-composerAutocompleteLabel {
+  color: var(--oc-fg-primary);
+  font-size: var(--oc-font-size);
+  line-height: 1.45;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-composerAutocompleteLabelWrap {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.oc-composerAutocompleteKind {
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  padding-left: 8px;
+  justify-self: end;
+  text-align: right;
+}
+
+.oc-composerAutocompleteDetail,
+.oc-composerAutocompleteEmpty {
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.5;
+}
+
+.oc-composerAutocompleteDetail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-composerAutocompleteMatch {
+  padding: 0;
+  background: transparent;
+  color: var(--oc-warning);
+  font-weight: 600;
+}
+
+.oc-answerInput {
+  min-height: 70px;
+}
+
+.oc-composer.is-blocked {
+  opacity: 0.8;
+}
+
+.oc-composerInfoWrap {
+  position: absolute;
+  inset: auto 1px 1px 1px;
+  pointer-events: none;
+}
+
+.oc-modelPickerLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.oc-composerInfo {
+  position: relative;
+  min-height: 53px;
+  padding: 12px 53px 12px 12px;
+  border-bottom-left-radius: calc(var(--oc-radius-md) - 1px);
+  border-bottom-right-radius: calc(var(--oc-radius-md) - 1px);
+  background: color-mix(in srgb, var(--oc-accent) 10%, var(--oc-surface-control) 90%);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.oc-composerInfoRow,
+.oc-composerBadgeRow,
+.oc-statusPopoverItem,
+.oc-statusBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oc-composerInfoRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.65;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.oc-composerAgent,
+.oc-statusPopoverName {
+  color: var(--oc-accent);
+}
+
+.oc-composerAgent.oc-agentColor-0,
+.oc-agentName.oc-agentColor-0 {
+  color: #9ece6a;
+}
+
+.oc-agentSwatch.oc-agentColor-0 {
+  background: #9ece6a;
+}
+
+.oc-composerAgent.oc-agentColor-1,
+.oc-agentName.oc-agentColor-1 {
+  color: #6ab5ce;
+}
+
+.oc-agentSwatch.oc-agentColor-1 {
+  background: #6ab5ce;
+}
+
+.oc-composerAgent.oc-agentColor-2,
+.oc-agentName.oc-agentColor-2 {
+  color: #6a8cce;
+}
+
+.oc-agentSwatch.oc-agentColor-2 {
+  background: #6a8cce;
+}
+
+.oc-composerAgent.oc-agentColor-3,
+.oc-agentName.oc-agentColor-3 {
+  color: #a06ace;
+}
+
+.oc-agentSwatch.oc-agentColor-3 {
+  background: #a06ace;
+}
+
+.oc-composerAgent.oc-agentColor-4,
+.oc-agentName.oc-agentColor-4 {
+  color: #ce6ab5;
+}
+
+.oc-agentSwatch.oc-agentColor-4 {
+  background: #ce6ab5;
+}
+
+.oc-composerAgent.oc-agentColor-5,
+.oc-agentName.oc-agentColor-5 {
+  color: #ce8c6a;
+}
+
+.oc-agentSwatch.oc-agentColor-5 {
+  background: #ce8c6a;
+}
+
+.oc-composerAgent.oc-agentColor-6,
+.oc-agentName.oc-agentColor-6 {
+  color: #ceb56a;
+}
+
+.oc-agentSwatch.oc-agentColor-6 {
+  background: #ceb56a;
+}
+
+.oc-composerIdentityStart {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.oc-composerAgent {
+  font-weight: 600;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.oc-contextButtonWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.oc-contextButton {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  width: auto;
+  height: auto;
+  padding: 0;
+  background: transparent;
+  color: var(--oc-fg-primary);
+  cursor: pointer;
+  line-height: 0;
+}
+
+.oc-contextButton:hover,
+.oc-contextButton.is-open {
+  color: color-mix(in srgb, var(--oc-accent) 72%, var(--oc-fg-primary) 28%);
+}
+
+.oc-contextButton:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--oc-accent) 44%, transparent 56%);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+.oc-contextButtonTooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  display: none;
+  min-width: 168px;
+  padding: 8px 10px;
+  border: 1px solid var(--oc-border-strong);
+  border-radius: calc(var(--oc-radius-sm) + 2px);
+  background: var(--oc-status-popover-bg);
+  box-shadow: var(--oc-shadow-soft);
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
+.oc-contextButtonWrap:hover .oc-contextButtonTooltip {
+  display: grid;
+  gap: 4px;
+}
+
+.oc-contextButtonTooltipRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.oc-contextButtonTooltipValue {
+  color: var(--oc-fg-primary);
+  font-size: calc(var(--oc-font-size) + 3px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.oc-contextButtonTooltipLabel {
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+}
+
+.oc-contextButtonRing {
+  --oc-context-button-percent: 0%;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle closest-side, var(--oc-surface-canvas) 58%, transparent 59%),
+    conic-gradient(var(--oc-accent) var(--oc-context-button-percent), color-mix(in srgb, var(--oc-border) 86%, transparent 14%) 0);
+}
+
+.oc-contextButtonRing.is-warning {
+  background:
+    radial-gradient(circle closest-side, var(--oc-surface-canvas) 58%, transparent 59%),
+    conic-gradient(var(--oc-warning) var(--oc-context-button-percent), color-mix(in srgb, var(--oc-border) 86%, transparent 14%) 0);
+}
+
+.oc-contextButtonRing.is-critical {
+  background:
+    radial-gradient(circle closest-side, var(--oc-surface-canvas) 58%, transparent 59%),
+    conic-gradient(var(--oc-error) var(--oc-context-button-percent), color-mix(in srgb, var(--oc-border) 86%, transparent 14%) 0);
+}
+
+.oc-composerModel,
+.oc-composerProvider {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oc-composerModelTrigger {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.oc-composerModelTrigger:hover,
+.oc-composerModelTrigger.is-open {
+  opacity: 0.92;
+}
+
+.oc-composerModelTrigger:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--oc-accent) 52%, transparent 48%);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.oc-composerVariantTrigger {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--oc-accent) 28%, transparent 72%);
+  border-radius: 999px;
+  padding: 1px 8px;
+  background: color-mix(in srgb, var(--oc-accent) 10%, transparent 90%);
+  color: var(--oc-accent);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.oc-composerVariantTrigger:hover {
+  background: color-mix(in srgb, var(--oc-accent) 14%, transparent 86%);
+}
+
+.oc-composerModel {
+  color: var(--oc-accent);
+}
+
+.oc-composerProvider {
+  color: color-mix(in srgb, var(--oc-accent) 58%, var(--oc-surface-canvas) 42%);
+}
+
+.oc-statusPopoverValue {
+  color: color-mix(in srgb, var(--oc-accent) 58%, var(--oc-surface-canvas) 42%);
+}
+
+.oc-composerActions {
+  position: relative;
+  z-index: 7;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 0 4px;
+}
+
+.oc-composerActionsMain {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.oc-composerStatus {
+  --oc-composer-status-accent: var(--oc-accent);
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px 10px 8px;
+  border: 1px solid color-mix(in srgb, var(--oc-border-strong) 82%, transparent 18%);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--oc-surface-control) 96%, white 4%) 0%, color-mix(in srgb, var(--oc-surface-control) 92%, transparent 8%) 100%);
+  color: var(--oc-fg-primary);
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent 90%);
+}
+
+.oc-composerStatus.is-running {
+  --oc-composer-status-accent: var(--oc-accent);
+  border-color: color-mix(in srgb, var(--oc-accent) 26%, var(--oc-border-strong) 74%);
+}
+
+.oc-composerStatus.is-retry {
+  --oc-composer-status-accent: var(--oc-warning);
+  border-color: color-mix(in srgb, var(--oc-warning) 30%, var(--oc-border-strong) 70%);
+}
+
+.oc-composerStatus.is-armed {
+  --oc-composer-status-accent: var(--oc-error);
+  border-color: color-mix(in srgb, var(--oc-error) 36%, var(--oc-border-strong) 64%);
+  background: color-mix(in srgb, var(--oc-error) 8%, var(--oc-surface-control) 92%);
+}
+
+.oc-composerStatusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--oc-composer-status-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--oc-composer-status-accent) 12%, transparent 88%);
+  flex: 0 0 auto;
+  animation: oc-composerStatusPulse 1.7s ease-in-out infinite;
+}
+
+.oc-composerStatusLabel {
+  min-width: 0;
+  font-size: var(--oc-font-size-sm);
+  font-weight: 600;
+}
+
+.oc-composerStatusHint {
+  min-width: 0;
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oc-composerStatusTrack {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--oc-composer-status-accent) 14%, transparent 86%);
+}
+
+.oc-composerStatusTrackGlow {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--oc-composer-status-accent) 22%, transparent 78%) 20%, color-mix(in srgb, var(--oc-composer-status-accent) 84%, white 16%) 50%, transparent 100%);
+  transform: translateX(-135%);
+  animation: oc-composerStatusSweep 1.9s ease-in-out infinite;
+}
+
+.oc-composerStatus.is-armed .oc-composerStatusTrackGlow {
+  animation-duration: 1.15s;
+}
+
+@keyframes oc-composerStatusPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--oc-composer-status-accent) 10%, transparent 90%);
+    opacity: 0.9;
+  }
+
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--oc-composer-status-accent) 16%, transparent 84%);
+    opacity: 1;
+  }
+}
+
+@keyframes oc-composerStatusSweep {
+  0% {
+    transform: translateX(-135%);
+  }
+
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+.oc-modelPicker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  width: auto;
+  max-height: min(420px, 48vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--oc-border) 82%, transparent 18%);
+  border-radius: 10px;
+  background: var(--oc-status-popover-bg);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+  pointer-events: auto;
+  z-index: 30;
+}
+
+.oc-modelPickerTop {
+  flex: 0 0 auto;
+  border-bottom: 1px solid color-mix(in srgb, var(--oc-border) 82%, transparent 18%);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.oc-modelPickerHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.oc-modelPickerToolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oc-modelPickerSearch {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid var(--oc-border-strong);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--oc-surface-control) 94%, transparent 6%);
+  color: var(--oc-fg);
+  padding: 8px 10px;
+}
+
+.oc-modelPickerAction {
+  appearance: none;
+  border: 1px solid var(--oc-border-strong);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--oc-surface-control) 94%, transparent 6%);
+  color: var(--oc-fg);
+  cursor: pointer;
+}
+
+.oc-modelPickerAction:hover {
+  border-color: color-mix(in srgb, var(--oc-accent) 34%, var(--oc-border-strong) 66%);
+}
+
+.oc-modelPickerAction.is-active {
+  border-color: color-mix(in srgb, var(--oc-accent) 38%, transparent 62%);
+  background: color-mix(in srgb, var(--oc-accent) 12%, var(--oc-surface-control) 88%);
+}
+
+.oc-modelPickerTitle {
+  font-weight: 600;
+  color: var(--oc-fg);
+}
+
+.oc-modelPickerMeta {
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+}
+
+.oc-modelPickerSections {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.oc-modelPickerSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.oc-modelPickerSectionTitle {
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.oc-modelPickerList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.oc-modelPickerItem {
+  appearance: none;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--oc-surface-control) 92%, transparent 8%);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.oc-modelPickerItem:hover,
+.oc-modelPickerItem.is-active {
+  border-color: color-mix(in srgb, var(--oc-accent) 34%, transparent 66%);
+  background: color-mix(in srgb, var(--oc-accent) 10%, var(--oc-surface-control) 90%);
+}
+
+.oc-modelPickerItem.is-selected {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--oc-surface-control) 92%, transparent 8%);
+}
+
+.oc-modelPickerItemMain {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.oc-modelPickerItemIdentity,
+.oc-modelPickerItemMeta,
+.oc-modelPickerEmptyActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oc-modelPickerEmptyActions {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.oc-modelPickerItemLabel,
+.oc-modelPickerItemDetail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-modelPickerItemLabel {
+  color: var(--oc-fg);
+}
+
+.oc-modelPickerItem.is-selected .oc-modelPickerItemLabel,
+.oc-modelPickerItem.is-selected .oc-modelPickerVariant {
+  color: var(--oc-warning);
+}
+
+.oc-modelPickerItem.is-selected .oc-modelPickerItemDetail {
+  color: color-mix(in srgb, var(--oc-warning) 72%, var(--oc-fg-muted) 28%);
+}
+
+.oc-modelPickerItemDetail {
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+}
+
+.oc-modelPickerVariant,
+.oc-modelPickerFavorite,
+.oc-modelPickerItemKind,
+.oc-modelPickerItemHint,
+.oc-modelPickerEmptyText {
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+}
+
+.oc-modelPickerVariant {
+  color: var(--oc-accent);
+}
+
+.oc-modelPickerFavorite {
+  color: var(--oc-warning);
+}
+
+.oc-modelPickerFavoriteToggle {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--oc-fg-muted) 76%, transparent 24%);
+  cursor: pointer;
+}
+
+.oc-modelPickerFavoriteToggle.is-favorite,
+.oc-modelPickerFavoriteToggle:hover {
+  color: var(--oc-warning);
+}
+
+.oc-sessionPickerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.oc-sessionPickerAction {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--oc-border-strong) 75%, transparent 25%);
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: color-mix(in srgb, var(--oc-surface-elevated) 90%, transparent 10%);
+  color: var(--oc-fg-muted);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.oc-sessionPickerAction:hover {
+  border-color: color-mix(in srgb, var(--oc-accent) 36%, transparent 64%);
+  color: var(--oc-fg);
+}
+
+.oc-modelPickerItemHint {
+  display: block;
+  margin-top: 4px;
+}
+
+.oc-keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid color-mix(in srgb, var(--oc-border-strong) 82%, transparent 18%);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--oc-surface-control) 88%, transparent 12%);
+  color: var(--oc-fg-primary);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--oc-border-strong) 45%, transparent 55%);
+}
+
+.oc-keycap.is-text {
+  width: auto;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.oc-keycapLabel {
+  display: inline-block;
+  line-height: 1;
+}
+
+.oc-keycap svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+  overflow: visible;
+}
+
+.oc-keycapPath {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  shape-rendering: geometricPrecision;
+}
+
+.oc-composerErrorText {
+  margin: 0;
+  color: var(--oc-error);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+  max-width: min(100%, 28rem);
+}
+
+.oc-composerBadgeRow {
+  display: inline-flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: 6px;
+}
+
+.oc-statusBadgeWrap {
+  position: relative;
+}
+
+.oc-statusBadgeWrap::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 8px;
+}
+
+.oc-statusBadge {
+  padding: 4px 8px;
+  border: 1px solid var(--oc-status-badge-border, var(--oc-border-strong));
+  border-radius: var(--oc-radius-sm);
+  background: var(--oc-status-badge-bg);
+  color: var(--oc-fg-primary);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.oc-statusLight {
+  flex: 0 0 8px;
+  width: 8px;
+  min-width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.oc-statusLight.is-green {
+  color: var(--oc-status-green);
+  background: var(--oc-status-green);
+}
+
+.oc-statusLight.is-orange {
+  color: var(--oc-status-orange);
+  background: var(--oc-status-orange);
+}
+
+.oc-statusLight.is-red {
+  color: var(--oc-status-red);
+  background: var(--oc-status-red);
+}
+
+.oc-statusLight.is-gray {
+  color: color-mix(in srgb, var(--oc-fg-muted) 72%, transparent 28%);
+  background: color-mix(in srgb, var(--oc-fg-muted) 72%, transparent 28%);
+  box-shadow: none;
+}
+
+.oc-statusPopover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: none;
+  min-width: 220px;
+  max-width: min(32rem, calc(100vw - 32px));
+  padding: 8px 10px;
+  border: 1px solid var(--oc-border-strong);
+  background: var(--oc-status-popover-bg);
+  z-index: 2;
+}
+
+.oc-statusBadgeWrap:hover .oc-statusPopover,
+.oc-statusBadgeWrap:focus-within .oc-statusPopover {
+  display: grid;
+  gap: 6px;
+}
+
+.oc-composerPrimaryAction {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+  border: 1px solid color-mix(in srgb, var(--oc-palette-action-border) 76%, transparent 24%);
+  border-radius: calc(var(--oc-radius-sm) + 2px);
+  background: var(--oc-palette-action-bg);
+  color: var(--oc-accent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent 92%);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+}
+
+.oc-composerPrimaryAction:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--oc-palette-action-bg) 86%, var(--oc-accent) 14%);
+  border-color: color-mix(in srgb, var(--oc-palette-action-border) 84%, var(--oc-accent) 16%);
+  transform: translateY(-1px);
+}
+
+.oc-composerPrimaryAction:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--oc-accent) 54%, transparent 46%);
+  outline-offset: 2px;
+}
+
+.oc-composerPrimaryAction.is-disabled,
+.oc-composerPrimaryAction:disabled {
+  color: color-mix(in srgb, var(--oc-fg-muted) 74%, transparent 26%);
+  border-color: color-mix(in srgb, var(--oc-fg-muted) 16%, transparent 84%);
+  background: color-mix(in srgb, var(--oc-fg-muted) 6%, var(--oc-surface-block) 94%);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.oc-composerPrimaryAction.is-interrupt {
+  color: var(--oc-warning);
+  border-color: color-mix(in srgb, var(--oc-warning) 44%, var(--oc-border-strong) 56%);
+  background: color-mix(in srgb, var(--oc-warning) 13%, var(--oc-surface-block) 87%);
+}
+
+.oc-composerPrimaryAction.is-interrupt:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--oc-warning) 18%, var(--oc-surface-block) 82%);
+  border-color: color-mix(in srgb, var(--oc-warning) 56%, var(--oc-border-strong) 44%);
+}
+
+.oc-composerPrimaryAction.is-armed {
+  color: var(--oc-error);
+  border-color: color-mix(in srgb, var(--oc-error) 52%, var(--oc-border-strong) 48%);
+  background: color-mix(in srgb, var(--oc-error) 14%, var(--oc-surface-block) 86%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--oc-error) 22%, transparent 78%);
+}
+
+.oc-composerPrimaryAction.is-armed:not(:disabled) {
+  animation: oc-composerPrimaryActionPulse 1.2s ease-in-out infinite;
+}
+
+.oc-composerPrimaryAction svg {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+
+.oc-composerPrimaryActionPath {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.oc-composerPrimaryActionPath.is-fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+@keyframes oc-composerPrimaryActionPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--oc-error) 22%, transparent 78%);
+  }
+
+  50% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--oc-error) 30%, transparent 70%), 0 0 18px color-mix(in srgb, var(--oc-error) 18%, transparent 82%);
+  }
+}
+
+.oc-statusPopoverItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.45;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.oc-statusPopoverValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oc-statusPopoverName {
+  flex: 0 0 auto;
+}
+
+.oc-statusPopoverValue {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.oc-statusPopoverAction {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--oc-fg-muted);
+  cursor: pointer;
+}
+
+.oc-statusPopoverAction:disabled,
+.oc-statusPopoverAction.is-pending {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.oc-statusPopoverAction.is-disconnect {
+  color: var(--oc-error);
+}
+
+.oc-statusPopoverAction.is-connect {
+  color: var(--oc-success);
+}
+
+.oc-statusPopoverAction:hover,
+.oc-statusPopoverAction:focus-visible {
+  color: var(--oc-fg);
+}
+
+.oc-statusPopoverAction.is-disconnect:hover,
+.oc-statusPopoverAction.is-disconnect:focus-visible {
+  color: color-mix(in srgb, var(--oc-error) 82%, var(--oc-status-action-hover-light) 18%);
+}
+
+.oc-statusPopoverAction.is-connect:hover,
+.oc-statusPopoverAction.is-connect:focus-visible {
+  color: color-mix(in srgb, var(--oc-success) 82%, var(--oc-status-action-hover-light) 18%);
+}
+
+.oc-statusPopoverAction:disabled:hover,
+.oc-statusPopoverAction:disabled:focus-visible,
+.oc-statusPopoverAction.is-pending:hover,
+.oc-statusPopoverAction.is-pending:focus-visible {
+  color: inherit;
+}
+
+.oc-statusPopoverAction svg {
+  width: 14px;
+  height: 14px;
+}
+
+.oc-statusActionPath {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.oc-composerImageStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px 4px;
+}
+
+.oc-composerImageThumb {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  border: 1px solid var(--oc-border-strong);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--oc-surface-control) 92%, transparent 8%);
+  flex: 0 0 auto;
+}
+
+.oc-composerImageThumbImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+}
+
+.oc-composerImageThumbImg:hover {
+  opacity: 0.88;
+}
+
+.oc-composerImageThumbClose {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--oc-surface-canvas) 82%, transparent 18%);
+  color: var(--oc-fg-primary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.oc-composerImageThumb:hover .oc-composerImageThumbClose {
+  opacity: 1;
+}
+
+.oc-composerImageThumbClose:hover {
+  background: var(--oc-error);
+  color: #fff;
+}
+
+.oc-composerImageThumbClose svg {
+  width: 10px;
+  height: 10px;
+}
+
+.oc-composerImageThumbClose svg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.oc-imagePreviewOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.oc-imagePreviewContent {
+  position: relative;
+  max-width: min(90vw, 800px);
+  max-height: 80vh;
+}
+
+.oc-imagePreviewImg {
+  display: block;
+  max-width: 100%;
+  max-height: 80vh;
+  border-radius: 6px;
+  border: 1px solid var(--oc-border-strong);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+}
+
+.oc-imagePreviewClose {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--oc-border-strong);
+  border-radius: 50%;
+  background: var(--oc-surface-canvas);
+  color: var(--oc-fg-primary);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.oc-imagePreviewClose:hover {
+  background: var(--oc-error);
+  color: #fff;
+  border-color: var(--oc-error);
+}
+
+.oc-imagePreviewClose svg {
+  width: 12px;
+  height: 12px;
+}
+
+.oc-imagePreviewClose svg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.oc-codexTodoPopover {
+  display: none;
+}
+
+.oc-codexTodoDock {
+  display: contents;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-composerBody {
+  border-color: color-mix(in srgb, var(--oc-palette-composer-border) 74%, transparent 26%);
+  border-radius: calc(var(--oc-radius-md) + 4px);
+  background: color-mix(in srgb, var(--oc-palette-composer-bg) 92%, var(--oc-surface-elevated) 8%);
+  padding-bottom: 64px;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-composerInfo {
+  min-height: 57px;
+  padding: 14px 60px 14px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--oc-border) 72%, transparent 28%);
+  border-bottom-left-radius: calc(var(--oc-radius-md) + 3px);
+  border-bottom-right-radius: calc(var(--oc-radius-md) + 3px);
+  background: color-mix(in srgb, var(--oc-palette-composer-info-bg) 72%, transparent 28%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-statusBadge {
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 18%, transparent 82%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-composerErrorText {
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--oc-error) 16%, var(--oc-border-strong) 84%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--oc-error) 10%, var(--oc-surface-block) 90%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 12%, transparent 88%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-composerPrimaryAction {
+  width: 36px;
+  height: 36px;
+  border-radius: 14px;
+  border-color: color-mix(in srgb, var(--oc-palette-action-border) 52%, transparent 48%);
+  background: color-mix(in srgb, var(--oc-palette-action-bg) 76%, var(--oc-accent-strong) 24%);
+  color: var(--oc-palette-action-fg);
+  box-shadow: 0 14px 24px color-mix(in srgb, var(--oc-accent-strong) 24%, transparent 76%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-composerPrimaryAction:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--oc-palette-action-bg) 82%, var(--oc-accent-strong) 18%);
+  transform: translateY(-1px) scale(1.01);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-composerAutocomplete,
+.oc-shell[data-oc-theme="claude"] .oc-modelPicker,
+.oc-shell[data-oc-theme="claude"] .oc-statusPopover {
+  border-radius: calc(var(--oc-radius-md) - 2px);
+  background: color-mix(in srgb, var(--oc-palette-popover-bg) 96%, var(--oc-surface-elevated) 4%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-composerBody {
+  border-color: color-mix(in srgb, var(--oc-palette-composer-border) 76%, var(--oc-native-edge) 24%);
+  border-radius: calc(var(--oc-radius-md) + 6px);
+  background: color-mix(in srgb, var(--oc-palette-composer-bg) 94%, var(--oc-surface-elevated) 6%);
+  box-shadow: var(--oc-native-inset), var(--oc-composer-shadow);
+  padding-bottom: 62px;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-composerBody:focus-within {
+  border-color: color-mix(in srgb, var(--oc-accent-strong) 44%, var(--oc-native-edge) 56%);
+  box-shadow: var(--oc-native-inset), var(--oc-composer-shadow), 0 0 0 1px color-mix(in srgb, var(--oc-accent-strong) 12%, transparent 88%);
+  transform: translateY(-1px);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoDock {
+  position: relative;
+  display: flex;
+  max-height: 360px;
+  overflow: hidden;
+  justify-content: center;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: none;
+  transition: max-height 400ms ease-out, opacity 400ms ease-out, transform 400ms ease-out;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoDock.is-collapsed {
+  max-height: 78px;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoDock.is-closing,
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoDock.is-opening {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(36px);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoPopover {
+  display: grid;
+  position: relative;
+  z-index: 2;
+  gap: 0;
+  width: min(560px, calc(100vw - 84px));
+  max-height: min(46vh, 420px);
+  margin: 0 0 -9px;
+  border: 1px solid color-mix(in srgb, var(--oc-palette-block-border) 72%, transparent 28%);
+  border-radius: 12px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--oc-palette-block-bg) 88%, var(--oc-surface-elevated) 12%) 0%, color-mix(in srgb, var(--oc-palette-block-bg) 98%, transparent 2%) 100%);
+  backdrop-filter: blur(10px) saturate(1.04);
+  -webkit-backdrop-filter: blur(10px) saturate(1.04);
+  box-shadow: 0 14px 28px color-mix(in srgb, black 20%, transparent 80%), 0 0 0 1px color-mix(in srgb, white 3%, transparent 97%);
+  pointer-events: auto;
+  animation: oc-codexPopoverIn 160ms ease-out;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoPopover.is-collapsed {
+  width: auto;
+  max-height: none;
+  border-radius: 18px;
+  padding: 0;
+  box-shadow: 0 2px 8px color-mix(in srgb, black 10%, transparent 90%), 0 0 0 1px color-mix(in srgb, white 2%, transparent 98%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoPopover::after {
+  display: none;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--oc-palette-block-border) 78%, transparent 22%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoPopover.is-collapsed .oc-codexTodoHeader {
+  padding: 6px 8px 6px 12px;
+  border-bottom: none;
+  gap: 10px;
+  align-items: center;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoHeaderText {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoPopover.is-collapsed .oc-codexTodoHeaderText {
+  display: grid;
+  gap: 3px;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoEyebrow {
+  color: color-mix(in srgb, var(--oc-accent) 70%, var(--oc-fg-muted) 30%);
+  font-size: 10px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoPopover.is-collapsed .oc-codexTodoEyebrow {
+  display: none;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoSummary {
+  color: var(--oc-fg-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoPopover.is-collapsed .oc-codexTodoSummary {
+  font-size: 12px;
+  line-height: 1.15;
+  white-space: nowrap;
+  color: var(--oc-fg-primary);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoPreview {
+  max-width: min(420px, calc(100vw - 160px));
+  color: var(--oc-fg-muted);
+  font-size: 12px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--oc-palette-action-border) 48%, transparent 52%);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--oc-palette-action-bg) 54%, transparent 46%);
+  color: color-mix(in srgb, var(--oc-fg-muted) 78%, var(--oc-accent) 22%);
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: all 0.15s ease;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoPopover.is-collapsed .oc-codexTodoToggle {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border-color: color-mix(in srgb, var(--oc-border) 50%, transparent 50%);
+  background: color-mix(in srgb, var(--oc-surface-control) 60%, transparent 40%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoToggle:hover {
+  background: color-mix(in srgb, var(--oc-accent) 10%, var(--oc-surface-control) 90%);
+  color: var(--oc-fg-primary);
+  border-color: color-mix(in srgb, var(--oc-accent) 30%, var(--oc-border) 70%);
+  transform: scale(1.05);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoToggleIcon {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s ease;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoToggleIcon path {
+  fill: currentColor;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoPopover.is-collapsed .oc-codexTodoToggleIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoToggle.is-collapsed .oc-codexTodoToggleIcon {
+  transform: rotate(180deg);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoList {
+  display: grid;
+  gap: 0;
+  padding: 4px 0;
+  max-height: min(34vh, 300px);
+  overflow: auto;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoItem {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 6px 12px;
+  color: var(--oc-fg-primary);
+  line-height: 1.35;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoItem + .oc-codexTodoItem {
+  border-top: 1px solid color-mix(in srgb, var(--oc-border) 68%, transparent 32%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoMarker {
+  width: 12px;
+  height: 12px;
+  margin-top: 4px;
+  border: 1.5px solid color-mix(in srgb, var(--oc-fg-muted) 72%, transparent 28%);
+  border-radius: 999px;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoItem.is-completed .oc-codexTodoMarker {
+  border-color: color-mix(in srgb, var(--oc-success) 82%, transparent 18%);
+  background: color-mix(in srgb, var(--oc-success) 82%, transparent 18%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--oc-success) 16%, transparent 84%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoItem.is-in_progress .oc-codexTodoMarker {
+  border-color: color-mix(in srgb, var(--oc-accent) 82%, transparent 18%);
+  background: color-mix(in srgb, var(--oc-accent) 18%, transparent 82%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoItem.is-pending .oc-codexTodoMarker {
+  border-color: color-mix(in srgb, var(--oc-fg-muted) 64%, transparent 36%);
+  background: transparent;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoText {
+  min-width: 0;
+  font-size: 12px;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexTodoText.is-completed {
+  color: var(--oc-fg-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-composerInfo {
+  min-height: 55px;
+  padding: 12px 56px 12px 12px;
+  border-top: 1px solid color-mix(in srgb, var(--oc-border) 80%, transparent 20%);
+  border-bottom-left-radius: calc(var(--oc-radius-md) + 5px);
+  border-bottom-right-radius: calc(var(--oc-radius-md) + 5px);
+  background: color-mix(in srgb, var(--oc-palette-composer-info-bg) 78%, transparent 22%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-statusBadge {
+  border-radius: calc(var(--oc-radius-sm) + 2px);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent 90%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-composerErrorText {
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--oc-error) 34%, var(--oc-border-strong) 66%);
+  border-radius: calc(var(--oc-radius-sm) + 2px);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--oc-surface-elevated) 94%, white 6%) 0%, color-mix(in srgb, var(--oc-error) 7%, var(--oc-surface-block) 93%) 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent 92%);
+  font-family: var(--oc-mono);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-composerPrimaryAction {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: var(--oc-palette-action-bg);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent 92%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-composerAutocomplete,
+.oc-shell[data-oc-theme="codex"] .oc-modelPicker,
+.oc-shell[data-oc-theme="codex"] .oc-statusPopover {
+  border-radius: calc(var(--oc-radius-md) + 2px);
+  background: color-mix(in srgb, var(--oc-palette-popover-bg) 96%, var(--oc-surface-elevated) 4%);
+}
+
+@keyframes oc-codexPopoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+

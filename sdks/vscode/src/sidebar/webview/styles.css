@@ -1,0 +1,276 @@
+:root {
+  color-scheme: var(--vscode-color-scheme);
+}
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  padding: 0;
+}
+
+body {
+  background: var(--vscode-sideBar-background);
+  color: var(--vscode-sideBar-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: 13px;
+}
+
+.sv-group {
+  margin: 8px 0;
+}
+
+.sv-shell,
+.sv-group,
+.sv-list {
+  width: 100%;
+  display: grid;
+  gap: 0;
+}
+
+.sv-todo,
+.sv-diff,
+.sv-subagent {
+  display: grid;
+  align-items: start;
+  gap: 6px;
+  line-height: 1.45;
+}
+
+.sv-todo {
+  grid-template-columns: auto minmax(0, 1fr);
+  border: 0;
+  margin: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  text-align: left;
+}
+
+.sv-diff {
+  width: 100%;
+  border: 0;
+  padding: 2px 8px;
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+  grid-template-columns: 3.5ch 0.75ch 3.5ch minmax(0, 1fr);
+  overflow: hidden;
+  gap: 0;
+}
+
+.sv-subagent {
+  width: 100%;
+  border: 0;
+  padding: 4px 8px;
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  text-align: left;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+}
+
+.sv-diff:hover {
+  background: color-mix(in srgb, var(--vscode-list-hoverBackground) 82%, transparent 18%);
+}
+
+.sv-subagent:hover,
+.sv-subagent.is-clickable:hover {
+  background: color-mix(in srgb, var(--vscode-list-hoverBackground) 82%, transparent 18%);
+}
+
+.sv-todo {
+  width: 100%;
+  padding: 2px 8px;
+  border-radius: 0;
+}
+
+.sv-todo:hover,
+.sv-todo.is-clickable:hover {
+  background: color-mix(in srgb, var(--vscode-list-hoverBackground) 82%, transparent 18%);
+}
+
+.sv-todo:disabled {
+  cursor: default;
+}
+
+.sv-todo.is-clickable {
+  cursor: pointer;
+}
+
+.sv-subagent:disabled {
+  cursor: default;
+}
+
+.sv-subagent.is-clickable {
+  cursor: pointer;
+}
+
+.sv-todoBody {
+  min-width: 0;
+  display: grid;
+}
+
+.sv-subagentBody {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.sv-todoPrefix,
+.sv-add,
+.sv-sep,
+.sv-del,
+.sv-subagentPrefix {
+  font-family: var(--vscode-editor-font-family, var(--vscode-font-family));
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.sv-diffPath,
+.sv-todoText,
+.sv-subagentTitle {
+  min-width: 0;
+}
+
+.sv-diffPath {
+  white-space: nowrap;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sv-add {
+  color: var(--vscode-terminal-ansiGreen);
+  text-align: right;
+  justify-self: end;
+}
+
+.sv-sep {
+  color: var(--vscode-descriptionForeground);
+  text-align: center;
+  justify-self: center;
+}
+
+.sv-del {
+  color: var(--vscode-terminal-ansiRed);
+  text-align: left;
+  justify-self: start;
+}
+
+.sv-todo-in_progress .sv-todoPrefix,
+.sv-todo-in_progress .sv-todoText {
+  color: var(--vscode-terminal-ansiYellow);
+  font-weight: 700;
+}
+
+.sv-todo-completed .sv-todoPrefix,
+.sv-todo-completed .sv-todoText {
+  color: var(--vscode-descriptionForeground);
+}
+
+.sv-subagentTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sv-subagentActivity {
+  min-width: 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sv-subagent-busy .sv-subagentTitle {
+  color: var(--vscode-terminal-ansiYellow);
+  font-weight: 700;
+}
+
+.sv-subagent-retry .sv-subagentTitle {
+  color: var(--vscode-terminal-ansiRed);
+  font-weight: 700;
+}
+
+.sv-subagentPrefix {
+  color: var(--vscode-descriptionForeground);
+}
+
+.sv-subagent-busy .sv-subagentPrefix,
+.sv-subagent-retry .sv-subagentPrefix {
+  color: inherit;
+}
+
+.sv-taskSummary {
+  display: grid;
+  gap: 8px;
+  padding: 6px 8px 8px;
+}
+
+.sv-taskSummaryCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.sv-taskFilters {
+  display: flex;
+  gap: 6px;
+}
+
+.sv-taskFilter {
+  border: 1px solid color-mix(in srgb, var(--vscode-input-border, var(--vscode-contrastBorder, transparent)) 80%, transparent 20%);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.sv-taskFilter.is-active {
+  background: color-mix(in srgb, var(--vscode-button-background) 24%, transparent 76%);
+  border-color: color-mix(in srgb, var(--vscode-button-background) 72%, transparent 28%);
+}
+
+.sv-taskSection {
+  display: grid;
+}
+
+.sv-taskSectionTitle {
+  padding: 8px 8px 4px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sv-empty {
+  display: grid;
+  gap: 6px;
+  padding: 4px 8px;
+}
+
+.sv-emptyTitle {
+  font-weight: 600;
+}
+
+.sv-emptyText {
+  color: var(--vscode-descriptionForeground);
+  line-height: 1.45;
+}

@@ -1,34 +1,32 @@
 # HyperCode VS Code Extension
 
-A Visual Studio Code extension that integrates HyperCode directly into your development workflow.
+A full VS Code integration for HyperCode with a workspace sidebar, session tree, session panel, and seeded composer flows.
 
-## Prerequisites
+## Runtime
 
-This extension requires the HyperCode CLI to be installed on your system.
+This extension starts `hypercode serve` on the current machine for each workspace folder it manages.
+
+- Install `hypercode` so it is available on `PATH`, or
+- Set `hypercode.cliPath` to an absolute executable path
+
+The extension also supports `hypercode.httpProxy` for runtime startup.
 
 ## Features
 
-- **Quick Launch**: Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open HyperCode in a split terminal view, or focus an existing terminal session if one is already running.
-- **New Session**: Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a new HyperCode terminal session, even if one is already open. You can also click the HyperCode button in the UI.
-- **Context Awareness**: Automatically share your current selection or tab with HyperCode.
-- **File Reference Shortcuts**: Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to insert file references. For example, `@File#L37-42`.
-
-## Support
-
-This is an early release. If you encounter issues or have feedback, please use the HyperCode fork issue tracker that distributes this VSIX build.
+- Activity Bar container with workspace session navigation
+- Session panel with transcript, thinking blocks, tool rendering, diff views, and image preview actions
+- Quick session creation from the active editor, current file, or selected explorer files
+- Workspace session search, tag filtering, sharing, archiving, and in-place switching
+- Todo, modified files, subagents, and session detail side views
 
 ## Development
 
-1. `code sdks/vscode` - Open the `sdks/vscode` directory in VS Code. **Do not open from repo root.**
-2. `bun install` - Run inside the `sdks/vscode` directory.
-3. Press `F5` to start debugging - This launches a new VS Code window with the extension loaded.
+1. `code sdks/vscode` - Open the `sdks/vscode` directory in VS Code. Do not open from repo root for extension debugging.
+2. `bun install` - Run inside `sdks/vscode`.
+3. Press `F5` to launch an Extension Development Host.
 
-#### Making Changes
+Useful commands:
 
-`tsc` and `esbuild` watchers run automatically during debugging (visible in the Terminal tab). Changes to the extension are automatically rebuilt in the background.
-
-To test your changes:
-
-1. In the debug VS Code window, press `Cmd+Shift+P`
-2. Search for `Developer: Reload Window`
-3. Reload to see your changes without restarting the debug session
+- `bun run check-types`
+- `bun run package`
+- `node esbuild.js --watch`

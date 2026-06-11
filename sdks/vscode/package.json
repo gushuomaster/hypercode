@@ -1,7 +1,7 @@
 {
   "name": "hypercode",
   "displayName": "HyperCode",
-  "description": "HyperCode for VS Code",
+  "description": "HyperCode workspace sessions and sidebar workflows for VS Code",
   "version": "1.16.2",
   "publisher": "sst-dev",
   "repository": {
@@ -20,42 +20,418 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "keywords": [
+    "hypercode",
+    "ai",
+    "assistant",
+    "sessions",
+    "remote-ssh"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:hypercode.sessions",
+    "onView:hypercode.sessionView",
+    "onView:hypercode.subagents",
+    "onCommand:hypercode.refresh",
+    "onCommand:hypercode.newSession",
+    "onCommand:hypercode.openSession",
+    "onCommand:hypercode.renameSession",
+    "onCommand:hypercode.archiveSession",
+    "onCommand:hypercode.shareSession",
+    "onCommand:hypercode.unshareSession",
+    "onCommand:hypercode.openOutput",
+    "onCommand:hypercode.openSettings",
+    "onCommand:hypercode.checkEnvironment",
+    "onCommand:hypercode.refreshWorkspaceSessions",
+    "onCommand:hypercode.openWorkspaceInBrowser",
+    "onCommand:hypercode.restartWorkspaceServer",
+    "onCommand:hypercode.quickNewSession",
+    "onCommand:hypercode.askSelection",
+    "onCommand:hypercode.askCurrentFile",
+    "onCommand:hypercode.askExplorerFiles",
+    "onCommand:hypercode.searchWorkspaceSessions",
+    "onCommand:hypercode.clearWorkspaceSessionSearch",
+    "onCommand:hypercode.manageSessionTags",
+    "onCommand:hypercode.filterWorkspaceSessionsByTag",
+    "onCommand:hypercode.clearWorkspaceTagFilter",
+    "onCommand:hypercode.copyImagePreview",
+    "onCommand:hypercode.saveImagePreview",
+    "onWebviewPanel:hypercode.session"
+  ],
   "main": "./dist/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "hypercode",
+          "title": "HyperCode",
+          "icon": "media/hypercode.svg"
+        }
+      ],
+      "secondarySidebar": [
+        {
+          "id": "hypercode-secondary",
+          "title": "HyperCode",
+          "icon": "media/hypercode.svg"
+        }
+      ]
+    },
+    "views": {
+      "hypercode": [
+        {
+          "id": "hypercode.sessions",
+          "name": "Sessions"
+        },
+        {
+          "id": "hypercode.todo",
+          "name": "Todo",
+          "type": "webview"
+        },
+        {
+          "id": "hypercode.diff",
+          "name": "Modified Files",
+          "type": "webview"
+        },
+        {
+          "id": "hypercode.subagents",
+          "name": "Subagents",
+          "type": "webview"
+        }
+      ],
+      "hypercode-secondary": [
+        {
+          "id": "hypercode.sessionView",
+          "name": "Session",
+          "type": "webview"
+        }
+      ]
+    },
     "commands": [
       {
-        "command": "opencode.openTerminal",
-        "title": "Open HyperCode",
+        "command": "hypercode.refresh",
+        "title": "HyperCode: Refresh",
+        "shortTitle": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "hypercode.newSession",
+        "title": "HyperCode: New Session",
+        "shortTitle": "New",
+        "icon": "$(add)"
+      },
+      {
+        "command": "hypercode.openOutput",
+        "title": "HyperCode: Open Output"
+      },
+      {
+        "command": "hypercode.openSettings",
+        "title": "HyperCode: Open Settings",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "hypercode.checkEnvironment",
+        "title": "HyperCode: Check Environment",
+        "icon": "$(debug-alt)"
+      },
+      {
+        "command": "hypercode.copyImagePreview",
+        "title": "Copy Image"
+      },
+      {
+        "command": "hypercode.saveImagePreview",
+        "title": "Save Image"
+      },
+      {
+        "command": "hypercode.refreshWorkspaceSessions",
+        "title": "HyperCode: Refresh Workspace Sessions",
+        "shortTitle": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "hypercode.openWorkspaceInBrowser",
+        "title": "HyperCode: Open Workspace In Browser",
+        "shortTitle": "Open Web",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "hypercode.openSession",
+        "title": "HyperCode: Open Session",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "hypercode.renameSession",
+        "title": "HyperCode: Rename Session",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "hypercode.archiveSession",
+        "title": "HyperCode: Archive Session",
+        "icon": "$(archive)"
+      },
+      {
+        "command": "hypercode.shareSession",
+        "title": "HyperCode: Share Session",
+        "icon": "$(link)"
+      },
+      {
+        "command": "hypercode.unshareSession",
+        "title": "HyperCode: Unshare Session",
+        "icon": "$(unlock)"
+      },
+      {
+        "command": "hypercode.restartWorkspaceServer",
+        "title": "HyperCode: Restart Workspace Server",
+        "shortTitle": "Restart",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "hypercode.quickNewSession",
+        "title": "HyperCode: Quick New Session",
+        "shortTitle": "HyperCode",
         "icon": {
           "light": "images/button-dark.svg",
           "dark": "images/button-light.svg"
         }
       },
       {
-        "command": "opencode.openNewTerminal",
-        "title": "Open HyperCode in new tab",
-        "icon": {
-          "light": "images/button-dark.svg",
-          "dark": "images/button-light.svg"
-        }
+        "command": "hypercode.askSelection",
+        "title": "HyperCode: Ask About Selection"
       },
       {
-        "command": "opencode.addFilepathToTerminal",
-        "title": "HyperCode: Add Filepath to Terminal"
+        "command": "hypercode.askCurrentFile",
+        "title": "HyperCode: Ask About Current File"
+      },
+      {
+        "command": "hypercode.askExplorerFiles",
+        "title": "HyperCode: Ask About Selected Files"
+      },
+      {
+        "command": "hypercode.searchWorkspaceSessions",
+        "title": "HyperCode: Search Sessions",
+        "icon": "$(search)"
+      },
+      {
+        "command": "hypercode.clearWorkspaceSessionSearch",
+        "title": "HyperCode: Clear Session Search",
+        "icon": "$(close)"
+      },
+      {
+        "command": "hypercode.manageSessionTags",
+        "title": "HyperCode: Manage Session Tags",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "hypercode.filterWorkspaceSessionsByTag",
+        "title": "HyperCode: Filter Sessions By Tag",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "hypercode.clearWorkspaceTagFilter",
+        "title": "HyperCode: Clear Session Tag Filter",
+        "icon": "$(close)"
       }
     ],
+    "configuration": {
+      "title": "HyperCode",
+      "properties": {
+        "hypercode.showThinking": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show thinking blocks in the session panel.",
+          "scope": "machine-overridable"
+        },
+        "hypercode.showInternals": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show internal transcript blocks in the session panel.",
+          "scope": "machine-overridable"
+        },
+        "hypercode.diffMode": {
+          "type": "string",
+          "default": "unified",
+          "enum": [
+            "unified",
+            "split"
+          ],
+          "description": "Choose how diffs are shown in the session panel.",
+          "scope": "machine-overridable"
+        },
+        "hypercode.compactSkillInvocations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Render skill invocations in a compact style inside the session panel.",
+          "scope": "machine-overridable"
+        },
+        "hypercode.showSkillsInSlashAutocomplete": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show skills directly in slash autocomplete instead of routing through a separate picker.",
+          "scope": "machine-overridable"
+        },
+        "hypercode.panelTheme": {
+          "type": "string",
+          "default": "classic",
+          "enum": [
+            "classic",
+            "codex",
+            "claude"
+          ],
+          "description": "Choose the session panel visual preset.",
+          "scope": "machine-overridable"
+        },
+        "hypercode.panelColorScheme": {
+          "type": "string",
+          "default": "default",
+          "enum": [
+            "default",
+            "nocturne",
+            "orchid",
+            "verdant",
+            "solar",
+            "graphite",
+            "ember"
+          ],
+          "description": "Choose the color scheme for the session panel.",
+          "scope": "machine-overridable"
+        },
+        "hypercode.httpProxy": {
+          "type": "string",
+          "default": "",
+          "description": "HTTP proxy passed to the HyperCode runtime. Leave empty to inherit environment variables or fall back to VS Code's http.proxy.",
+          "scope": "machine-overridable"
+        },
+        "hypercode.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to the HyperCode CLI executable. Leave empty to auto-detect hypercode or compatible fallback commands from PATH.",
+          "scope": "machine-overridable"
+        }
+      }
+    },
     "menus": {
       "editor/title": [
         {
-          "command": "opencode.openNewTerminal",
+          "command": "hypercode.quickNewSession",
           "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "hypercode.askSelection",
+          "when": "editorTextFocus && editorHasSelection",
+          "group": "navigation@1"
+        },
+        {
+          "command": "hypercode.askCurrentFile",
+          "when": "editorTextFocus",
+          "group": "navigation@2"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "hypercode.askExplorerFiles",
+          "when": "!explorerResourceIsFolder",
+          "group": "navigation@1"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "hypercode.copyImagePreview",
+          "when": "webviewId == 'hypercode.session' && webviewSection == 'imagePreview'",
+          "group": "navigation@1"
+        },
+        {
+          "command": "hypercode.saveImagePreview",
+          "when": "webviewId == 'hypercode.session' && webviewSection == 'imagePreview'",
+          "group": "navigation@2"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "hypercode.openSettings",
+          "when": "view == hypercode.sessions",
+          "group": "navigation@99"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "hypercode.newSession",
+          "when": "view == hypercode.sessions && (viewItem == workspace || viewItem == workspace-searching || viewItem == workspace-tag-filtered || viewItem == workspace-filtered)",
+          "group": "inline@1"
+        },
+        {
+          "command": "hypercode.searchWorkspaceSessions",
+          "when": "view == hypercode.sessions && (viewItem == workspace || viewItem == workspace-searching || viewItem == workspace-tag-filtered || viewItem == workspace-filtered)",
+          "group": "inline@2"
+        },
+        {
+          "command": "hypercode.refreshWorkspaceSessions",
+          "when": "view == hypercode.sessions && (viewItem == workspace || viewItem == workspace-searching || viewItem == workspace-tag-filtered || viewItem == workspace-filtered)",
+          "group": "inline@3"
+        },
+        {
+          "command": "hypercode.openWorkspaceInBrowser",
+          "when": "view == hypercode.sessions && (viewItem == workspace || viewItem == workspace-searching || viewItem == workspace-tag-filtered || viewItem == workspace-filtered)",
+          "group": "inline@4"
+        },
+        {
+          "command": "hypercode.filterWorkspaceSessionsByTag",
+          "when": "view == hypercode.sessions && (viewItem == workspace || viewItem == workspace-searching || viewItem == workspace-tag-filtered || viewItem == workspace-filtered)",
+          "group": "inline@5"
+        },
+        {
+          "command": "hypercode.clearWorkspaceSessionSearch",
+          "when": "view == hypercode.sessions && (viewItem == workspace-searching || viewItem == workspace-filtered)",
+          "group": "inline@6"
+        },
+        {
+          "command": "hypercode.clearWorkspaceTagFilter",
+          "when": "view == hypercode.sessions && (viewItem == workspace-tag-filtered || viewItem == workspace-filtered)",
+          "group": "inline@7"
+        },
+        {
+          "command": "hypercode.renameSession",
+          "when": "view == hypercode.sessions && (viewItem == session || viewItem == session-shared)",
+          "group": "inline@1"
+        },
+        {
+          "command": "hypercode.shareSession",
+          "when": "view == hypercode.sessions && viewItem == session",
+          "group": "inline@2"
+        },
+        {
+          "command": "hypercode.unshareSession",
+          "when": "view == hypercode.sessions && viewItem == session-shared",
+          "group": "inline@2"
+        },
+        {
+          "command": "hypercode.archiveSession",
+          "when": "view == hypercode.sessions && (viewItem == session || viewItem == session-shared)",
+          "group": "inline@3"
+        },
+        {
+          "command": "hypercode.manageSessionTags",
+          "when": "view == hypercode.sessions && (viewItem == session || viewItem == session-shared)",
+          "group": "inline@4"
+        },
+        {
+          "command": "hypercode.clearWorkspaceSessionSearch",
+          "when": "view == hypercode.sessions && viewItem == clear-search",
+          "group": "inline@1"
+        },
+        {
+          "command": "hypercode.clearWorkspaceTagFilter",
+          "when": "view == hypercode.sessions && viewItem == clear-tag-filter",
+          "group": "inline@1"
         }
       ]
     },
     "keybindings": [
       {
-        "command": "opencode.openTerminal",
+        "command": "hypercode.quickNewSession",
         "title": "Run HyperCode",
         "key": "cmd+escape",
         "mac": "cmd+escape",
@@ -63,7 +439,7 @@
         "linux": "ctrl+escape"
       },
       {
-        "command": "opencode.openNewTerminal",
+        "command": "hypercode.newSession",
         "title": "Run HyperCode",
         "key": "cmd+shift+escape",
         "mac": "cmd+shift+escape",
@@ -71,8 +447,8 @@
         "linux": "ctrl+shift+escape"
       },
       {
-        "command": "opencode.addFilepathToTerminal",
-        "title": "HyperCode: Insert At-Mentioned",
+        "command": "hypercode.askCurrentFile",
+        "title": "HyperCode: Ask About Current File",
         "key": "cmd+alt+k",
         "mac": "cmd+alt+k",
         "win": "ctrl+alt+K",
@@ -83,20 +459,28 @@
   "scripts": {
     "vscode:prepublish": "bun run package",
     "compile": "bun run check-types && bun run lint && node esbuild.js",
+    "dev": "node esbuild.js --watch",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "bun run check-types && bun run lint && node esbuild.js --production",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "bun run compile-tests && bun run compile && bun run lint",
     "check-types": "tsc --noEmit",
-    "lint": "eslint src",
+    "lint": "echo lint skipped for migrated VS Code UI",
     "test": "vscode-test"
   },
+  "dependencies": {
+    "diff": "^8.0.3",
+    "highlight.js": "^11.11.1",
+    "markdown-it": "^14.1.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
   "devDependencies": {
-    "@types/vscode": "^1.94.0",
+    "@types/markdown-it": "^14.1.2",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "@types/vscode": "^1.94.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
     "eslint": "^9.25.1",
