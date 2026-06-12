@@ -461,9 +461,9 @@
     "compile": "bun run check-types && bun run lint && node esbuild.js",
     "dev": "node esbuild.js --watch",
     "watch:esbuild": "node esbuild.js --watch",
-    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "watch:tsc": "bunx tsc --noEmit --watch --project tsconfig.json",
     "package": "bun run check-types && bun run lint && node esbuild.js --production",
-    "check-types": "tsc --noEmit",
+    "check-types": "bunx tsc --noEmit",
     "lint": "echo lint skipped for migrated VS Code UI",
     "test": "vscode-test"
   },
