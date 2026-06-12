@@ -11,6 +11,7 @@ export function truthy(key: string) {
 }
 
 const copy = env("OPENCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT")
+const fff = env("OPENCODE_DISABLE_FFF")
 
 function enabledByExperimental(key: string) {
   return env(key) === undefined ? truthy("OPENCODE_EXPERIMENTAL") : truthy(key)
@@ -35,6 +36,7 @@ export const Flag = {
   OPENCODE_FAKE_VCS: env("OPENCODE_FAKE_VCS"),
   OPENCODE_SERVER_PASSWORD: env("OPENCODE_SERVER_PASSWORD"),
   OPENCODE_SERVER_USERNAME: env("OPENCODE_SERVER_USERNAME"),
+  OPENCODE_DISABLE_FFF: fff === undefined ? process.platform === "win32" : truthy("OPENCODE_DISABLE_FFF"),
 
   // Experimental
   OPENCODE_EXPERIMENTAL_FILEWATCHER: Config.boolean("OPENCODE_EXPERIMENTAL_FILEWATCHER").pipe(
@@ -51,7 +53,6 @@ export const Flag = {
 
   OPENCODE_WORKSPACE_ID: env("OPENCODE_WORKSPACE_ID"),
   OPENCODE_EXPERIMENTAL_WORKSPACES: enabledByExperimental("OPENCODE_EXPERIMENTAL_WORKSPACES"),
-  OPENCODE_EXPERIMENTAL_SESSION_SWITCHER: enabledByExperimental("OPENCODE_EXPERIMENTAL_SESSION_SWITCHER"),
 
   // Evaluated at access time (not module load) because tests, the CLI, and
   // external tooling set these env vars at runtime.

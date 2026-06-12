@@ -5,8 +5,12 @@
     "jsx": "react-jsx",
     "target": "ES2022",
     "lib": ["ES2022", "DOM"],
+    "baseUrl": ".",
+    "paths": {
+      "@opencode-ai/sdk/v2/client": ["../../packages/sdk/js/src/v2/client.ts"],
+      "@opencode-ai/sdk/v2/*": ["../../packages/sdk/js/src/v2/*"]
+    },
     "sourceMap": true,
-    "rootDir": "src",
     "outDir": "dist",
     "types": ["node", "vscode"],
     "typeRoots": ["./node_modules/@types"],

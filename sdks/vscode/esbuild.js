@@ -23,6 +23,10 @@ function resolveReactAliases() {
 }
 
 const reactAliases = resolveReactAliases()
+const sdkAliases = {
+  "@opencode-ai/sdk/v2": path.resolve(__dirname, "../../packages/sdk/js/src/v2/index.ts"),
+  "@opencode-ai/sdk/v2/client": path.resolve(__dirname, "../../packages/sdk/js/src/v2/client.ts"),
+}
 
 const esbuildProblemMatcherPlugin = {
   name: "esbuild-problem-matcher",
@@ -53,6 +57,7 @@ async function main() {
       entryPoints: ["src/extension.ts"],
       bundle: true,
       format: "cjs",
+      alias: sdkAliases,
       minify: production,
       sourcemap: !production,
       sourcesContent: false,
