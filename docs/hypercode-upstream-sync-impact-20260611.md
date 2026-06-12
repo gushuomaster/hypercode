@@ -428,3 +428,28 @@
 - 其中至少有 2 个属于用户可见内容：`packages/opencode/src/cli/error.ts` 的可操作报错文案，以及 `packages/web/src/content/docs/references.mdx` 文档页面。
 - 这可以证明 upstream 更新已经融入隔离测试版本。
 - 这不能证明正式主线已经同步；否，正式主线未同步。
+
+## 12. 正式同步分支准备结果
+
+- 正式同步分支：`sync/opencode-upstream-20260611`
+- 正式同步 worktree：`D:\project\hypercode-formal-sync-20260611`
+- 来源提交：`ff0d165f9f81c70225ec7c2c9d4ad3c6f1bbc60f`
+- VSIX 人工验收：用户已确认通过
+- 正式同步分支附加修复：
+  - 根 `package.json` 的 `typecheck` 已调整为 `bunx turbo typecheck`
+  - `sdks/vscode/package.json` 的 `check-types` / `watch:tsc` 已调整为 `bunx tsc ...`
+- 正式同步分支验证：
+  - `bun install`：通过
+  - `bun run typecheck`：通过
+  - `sdks/vscode` `bun install`：通过
+  - `sdks/vscode` `bun run check-types`：通过
+  - `sdks/vscode` `bun run package`：通过
+  - `sdks/vscode` `bunx @vscode/vsce package`：通过
+- 产品化公开面检查：
+  - 公开 `opencode.*` command / configuration / view：未发现
+  - `hypercode.*` command / configuration：保留
+  - HyperCode Activity Bar / views / panels：保留
+- 结论：
+  - 该分支是正式同步候选分支
+  - 正式主线尚未合入
+  - 后续仍需人工决定是否 push / PR / merge
