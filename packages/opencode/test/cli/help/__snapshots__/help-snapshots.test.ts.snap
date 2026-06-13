@@ -1,10 +1,6 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode acp --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode acp --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode acp
 
 start ACP (Agent Client Protocol) server
@@ -24,12 +20,7 @@ Options:
       --cors         additional domains to allow for CORS                      [array] [default: []]
       --cwd          working directory [string] [default: "<HOME>"]"
 `;
-
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode mcp --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode mcp --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode mcp
 
 manage MCP (Model Context Protocol) servers
@@ -49,11 +40,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode attach --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode attach --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode attach <url>
 
 attach to a running HyperCode server
@@ -75,11 +62,7 @@ Options:
   -u, --username    basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'opencode')[string]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode run --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode run --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode run [message..]
 
 run HyperCode with a message
@@ -131,11 +114,7 @@ Options:
                                       message to run it immediately       [boolean] [default: false]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode debug --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode debug --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode debug
 
 debugging and troubleshooting tools
@@ -163,11 +142,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode providers --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode providers --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode providers
 
 manage AI providers and credentials
@@ -185,11 +160,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode agent --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode agent --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode agent
 
 manage agents
@@ -206,11 +177,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode upgrade --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode upgrade --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode upgrade [target]
 
 upgrade HyperCode to the latest or a specific version
@@ -228,11 +195,7 @@ Options:
                           [string] [choices: "curl", "npm", "pnpm", "bun", "brew", "choco", "scoop"]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode uninstall --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode uninstall --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode uninstall
 
 uninstall HyperCode and remove all related files
@@ -249,11 +212,7 @@ Options:
   -f, --force        skip confirmation prompts                            [boolean] [default: false]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode serve --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode serve --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode serve
 
 start a headless HyperCode server
@@ -273,11 +232,7 @@ Options:
       --cors         additional domains to allow for CORS                      [array] [default: []]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode web --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode web --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode web
 
 start HyperCode server and open the web interface
@@ -297,11 +252,7 @@ Options:
       --cors         additional domains to allow for CORS                      [array] [default: []]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode models --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode models --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode models [provider]
 
 list all available models
@@ -319,11 +270,7 @@ Options:
       --refresh     refresh the models cache from models.dev                               [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode stats --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode stats --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode stats
 
 show token usage and cost statistics
@@ -341,11 +288,7 @@ Options:
       --project     filter by project (default: all projects, empty string: current project)[string]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode export --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode export --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode export [sessionID]
 
 export session data as JSON
@@ -362,11 +305,7 @@ Options:
       --sanitize    redact sensitive transcript and file data                              [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode import --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode import --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode import <file>
 
 import session data from JSON file or URL
@@ -382,11 +321,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode github --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode github --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode github
 
 manage GitHub agent
@@ -403,11 +338,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode pr --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode pr --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode pr <number>
 
 fetch and checkout a GitHub PR branch, then run HyperCode
@@ -423,11 +354,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode session --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode session --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode session
 
 manage sessions
@@ -444,11 +371,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode plugin --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode plugin --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode plugin <module>
 
 install plugin and update config
@@ -466,11 +389,7 @@ Options:
   -f, --force       replace existing plugin version                       [boolean] [default: false]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode db --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode db --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode db
 
 database tools
@@ -491,11 +410,7 @@ Options:
       --format      Output format                 [string] [choices: "json", "tsv"] [default: "tsv"]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode mcp list --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode mcp list --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode mcp list
 
 list MCP servers and their status
@@ -508,11 +423,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode mcp add --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode mcp add --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode mcp add [name]
 
 add an MCP server
@@ -531,11 +442,7 @@ Options:
       --header      HTTP header for a remote MCP server (KEY=VALUE)                          [array]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode mcp auth --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode mcp auth --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode mcp auth [name]
 
 authenticate with an OAuth-enabled MCP server
@@ -554,11 +461,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode mcp logout --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode mcp logout --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode mcp logout [name]
 
 remove OAuth credentials for an MCP server
@@ -574,11 +477,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode providers list --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode providers list --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode providers list
 
 list providers and credentials
@@ -591,11 +490,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode providers login --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode providers login --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode providers login [url]
 
 log in to a provider
@@ -613,11 +508,7 @@ Options:
   -m, --method      login method label (skips method selection)                             [string]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode providers logout --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode providers logout --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode providers logout [provider]
 
 log out from a configured provider
@@ -633,11 +524,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode agent create --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode agent create --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode agent create
 
 create a new agent
@@ -657,11 +544,7 @@ Options:
   -m, --model                 model to use in the format of provider/model                  [string]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode agent list --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode agent list --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode agent list
 
 list all available agents
@@ -674,11 +557,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode session list --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode session list --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode session list
 
 list sessions
@@ -693,11 +572,7 @@ Options:
       --format      output format             [string] [choices: "table", "json"] [default: "table"]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode session delete --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode session delete --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode session delete <sessionID>
 
 delete a session
@@ -713,11 +588,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode github install --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode github install --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode github install
 
 install the GitHub agent
@@ -730,11 +601,7 @@ Options:
       --pure        run without external plugins                                           [boolean]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode github run --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode github run --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode github run
 
 run the GitHub agent
@@ -749,11 +616,7 @@ Options:
       --token       GitHub personal access token (github_pat_********)                      [string]"
 `;
 
-<<<<<<< HEAD
-exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode db path --help 1`] = `
-=======
 exports[`hypercode CLI help-text snapshots every documented command emits stable help text: hypercode db path --help 1`] = `
->>>>>>> f96c8679d (fix(opencode): stabilize windows unit expectations)
 "hypercode db path
 
 print the database path
@@ -765,3 +628,4 @@ Options:
       --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
       --pure        run without external plugins                                           [boolean]"
 `;
+
