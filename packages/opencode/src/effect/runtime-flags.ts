@@ -1,19 +1,43 @@
 import { Config, ConfigProvider, Context, Effect, Layer, Option } from "effect"
 import { ConfigService } from "@/effect/config-service"
 
-function env(name: string) {
-  const alias = name.startsWith("OPENCODE_") ? `HYPERCODE_${name.slice("OPENCODE_".length)}` : undefined
-  return (alias ? process.env[alias] : undefined) ?? process.env[name]
+const alias = (name: string) =>
+  name.startsWith("OPENCODE_") ? `HYPERCODE_${name.slice("OPENCODE_".length)}` : undefined
+
+const text = (name: string) => {
+  const prefixed = alias(name)
+  if (!prefixed) return Config.string(name).pipe(Config.option)
+  return Config.all({
+    prefixed: Config.string(prefixed).pipe(Config.option),
+    original: Config.string(name).pipe(Config.option),
+  }).pipe(Config.map((value) => (Option.isSome(value.prefixed) ? value.prefixed : value.original)))
 }
 
-const bool = (name: string) => Config.succeed(["true", "1"].includes(env(name)?.toLowerCase() ?? ""))
-const positiveInteger = (name: string) => {
-  const value = Number(env(name))
-  return Config.succeed(Number.isInteger(value) && value > 0 ? value : undefined)
+const boolValue = (value: string) => {
+  const normalized = value.toLowerCase()
+  return normalized === "true" || normalized === "1"
 }
+
+const bool = (name: string) =>
+  text(name).pipe(Config.map((value) => (Option.isSome(value) ? boolValue(value.value) : false)))
+
+const optionalBool = (name: string) =>
+  text(name).pipe(
+    Config.map((value) => (Option.isSome(value) ? Option.some(boolValue(value.value)) : Option.none<boolean>())),
+  )
+
+const positiveInteger = (name: string) =>
+  text(name).pipe(
+    Config.map((value) => {
+      if (Option.isNone(value)) return undefined
+      const parsed = Number(value.value)
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
+    }),
+  )
+
 const experimental = bool("OPENCODE_EXPERIMENTAL")
 const enabledByExperimental = (name: string) =>
-  Config.all({ experimental, enabled: Config.boolean(name).pipe(Config.option) }).pipe(
+  Config.all({ experimental, enabled: optionalBool(name) }).pipe(
     Config.map((flags) => Option.getOrElse(flags.enabled, () => flags.experimental)),
   )
 
@@ -56,7 +80,7 @@ export class Service extends ConfigService.Service<Service>()("@opencode/Runtime
   bashDefaultTimeoutMs: positiveInteger("OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS"),
   experimentalNativeLlm: bool("OPENCODE_EXPERIMENTAL_NATIVE_LLM"),
   experimentalWebSockets: bool("OPENCODE_EXPERIMENTAL_WEBSOCKETS"),
-  client: Config.succeed(env("OPENCODE_CLIENT") ?? "cli"),
+  client: text("OPENCODE_CLIENT").pipe(Config.map((value) => (Option.isSome(value) ? value.value : "cli"))),
 }) {}
 
 export type Info = Context.Service.Shape<typeof Service>
