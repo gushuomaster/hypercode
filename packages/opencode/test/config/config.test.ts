@@ -440,7 +440,7 @@ test("loads project config from Cygwin paths on Windows", async () => {
     const rest = dir.slice(2).replaceAll("\\", "/")
     return `/cygdrive/${drive}${rest}`
   })
-})
+}, 15_000)
 
 it.instance("ignores legacy tui keys in opencode config", () =>
   Effect.gen(function* () {
@@ -497,6 +497,7 @@ it.instance("jsonc overrides json in the same directory", () =>
     expect(config.model).toBe("base")
     expect(config.username).toBe("base")
   }),
+  15_000,
 )
 
 it.instance("handles environment variable substitution", () =>

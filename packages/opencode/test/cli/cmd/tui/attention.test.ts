@@ -184,12 +184,12 @@ describe("createTuiAttention", () => {
     const attention = createTuiAttention({ renderer, config: config(), audio: new FakeAudioEngine() })
     renderer.emit("blur")
 
-    expect(await attention.notify({ title: "opencode", message: "hello", sound: false })).toEqual({
+    expect(await attention.notify({ title: "HyperCode", message: "hello", sound: false })).toEqual({
       ok: true,
       notification: true,
       sound: false,
     })
-    expect(renderer.notifications).toEqual([{ title: "opencode", message: "hello" }])
+    expect(renderer.notifications).toEqual([{ title: "HyperCode", message: "hello" }])
   })
 
   test("when requested, blurred-only calls do not notify or play sound while focused", async () => {
