@@ -7,13 +7,14 @@ import { resetDatabase } from "../fixture/db"
 import { disposeAllInstances, tmpdir } from "../fixture/fixture"
 
 const context = Context.empty() as Context.Context<unknown>
+const handler = HttpApiApp.webHandler()
 
 function request(route: string, directory: string, query?: Record<string, string>) {
   const url = new URL(`http://localhost${route}`)
   for (const [key, value] of Object.entries(query ?? {})) {
     url.searchParams.set(key, value)
   }
-  return HttpApiApp.webHandler().handler(
+  return handler.handler(
     new Request(url, {
       headers: {
         "x-opencode-directory": directory,
@@ -55,17 +56,17 @@ describe("file HttpApi", () => {
     await using tmp = await tmpdir({ git: true })
     await Bun.write(path.join(tmp.path, "hello.txt"), "needle")
 
-    const [text, files, symbols] = await Promise.all([
-      request(FilePaths.findText, tmp.path, { pattern: "needle" }),
-      request(FilePaths.findFile, tmp.path, { query: "hello", type: "file" }),
-      request(FilePaths.findSymbol, tmp.path, { query: "hello" }),
-    ])
+    const text = await request(FilePaths.findText, tmp.path, { pattern: "needle" })
 
     expect(text.status).toBe(200)
     expect(await text.json()).toContainEqual(expect.objectContaining({ line_number: 1 }))
 
+    const files = await request(FilePaths.findFile, tmp.path, { query: "hello", type: "file" })
+
     expect(files.status).toBe(200)
     expect(await files.json()).toContain("hello.txt")
+
+    const symbols = await request(FilePaths.findSymbol, tmp.path, { query: "hello" })
 
     expect(symbols.status).toBe(200)
     expect(await symbols.json()).toEqual([])
