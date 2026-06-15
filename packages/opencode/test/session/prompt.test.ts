@@ -1786,12 +1786,8 @@ unixNoLLMServer(
       const sh = yield* prompt.shell({ sessionID: chat.id, agent: "build", command: "sleep 30" }).pipe(Effect.forkChild)
       yield* waitForBusy(chat.id)
 
-      const queued = yield* Deferred.make<void>()
-      const loop = yield* Effect.gen(function* () {
-        yield* Deferred.succeed(queued, void 0)
-        return yield* prompt.loop({ sessionID: chat.id })
-      }).pipe(Effect.forkChild)
-      yield* awaitWithTimeout(Deferred.await(queued), "timed out waiting for queued loop to start", "10 seconds")
+      const loop = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
+      yield* Effect.sleep(50)
 
       yield* prompt.cancel(chat.id)
 
