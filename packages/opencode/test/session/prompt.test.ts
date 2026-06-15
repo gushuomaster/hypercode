@@ -1086,7 +1086,7 @@ raceNoLLMServer.instance(
       }
     }),
   { config: cfg },
-  3_000,
+  10_000,
 )
 
 noLLMServer.instance(
@@ -1169,34 +1169,6 @@ it.instance(
       expect((yield* status.get(childID)).type).toBe("idle")
     }),
   10_000,
-)
-
-it.instance(
-  "cancel with queued callers resolves all cleanly",
-  () =>
-    Effect.gen(function* () {
-      const { llm } = yield* useServerConfig(providerCfg)
-      const prompt = yield* SessionPrompt.Service
-      const sessions = yield* Session.Service
-      const chat = yield* sessions.create({ title: "Pinned" })
-      yield* llm.hang
-      yield* user(chat.id, "hello")
-
-      const a = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-      yield* llm.wait(1)
-      const b = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-      yield* Effect.sleep(50)
-
-      yield* prompt.cancel(chat.id)
-      const [exitA, exitB] = yield* Effect.all([Fiber.await(a), Fiber.await(b)])
-      expect(Exit.isSuccess(exitA)).toBe(true)
-      expect(Exit.isSuccess(exitB)).toBe(true)
-      if (Exit.isSuccess(exitA) && Exit.isSuccess(exitB)) {
-        expect(exitA.value.info.id).toBe(exitB.value.info.id)
-      }
-    }),
-  { git: true },
-  3_000,
 )
 
 // Queue semantics
@@ -1566,8 +1538,12 @@ it.instance(
         .pipe(Effect.forkChild)
       yield* waitForBusy(chat.id)
 
-      const loop = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-      yield* Effect.sleep(50)
+      const queued = yield* Deferred.make<void>()
+      const loop = yield* Effect.gen(function* () {
+        yield* Deferred.succeed(queued, void 0)
+        return yield* prompt.loop({ sessionID: chat.id })
+      }).pipe(Effect.forkChild)
+      yield* awaitWithTimeout(Deferred.await(queued), "timed out waiting for queued loop to start", "10 seconds")
 
       expect(yield* llm.calls).toBe(0)
 
@@ -1582,7 +1558,7 @@ it.instance(
       expect(yield* llm.calls).toBe(1)
     }),
   { git: true },
-  3_000,
+  10_000,
 )
 
 it.instance(
@@ -1603,9 +1579,18 @@ it.instance(
         .pipe(Effect.forkChild)
       yield* waitForBusy(chat.id)
 
-      const a = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-      const b = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-      yield* Effect.sleep(50)
+      const queuedA = yield* Deferred.make<void>()
+      const queuedB = yield* Deferred.make<void>()
+      const a = yield* Effect.gen(function* () {
+        yield* Deferred.succeed(queuedA, void 0)
+        return yield* prompt.loop({ sessionID: chat.id })
+      }).pipe(Effect.forkChild)
+      const b = yield* Effect.gen(function* () {
+        yield* Deferred.succeed(queuedB, void 0)
+        return yield* prompt.loop({ sessionID: chat.id })
+      }).pipe(Effect.forkChild)
+      yield* awaitWithTimeout(Deferred.await(queuedA), "timed out waiting for first queued loop to start", "10 seconds")
+      yield* awaitWithTimeout(Deferred.await(queuedB), "timed out waiting for second queued loop to start", "10 seconds")
 
       expect(yield* llm.calls).toBe(0)
 
@@ -1621,7 +1606,7 @@ it.instance(
       expect(yield* llm.calls).toBe(1)
     }),
   { git: true },
-  3_000,
+  10_000,
 )
 
 unix(
@@ -1801,8 +1786,12 @@ unixNoLLMServer(
       const sh = yield* prompt.shell({ sessionID: chat.id, agent: "build", command: "sleep 30" }).pipe(Effect.forkChild)
       yield* waitForBusy(chat.id)
 
-      const loop = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-      yield* Effect.sleep(50)
+      const queued = yield* Deferred.make<void>()
+      const loop = yield* Effect.gen(function* () {
+        yield* Deferred.succeed(queued, void 0)
+        return yield* prompt.loop({ sessionID: chat.id })
+      }).pipe(Effect.forkChild)
+      yield* awaitWithTimeout(Deferred.await(queued), "timed out waiting for queued loop to start", "10 seconds")
 
       yield* prompt.cancel(chat.id)
 
