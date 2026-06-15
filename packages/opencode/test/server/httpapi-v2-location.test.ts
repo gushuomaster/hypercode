@@ -1,15 +1,17 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { Context, Schema } from "effect"
+import { HttpRouter } from "effect/unstable/http"
 import { HttpApiApp } from "../../src/server/routes/instance/httpapi/server"
 import { resetDatabase } from "../fixture/db"
 import { disposeAllInstances, tmpdir } from "../fixture/fixture"
 
 const context = Context.empty() as Context.Context<unknown>
+const handler = HttpRouter.toWebHandler(HttpApiApp.routes, { disableLogger: true }).handler
 
 function request(route: string, directory: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers)
   headers.set("x-opencode-directory", directory)
-  return HttpApiApp.webHandler().handler(
+  return handler(
     new Request(`http://localhost${route}`, {
       ...init,
       headers,
@@ -21,10 +23,12 @@ function request(route: string, directory: string, init: RequestInit = {}) {
 const Event = Schema.Struct({
   id: Schema.String,
   type: Schema.String,
-  location: Schema.Struct({
-    directory: Schema.String,
-    project: Schema.Struct({ id: Schema.String, directory: Schema.String }),
-  }),
+  location: Schema.optional(
+    Schema.Struct({
+      directory: Schema.String,
+      project: Schema.optional(Schema.Struct({ id: Schema.String, directory: Schema.String })),
+    }),
+  ),
   data: Schema.Unknown,
 })
 

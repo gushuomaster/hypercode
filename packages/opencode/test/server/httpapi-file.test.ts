@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { Context } from "effect"
+import { HttpRouter } from "effect/unstable/http"
 import path from "path"
 import { HttpApiApp } from "../../src/server/routes/instance/httpapi/server"
 import { FilePaths } from "../../src/server/routes/instance/httpapi/groups/file"
@@ -7,14 +8,14 @@ import { resetDatabase } from "../fixture/db"
 import { disposeAllInstances, tmpdir } from "../fixture/fixture"
 
 const context = Context.empty() as Context.Context<unknown>
-const handler = HttpApiApp.webHandler()
+const handler = HttpRouter.toWebHandler(HttpApiApp.routes, { disableLogger: true }).handler
 
 function request(route: string, directory: string, query?: Record<string, string>) {
   const url = new URL(`http://localhost${route}`)
   for (const [key, value] of Object.entries(query ?? {})) {
     url.searchParams.set(key, value)
   }
-  return handler.handler(
+  return handler(
     new Request(url, {
       headers: {
         "x-opencode-directory": directory,
