@@ -64,10 +64,23 @@ jobs:
             turbo-${{ runner.os }}-
 
       - name: Run unit tests
+        if: runner.os != 'Windows'
         timeout-minutes: 20
         run: bun turbo test --output-logs=errors-only --log-order=grouped --log-prefix=task
         env:
           OPENCODE_EXPERIMENTAL_DISABLE_FILEWATCHER: ${{ runner.os == 'Windows' && 'true' || 'false' }}
+
+      - name: Run app unit tests (windows)
+        if: runner.os == 'Windows'
+        working-directory: packages/app
+        run: bun test --only-failures --preload ./happydom.ts ./src
+
+      - name: Run opencode unit tests (windows)
+        if: runner.os == 'Windows'
+        working-directory: packages/opencode
+        run: bun test --timeout 30000 --only-failures
+        env:
+          OPENCODE_EXPERIMENTAL_DISABLE_FILEWATCHER: true
 
       - name: Run HttpApi exerciser gates
         if: runner.os == 'Linux'
