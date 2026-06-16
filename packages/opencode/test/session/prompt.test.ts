@@ -328,6 +328,18 @@ const waitForBusy = (sessionID: SessionID, duration: Duration.Input = "2 seconds
     duration,
   )
 
+const waitForRunningShell = (sessionID: SessionID, duration: Duration.Input = "5 seconds") =>
+  pollWithTimeout(
+    Effect.gen(function* () {
+      const msgs = yield* MessageV2.filterCompactedEffect(sessionID)
+      const assistant = msgs.findLast((item) => item.info.role === "assistant")
+      const tool = assistant ? toolPart(assistant.parts) : undefined
+      return tool?.state.status === "running" ? (true as const) : undefined
+    }),
+    `timed out waiting for shell in ${sessionID} to enter running state`,
+    duration,
+  )
+
 const hasBash = Effect.sync(() => Bun.which("bash") !== null)
 
 const deferredAsPromise = <A>(deferred: Deferred.Deferred<A>): PromiseLike<A> => ({
@@ -1536,7 +1548,7 @@ it.instance(
       const sh = yield* prompt
         .shell({ sessionID: chat.id, agent: "build", command: "sleep 0.2" })
         .pipe(Effect.forkChild)
-      yield* waitForBusy(chat.id)
+      yield* waitForRunningShell(chat.id)
 
       const queued = yield* Deferred.make<void>()
       const loop = yield* Effect.gen(function* () {
@@ -1577,7 +1589,7 @@ it.instance(
       const sh = yield* prompt
         .shell({ sessionID: chat.id, agent: "build", command: "sleep 0.2" })
         .pipe(Effect.forkChild)
-      yield* waitForBusy(chat.id)
+      yield* waitForRunningShell(chat.id)
 
       const queuedA = yield* Deferred.make<void>()
       const queuedB = yield* Deferred.make<void>()
