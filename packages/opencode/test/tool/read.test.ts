@@ -93,6 +93,11 @@ const fail = Effect.fn("ReadToolTest.fail")(function* (
 const full = (p: string) => (process.platform === "win32" ? Filesystem.normalizePath(p) : p)
 const glob = (p: string) =>
   process.platform === "win32" ? Filesystem.normalizePathPattern(p) : p.replaceAll("\\", "/")
+const bashPath = (p: string) => {
+  const match = p.match(/^([A-Za-z]):\\(.*)$/)
+  if (!match) return p.replaceAll("\\", "/")
+  return `/${match[1].toLowerCase()}/${match[2].replaceAll("\\", "/")}`
+}
 const githubBase = <A, E, R>(url: string, self: Effect.Effect<A, E, R>) =>
   Effect.acquireUseRelease(
     Effect.sync(() => {
@@ -189,10 +194,7 @@ describe("tool.read external_directory permission", () => {
 
         const { items, next } = asks()
         const target = path.join(dir, "test.txt")
-        const alt = target
-          .replace(/^[A-Za-z]:/, "")
-          .replaceAll("\\", "/")
-          .toLowerCase()
+        const alt = bashPath(target)
 
         yield* exec(dir, { filePath: alt }, next)
         const read = items.find((item) => item.permission === "read")
