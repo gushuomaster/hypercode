@@ -328,18 +328,6 @@ const waitForBusy = (sessionID: SessionID, duration: Duration.Input = "2 seconds
     duration,
   )
 
-const waitForRunningShell = (sessionID: SessionID, duration: Duration.Input = "5 seconds") =>
-  pollWithTimeout(
-    Effect.gen(function* () {
-      const msgs = yield* MessageV2.filterCompactedEffect(sessionID)
-      const assistant = msgs.findLast((item) => item.info.role === "assistant")
-      const tool = assistant ? toolPart(assistant.parts) : undefined
-      return tool?.state.status === "running" ? (true as const) : undefined
-    }),
-    `timed out waiting for shell in ${sessionID} to enter running state`,
-    duration,
-  )
-
 const hasBash = Effect.sync(() => Bun.which("bash") !== null)
 
 const deferredAsPromise = <A>(deferred: Deferred.Deferred<A>): PromiseLike<A> => ({
@@ -1539,16 +1527,29 @@ it.instance(
       const { llm } = yield* useServerConfig(providerCfg)
       const prompt = yield* SessionPrompt.Service
       const sessions = yield* Session.Service
+      const { directory: dir } = yield* TestInstance
+      const afs = yield* FSUtil.Service
       const chat = yield* sessions.create({
         title: "Pinned",
         permission: [{ permission: "*", pattern: "*", action: "allow" }],
       })
       yield* llm.text("after-shell")
+      const ready = path.join(dir, ".loop-waits-shell-ready")
 
       const sh = yield* prompt
-        .shell({ sessionID: chat.id, agent: "build", command: "sleep 0.2" })
+        .shell({
+          sessionID: chat.id,
+          agent: "build",
+          command: `node -e "require('fs').writeFileSync('${path.basename(ready)}', 'ok')"; sleep 0.2`,
+        })
         .pipe(Effect.forkChild)
-      yield* waitForRunningShell(chat.id)
+      yield* pollWithTimeout(
+        Effect.gen(function* () {
+          return (yield* afs.existsSafe(ready)) ? (true as const) : undefined
+        }),
+        "timed out waiting for shell ready marker",
+        "5 seconds",
+      )
 
       const queued = yield* Deferred.make<void>()
       const loop = yield* Effect.gen(function* () {
@@ -1580,16 +1581,29 @@ it.instance(
       const { llm } = yield* useServerConfig(providerCfg)
       const prompt = yield* SessionPrompt.Service
       const sessions = yield* Session.Service
+      const { directory: dir } = yield* TestInstance
+      const afs = yield* FSUtil.Service
       const chat = yield* sessions.create({
         title: "Pinned",
         permission: [{ permission: "*", pattern: "*", action: "allow" }],
       })
       yield* llm.text("done")
+      const ready = path.join(dir, ".shell-completion-ready")
 
       const sh = yield* prompt
-        .shell({ sessionID: chat.id, agent: "build", command: "sleep 0.2" })
+        .shell({
+          sessionID: chat.id,
+          agent: "build",
+          command: `node -e "require('fs').writeFileSync('${path.basename(ready)}', 'ok')"; sleep 0.2`,
+        })
         .pipe(Effect.forkChild)
-      yield* waitForRunningShell(chat.id)
+      yield* pollWithTimeout(
+        Effect.gen(function* () {
+          return (yield* afs.existsSafe(ready)) ? (true as const) : undefined
+        }),
+        "timed out waiting for shell ready marker",
+        "5 seconds",
+      )
 
       const queuedA = yield* Deferred.make<void>()
       const queuedB = yield* Deferred.make<void>()
