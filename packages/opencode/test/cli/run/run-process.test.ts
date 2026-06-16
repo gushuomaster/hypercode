@@ -27,7 +27,10 @@ describe("opencode run (non-interactive subprocess)", () => {
   // makes the SDK call surface an error promptly so the process exits nonzero.
   // We assert nonzero exit AND wall-clock under the harness timeout — a hang
   // would expire the timeout and produce a different (signal-killed) failure.
-  cliIt.concurrent(
+  // Keep this one non-concurrent: the regression guard is about "does not
+  // hang", and Windows runner subprocess contention can dominate the wall-clock
+  // when several CLI process tests start together.
+  cliIt.live(
     "exits nonzero promptly when the model is unknown (regression for #27371)",
     ({ opencode }) =>
       Effect.gen(function* () {
