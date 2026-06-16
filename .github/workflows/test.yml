@@ -99,7 +99,7 @@ jobs:
             host: windows-latest
     runs-on: ${{ matrix.settings.host }}
     env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.os == 'Windows' && format('{0}\\ms-playwright', runner.temp) || format('{0}/ms-playwright', runner.temp) }}
+      PLAYWRIGHT_BROWSERS_PATH: ${{ format('{0}/ms-playwright', runner.temp) }}
     defaults:
       run:
         shell: bash
