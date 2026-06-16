@@ -1527,27 +1527,27 @@ it.instance(
       const { llm } = yield* useServerConfig(providerCfg)
       const prompt = yield* SessionPrompt.Service
       const sessions = yield* Session.Service
-      const { directory: dir } = yield* TestInstance
-      const afs = yield* FSUtil.Service
       const chat = yield* sessions.create({
         title: "Pinned",
         permission: [{ permission: "*", pattern: "*", action: "allow" }],
       })
       yield* llm.text("after-shell")
-      const ready = path.join(dir, ".loop-waits-shell-ready")
 
       const sh = yield* prompt
         .shell({
           sessionID: chat.id,
           agent: "build",
-          command: `node -e "require('fs').writeFileSync('${path.basename(ready)}', 'ok')"; sleep 0.2`,
+          command: `node -e "process.stdout.write('shell-ready\\n'); setTimeout(() => process.exit(0), 1000)"`,
         })
         .pipe(Effect.forkChild)
       yield* pollWithTimeout(
         Effect.gen(function* () {
-          return (yield* afs.existsSafe(ready)) ? (true as const) : undefined
+          const msgs = yield* MessageV2.filterCompactedEffect(chat.id)
+          const taskMsg = msgs.find((item) => item.info.role === "assistant")
+          const tool = taskMsg ? toolPart(taskMsg.parts) : undefined
+          if (tool?.state.status === "running" && tool.state.metadata?.output.includes("shell-ready")) return true
         }),
-        "timed out waiting for shell ready marker",
+        "timed out waiting for shell ready output",
         "5 seconds",
       )
 
@@ -1581,27 +1581,27 @@ it.instance(
       const { llm } = yield* useServerConfig(providerCfg)
       const prompt = yield* SessionPrompt.Service
       const sessions = yield* Session.Service
-      const { directory: dir } = yield* TestInstance
-      const afs = yield* FSUtil.Service
       const chat = yield* sessions.create({
         title: "Pinned",
         permission: [{ permission: "*", pattern: "*", action: "allow" }],
       })
       yield* llm.text("done")
-      const ready = path.join(dir, ".shell-completion-ready")
 
       const sh = yield* prompt
         .shell({
           sessionID: chat.id,
           agent: "build",
-          command: `node -e "require('fs').writeFileSync('${path.basename(ready)}', 'ok')"; sleep 0.2`,
+          command: `node -e "process.stdout.write('shell-ready\\n'); setTimeout(() => process.exit(0), 1000)"`,
         })
         .pipe(Effect.forkChild)
       yield* pollWithTimeout(
         Effect.gen(function* () {
-          return (yield* afs.existsSafe(ready)) ? (true as const) : undefined
+          const msgs = yield* MessageV2.filterCompactedEffect(chat.id)
+          const taskMsg = msgs.find((item) => item.info.role === "assistant")
+          const tool = taskMsg ? toolPart(taskMsg.parts) : undefined
+          if (tool?.state.status === "running" && tool.state.metadata?.output.includes("shell-ready")) return true
         }),
-        "timed out waiting for shell ready marker",
+        "timed out waiting for shell ready output",
         "5 seconds",
       )
 
