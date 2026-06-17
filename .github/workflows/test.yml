@@ -133,16 +133,17 @@ jobs:
       - name: Install Playwright system dependencies
         if: runner.os == 'Linux'
         working-directory: packages/app
-        run: bunx playwright install-deps chromium
+        run: npx --no-install playwright install-deps chromium
 
       - name: Install Playwright browsers (attempt 1)
         id: playwright-install-1
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         working-directory: packages/app
         continue-on-error: true
-        timeout-minutes: 30
-        run: bunx playwright install chromium
+        timeout-minutes: 15
+        run: npx --no-install playwright install chromium
         env:
+          DEBUG: pw:install
           PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: "120000"
 
       - name: Reset Playwright browsers directory before retry
@@ -154,9 +155,10 @@ jobs:
         id: playwright-install-2
         if: steps.playwright-cache.outputs.cache-hit != 'true' && steps.playwright-install-1.outcome == 'failure'
         working-directory: packages/app
-        timeout-minutes: 30
-        run: bunx playwright install chromium
+        timeout-minutes: 15
+        run: npx --no-install playwright install chromium
         env:
+          DEBUG: pw:install
           PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: "120000"
 
       - name: Save Playwright browsers cache
