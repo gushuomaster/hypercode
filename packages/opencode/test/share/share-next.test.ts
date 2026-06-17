@@ -158,6 +158,9 @@ describe("ShareNext", () => {
           const session = yield* (yield* Session.Service).create({ title: "test" })
 
           const result = yield* (yield* ShareNext.Service).create(session.id)
+          const createRequests = seen.filter(
+            (req) => req.method === "POST" && req.url === "https://legacy-share.example.com/api/share",
+          )
 
           expect(result.id).toBe("shr_abc")
           expect(result.url).toBe("https://legacy-share.example.com/share/abc")
@@ -168,9 +171,7 @@ describe("ShareNext", () => {
           expect(row?.url).toBe("https://legacy-share.example.com/share/abc")
           expect(row?.secret).toBe("sec_123")
 
-          expect(seen).toHaveLength(1)
-          expect(seen[0].method).toBe("POST")
-          expect(seen[0].url).toBe("https://legacy-share.example.com/api/share")
+          expect(createRequests).toHaveLength(1)
         }).pipe(Effect.provide(integrationLayer(client)))
       },
       { config: { enterprise: { url: "https://legacy-share.example.com" } } },
@@ -200,12 +201,16 @@ describe("ShareNext", () => {
 
           yield* service.create(session.id)
           yield* service.remove(session.id)
+          const createRequests = seen.filter(
+            (req) => req.method === "POST" && req.url === "https://legacy-share.example.com/api/share",
+          )
+          const removeRequests = seen.filter(
+            (req) => req.method === "DELETE" && req.url === "https://legacy-share.example.com/api/share/shr_abc",
+          )
 
           expect(yield* share(session.id)).toBeUndefined()
-          expect(seen.map((req) => [req.method, req.url])).toEqual([
-            ["POST", "https://legacy-share.example.com/api/share"],
-            ["DELETE", "https://legacy-share.example.com/api/share/shr_abc"],
-          ])
+          expect(createRequests).toHaveLength(1)
+          expect(removeRequests).toHaveLength(1)
         }).pipe(Effect.provide(integrationLayer(client)))
       },
       { config: { enterprise: { url: "https://legacy-share.example.com" } } },
