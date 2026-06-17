@@ -7,12 +7,7 @@ const serverPort = process.env.PLAYWRIGHT_SERVER_PORT ?? "4096"
 const command = `bun run dev -- --host 0.0.0.0 --port ${port}`
 const reuse = !process.env.CI
 const workers = Number(process.env.PLAYWRIGHT_WORKERS ?? (process.env.CI ? 5 : 0)) || undefined
-const reporter = [["html", { outputFolder: "e2e/playwright-report", open: "never" }], ["line"]] as const
-
-if (process.env.PLAYWRIGHT_JUNIT_OUTPUT) {
-  reporter.push(["junit", { outputFile: process.env.PLAYWRIGHT_JUNIT_OUTPUT }])
-}
-
+const browserChannel = process.env.PLAYWRIGHT_BROWSER_CHANNEL
 export default defineConfig({
   testDir: "./e2e",
   outputDir: "./e2e/test-results",
@@ -24,7 +19,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers,
-  reporter,
+  reporter: [["html", { outputFolder: "e2e/playwright-report", open: "never" }], ["line"]],
   webServer: {
     command,
     url: baseURL,
@@ -39,12 +34,15 @@ export default defineConfig({
     baseURL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    video: process.env.CI ? "off" : "retain-on-failure",
   },
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        ...(browserChannel ? { channel: browserChannel } : {}),
+      },
     },
   ],
 })

@@ -1,6 +1,6 @@
-import { Pty } from "@/pty"
-import { PtyTicket } from "@/pty/ticket"
-import { PtyID } from "@/pty/schema"
+import { Pty } from "@opencode-ai/core/pty"
+import { PtyTicket } from "@opencode-ai/core/pty/ticket"
+import { PtyID } from "@opencode-ai/core/pty/schema"
 import { PTY_CONNECT_TICKET_QUERY } from "@/server/shared/pty-ticket"
 import { Schema } from "effect"
 import { HttpApi, HttpApiEndpoint, HttpApiError, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
@@ -58,7 +58,7 @@ export const PtyApi = HttpApi.make("pty")
           OpenApi.annotations({
             identifier: "pty.list",
             summary: "List PTY sessions",
-            description: "Get a list of all active pseudo-terminal (PTY) sessions managed by OpenCode.",
+            description: "Get a list of all active pseudo-terminal (PTY) sessions managed by HyperCode.",
           }),
         ),
         HttpApiEndpoint.post("create", PtyPaths.create, {

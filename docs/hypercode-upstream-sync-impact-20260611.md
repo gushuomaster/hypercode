@@ -1,0 +1,455 @@
+# 2026-06-11 upstream 对 HyperCode 影响报告
+
+## 1. 结论摘要
+
+- 封档基线仍是 `ARCHIVE=8c499856261dfffe8f31e17c675ea4abfd204091`，当前隔离 worktree `HEAD` 仍指向该 commit；主目录 `D:\project\hypercode-phase4` 未被本轮验证改动。
+- `opencode upstream` 相对固定基线 `OPENCODE_BASE=0050134d9eca104b7e38b52b6f0aa62b8c0926db` 存在真实更新，当前固定上游头为 `UPSTREAM_HEAD=bf05e8a1224d6560f7a441f70d09e0c77e50e931`。
+- HyperCode 已封档自定义改动集共有 `313` 个文件，upstream 更新集共有 `508` 个文件，两者交集共有 `24` 个文件。只有这 `24` 个文件可以被认定为“upstream 实际触及了 HyperCode 自定义改动”。
+- 当前适配改动集共有 `510` 个文件，但这是按 `ARCHIVE` 相对当前 worktree/index 计算的结果，而不是 `ARCHIVE..HEAD`。原因是当前适配尚未形成新 commit，`HEAD == ARCHIVE`。
+- 当前适配已覆盖全部 `24` 个真实受影响文件；`(H ∩ U) - A` 为空，没有发现“被 upstream 触及但当前完全未进入适配结果”的 HyperCode 自定义文件。
+- 当前适配还额外修改了 `sdks/vscode/esbuild.js`、`sdks/vscode/tsconfig.json` 两个 HyperCode 自定义辅助文件，用于恢复 `sdks/vscode` 对本地 SDK 源码的解析和打包。
+- 工程层验证已恢复：`bun install`、`bun run check-types`、`bun run package` 均通过。
+- VSIX 手工验收已通过：用户已确认测试 VSIX 人工验收通过；但这仍不代表正式主线已完成同步。
+
+真实受影响文件列表：
+
+- `bun.lock`
+- `package.json`
+- `packages/core/src/flag/flag.ts`
+- `packages/core/src/plugin/skill/customize-opencode.md`
+- `packages/opencode/package.json`
+- `packages/opencode/script/build.ts`
+- `packages/opencode/src/acp/service.ts`
+- `packages/opencode/src/cli/cmd/run.ts`
+- `packages/opencode/src/cli/cmd/run/footer.prompt.tsx`
+- `packages/opencode/src/cli/cmd/tui.ts`
+- `packages/opencode/src/cli/error.ts`
+- `packages/opencode/src/config/config.ts`
+- `packages/opencode/src/effect/runtime-flags.ts`
+- `packages/opencode/src/index.ts`
+- `packages/opencode/src/mcp/oauth-callback.ts`
+- `packages/opencode/src/mcp/oauth-provider.ts`
+- `packages/opencode/src/plugin/digitalocean.ts`
+- `packages/opencode/src/plugin/openai/codex.ts`
+- `packages/opencode/src/plugin/xai.ts`
+- `packages/opencode/src/provider/provider.ts`
+- `packages/opencode/src/server/mdns.ts`
+- `packages/opencode/src/temporary.ts`
+- `packages/tui/src/app.tsx`
+- `sdks/vscode/package.json`
+
+## 2. 三组 diff 基线
+
+固定比较基线：
+
+- `OPENCODE_BASE=0050134d9eca104b7e38b52b6f0aa62b8c0926db`
+- `ARCHIVE=8c499856261dfffe8f31e17c675ea4abfd204091`
+- `UPSTREAM_HEAD=bf05e8a1224d6560f7a441f70d09e0c77e50e931`
+
+三组比较口径：
+
+1. HyperCode 自定义改动集：`git diff --name-status OPENCODE_BASE..ARCHIVE`
+2. upstream 更新集：`git diff --name-status OPENCODE_BASE..UPSTREAM_HEAD`
+3. 当前适配改动集：`git diff --name-status ARCHIVE` 加 `git diff --cached --name-status ARCHIVE`
+
+适配改动集说明：
+
+- 当前适配改动尚未提交，因此本报告中的适配改动集按 `worktree/index` 相对 `ARCHIVE` 计算，而不是按 `ARCHIVE..HEAD` 计算。
+
+基线统计：
+
+| 集合 | 文件数 | diff --stat 摘要 |
+| --- | ---: | --- |
+| HyperCode 自定义改动集 `OPENCODE_BASE..ARCHIVE` | 313 | `313 files changed, 50377 insertions(+), 581 deletions(-)` |
+| upstream 更新集 `OPENCODE_BASE..UPSTREAM_HEAD` | 508 | `508 files changed, 10090 insertions(+), 14607 deletions(-)` |
+| 当前适配改动集 `ARCHIVE` 相对 worktree/index | 510 | `510 files changed, 10100 insertions(+), 14608 deletions(-)` |
+
+三方集合结果：
+
+- `H - U`：`289` 个文件。它们是 HyperCode 自定义改动，但本轮 upstream 没有直接触及，理论上只需基础回归验证。
+- `H ∩ U`：`24` 个文件。它们是本轮真正需要判断兼容性的高风险区。
+- `H ∩ U ∩ A`：`24` 个文件。全部真实受影响文件都已进入当前适配结果。
+- `(H ∩ U) - A`：`0` 个文件。没有发现“被 upstream 触及但当前完全没有适配结果”的 HyperCode 自定义文件。
+- `A - (H ∩ U)`：`486` 个文件。其中：
+  - `484` 个文件属于 upstream-only 变更：它们进入当前 worktree，是因为隔离 worktree 持有 upstream 合并结果，但它们不构成“upstream 影响了 HyperCode 自定义改动”的证据。
+  - `2` 个文件属于 HyperCode 自定义辅助文件：`sdks/vscode/esbuild.js`、`sdks/vscode/tsconfig.json`，它们未被 upstream 直接触及，但被当前适配额外修改，用于恢复 `sdks/vscode` 工程可构建性。
+
+## 3. 真实影响矩阵
+
+说明：
+
+- 下表只覆盖“真实受影响文件” `H ∩ U`，以及两个额外的兼容辅助文件。
+- `484` 个 upstream-only 文件不进入这张矩阵，因为它们不满足“HyperCode 自定义改动 + upstream 触及”的条件，不能被写成 HyperCode 自定义层受影响项。
+
+| 文件 | HyperCode 自定义改动？ | upstream 触及？ | 当前适配修改？ | 影响类型 | 证据 | 当前处理 | 是否需人工决策 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `bun.lock` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- bun.lock`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- bun.lock`<br>`git diff --name-status ARCHIVE -- bun.lock` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `package.json` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- package.json`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- package.json`<br>`git diff --name-status ARCHIVE -- package.json` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/core/src/flag/flag.ts` | 是 | 是 | 是 | 需要最小兼容适配 | `git diff --name-status BASE..ARCHIVE -- packages/core/src/flag/flag.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/core/src/flag/flag.ts`<br>`git diff --name-status ARCHIVE -- packages/core/src/flag/flag.ts`<br>`git diff --cached --name-status ARCHIVE -- packages/core/src/flag/flag.ts` | 已在隔离 worktree 中人工合并；保留 HyperCode `env(...)` alias，同时吸收 upstream 的 `OPENCODE_DISABLE_FFF` 支持。 | 否 |
+| `packages/core/src/plugin/skill/customize-opencode.md` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/core/src/plugin/skill/customize-opencode.md`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/core/src/plugin/skill/customize-opencode.md`<br>`git diff --name-status ARCHIVE -- packages/core/src/plugin/skill/customize-opencode.md` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/package.json` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/package.json`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/package.json`<br>`git diff --name-status ARCHIVE -- packages/opencode/package.json` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/script/build.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/script/build.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/script/build.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/script/build.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/acp/service.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/acp/service.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/acp/service.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/acp/service.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/cli/cmd/run.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/cli/cmd/run.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/cli/cmd/run.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/cli/cmd/run.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/cli/cmd/run/footer.prompt.tsx` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/cli/cmd/run/footer.prompt.tsx`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/cli/cmd/run/footer.prompt.tsx`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/cli/cmd/run/footer.prompt.tsx` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/cli/cmd/tui.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/cli/cmd/tui.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/cli/cmd/tui.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/cli/cmd/tui.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/cli/error.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/cli/error.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/cli/error.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/cli/error.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/config/config.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/config/config.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/config/config.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/config/config.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/effect/runtime-flags.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/effect/runtime-flags.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/effect/runtime-flags.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/effect/runtime-flags.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/index.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/index.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/index.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/index.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/mcp/oauth-callback.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/mcp/oauth-callback.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/mcp/oauth-callback.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/mcp/oauth-callback.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/mcp/oauth-provider.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/mcp/oauth-provider.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/mcp/oauth-provider.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/mcp/oauth-provider.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/plugin/digitalocean.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/plugin/digitalocean.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/plugin/digitalocean.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/plugin/digitalocean.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/plugin/openai/codex.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/plugin/openai/codex.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/plugin/openai/codex.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/plugin/openai/codex.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/plugin/xai.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/plugin/xai.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/plugin/xai.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/plugin/xai.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/provider/provider.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/provider/provider.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/provider/provider.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/provider/provider.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/server/mdns.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/server/mdns.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/server/mdns.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/server/mdns.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/opencode/src/temporary.ts` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/opencode/src/temporary.ts`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/opencode/src/temporary.ts`<br>`git diff --name-status ARCHIVE -- packages/opencode/src/temporary.ts` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `packages/tui/src/app.tsx` | 是 | 是 | 是 | 可自动吸收 | `git diff --name-status BASE..ARCHIVE -- packages/tui/src/app.tsx`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- packages/tui/src/app.tsx`<br>`git diff --name-status ARCHIVE -- packages/tui/src/app.tsx` | 已随 upstream merge 进入当前 worktree，未见额外本地兼容补丁。 | 否 |
+| `sdks/vscode/package.json` | 是 | 是 | 是 | 需要最小兼容适配 | `git diff --name-status BASE..ARCHIVE -- sdks/vscode/package.json`<br>`git diff --name-status BASE..UPSTREAM_HEAD -- sdks/vscode/package.json`<br>`git diff --name-status ARCHIVE -- sdks/vscode/package.json`<br>`git diff --cached --name-status ARCHIVE -- sdks/vscode/package.json` | 已在隔离 worktree 中人工合并；保留 HyperCode 扩展身份、公开命令、配置、views 与面板入口，并修正 upstream 合并后的版本字段冲突。 | 是 |
+| `sdks/vscode/esbuild.js` | 是 | 否 | 是 | 需要最小兼容适配 | `git diff --name-status BASE..ARCHIVE -- sdks/vscode/esbuild.js`<br>`git diff --name-status ARCHIVE -- sdks/vscode/esbuild.js` | 当前 worktree 额外修改，用本地 SDK 源码 alias 维持 `sdks/vscode` 打包可解析性。 | 否 |
+| `sdks/vscode/tsconfig.json` | 是 | 否 | 是 | 需要最小兼容适配 | `git diff --name-status BASE..ARCHIVE -- sdks/vscode/tsconfig.json`<br>`git diff --name-status ARCHIVE -- sdks/vscode/tsconfig.json` | 当前 worktree 额外修改，用 `paths` 映射维持 `sdks/vscode` 的 `check-types` 对本地 SDK 源码的解析。 | 否 |
+
+人工决策原因说明：
+
+- `sdks/vscode/package.json` 是扩展公开面定义文件。当前证据表明工程已恢复，且封档版本新增的 `hypercode.*` 命令、配置项、views、containers 在当前测试 worktree 中仍然存在，但它依然属于最终产品面确认点。
+
+## 4. 当前适配文件说明
+
+当前适配改动集共 `510` 个文件，组成如下：
+
+1. `24` 个真实受影响文件：同时存在于 `HyperCode 自定义改动集` 和 `upstream 更新集` 中，并且当前 worktree 已包含相应适配结果。
+2. `2` 个额外兼容辅助文件：
+   - `sdks/vscode/esbuild.js`
+   - `sdks/vscode/tsconfig.json`
+3. `484` 个 upstream-only 文件：它们出现在当前适配改动集中，是因为隔离 worktree 持有 upstream 合并结果；但它们不构成“upstream 影响了 HyperCode 自定义改动”的直接证据。
+
+当前没有发现：
+
+- 被 upstream 触及、但当前完全没有进入适配结果的 HyperCode 自定义文件；
+- 既不属于 HyperCode 自定义改动、也不属于 upstream 更新集、却被当前 worktree 平白修改的文件。
+
+## 5. 工程验证结果
+
+验证目录：`D:\project\hypercode-upstream-sync-test-20260611\sdks\vscode`
+
+| 命令 | 结果 | 说明 |
+| --- | --- | --- |
+| `bun install` | 通过 | `Checked 273 installs across 279 packages (no changes)` |
+| `bun run check-types` | 通过 | `tsc --noEmit` 成功完成 |
+| `bun run package` | 通过 | `check-types`、`lint skipped`、`node esbuild.js --production` 均完成 |
+
+工程结论：
+
+- 当前适配已经让 `sdks/vscode` 的工程构建恢复。
+- 这个结论只说明工程层恢复，不等于 VSIX 运行时和产品交互已经完成手工验证。
+
+## 6. 产品功能验证边界
+
+只基于封档差异中能证明存在的公开面做检查。
+
+### 6.1 封档差异可证明的 VS Code 扩展公开面
+
+基于 `git diff OPENCODE_BASE..ARCHIVE -- sdks/vscode/package.json` 提取，封档版本新增或改成 HyperCode 正式公开面的内容包括：
+
+- 新增命令 `24` 个：
+  - `hypercode.archiveSession`
+  - `hypercode.askCurrentFile`
+  - `hypercode.askExplorerFiles`
+  - `hypercode.askSelection`
+  - `hypercode.checkEnvironment`
+  - `hypercode.clearWorkspaceSessionSearch`
+  - `hypercode.clearWorkspaceTagFilter`
+  - `hypercode.copyImagePreview`
+  - `hypercode.filterWorkspaceSessionsByTag`
+  - `hypercode.manageSessionTags`
+  - `hypercode.newSession`
+  - `hypercode.openOutput`
+  - `hypercode.openSession`
+  - `hypercode.openSettings`
+  - `hypercode.openWorkspaceInBrowser`
+  - `hypercode.quickNewSession`
+  - `hypercode.refresh`
+  - `hypercode.refreshWorkspaceSessions`
+  - `hypercode.renameSession`
+  - `hypercode.restartWorkspaceServer`
+  - `hypercode.saveImagePreview`
+  - `hypercode.searchWorkspaceSessions`
+  - `hypercode.shareSession`
+  - `hypercode.unshareSession`
+- 新增配置项 `9` 个：
+  - `hypercode.cliPath`
+  - `hypercode.compactSkillInvocations`
+  - `hypercode.diffMode`
+  - `hypercode.httpProxy`
+  - `hypercode.panelColorScheme`
+  - `hypercode.panelTheme`
+  - `hypercode.showInternals`
+  - `hypercode.showSkillsInSlashAutocomplete`
+  - `hypercode.showThinking`
+- 新增 views `5` 个：
+  - `hypercode.diff`
+  - `hypercode.sessionView`
+  - `hypercode.sessions`
+  - `hypercode.subagents`
+  - `hypercode.todo`
+- 新增 views container `2` 个：
+  - `hypercode`
+  - `hypercode-secondary`
+
+基于 `git diff OPENCODE_BASE..ARCHIVE -- sdks/vscode/README.md` 可证明：
+
+- README 已从旧的终端启动器叙事切换为“完整 HyperCode VS Code 集成”叙事。
+- README 明确写出：
+  - 按工作区启动 `hypercode serve`
+  - `hypercode.cliPath`
+  - `hypercode.httpProxy`
+  - Activity Bar / session tree / session panel / seeded composer flows
+
+基于 `git diff --name-status OPENCODE_BASE..ARCHIVE -- sdks/vscode/src` 可证明：
+
+- 封档版本引入了 `src/bridge/*`、`src/core/*`、`src/panel/*`、`src/sidebar/*` 和配套测试结构；
+- `sdks/vscode` 已经不再是轻量终端入口，而是完整扩展实现。
+
+### 6.2 当前测试 worktree 对公开面的保留情况
+
+当前测试 worktree 中：
+
+- 上述 `24` 个 `hypercode.*` 命令全部仍存在；
+- 上述 `9` 个配置项全部仍存在；
+- 上述 `5` 个 views 全部仍存在；
+- 上述 `2` 个 views container 全部仍存在；
+- 当前 `sdks/vscode/README.md` 仍然描述完整 HyperCode 集成，而不是旧终端启动器。
+
+### 6.3 手工验收状态
+
+- VSIX 手工验收：**通过**
+
+明确边界：
+
+- 构建通过不等于正式主线已同步完成。
+- 当前报告中的手工验收结论仅记录为“用户已确认 VSIX 人工验收通过”，不扩展补写未被用户单独确认的 UI 细节。
+
+## 7. 结论
+
+基于当前证据，只能得出以下结论：
+
+1. 当前维护文档和三组 diff 口径有助于定位“upstream 真正碰到了哪些 HyperCode 自定义改动”。本轮没有把 upstream-only 文件误写成 HyperCode 自定义层受影响项。
+2. 当前适配已经让 `sdks/vscode` 的工程构建恢复，`bun install`、`bun run check-types`、`bun run package` 均通过。
+3. 当前不能据此认定“主线已更新”。原因是：
+   - 本轮只发生在隔离 worktree；
+   - 当前适配尚未形成新提交；
+   - 即使 VSIX 手工验收已通过，正式主线目录仍未创建正式同步候选分支并完成独立复核。
+4. 当前也不能据此认定“已经可以直接合入封档版本”。在进入主目录前，至少还需要：
+   - 人工确认 `sdks/vscode/package.json` 所代表的扩展公开面是否接受当前 upstream 合并结果；
+   - 在正式同步候选分支上重跑一次构建、打包和报告补记。
+
+本报告不支持的结论：
+
+- “产品功能已经完全正常”
+- “主线已经同步完成”
+- “可以无需人工复核直接并回正式目录”
+
+## 10. sdks/vscode/package.json 产品化规则检查
+
+### 10.1 检查原则
+
+说明：
+
+- HyperCode 的目标是把 opencode 产品化成 HyperCode。
+- 用户可见公开面必须 HyperCode 化。
+- 内部技术依赖可以暂时保留 opencode 名称，但要记录。
+- `publisher` / `version` 如果变化，需要人工确认。
+
+本节三方对比文件：
+
+- `opencode-base-vscode-package.json` = `OPENCODE_BASE` 的 `sdks/vscode/package.json`
+- `hypercode-archive-vscode-package.json` = `ARCHIVE` 的 `sdks/vscode/package.json`
+- `current-test-vscode-package.json` = 当前测试 worktree 的 `sdks/vscode/package.json`
+
+### 10.2 三方对比表
+
+| 字段 | opencode base | HyperCode archive | 当前测试版本 | 判断 | 说明 |
+|---|---|---|---|---|---|
+| `name` | `"opencode"` | `"hypercode"` | `"hypercode"` | `PASS` | 当前测试版本保持 HyperCode 用户可见标识。 |
+| `displayName` | `"opencode"` | `"HyperCode"` | `"HyperCode"` | `PASS` | 当前测试版本保持 HyperCode 用户可见标识。 |
+| `description` | `"opencode for VS Code"` | `"HyperCode workspace sessions and sidebar workflows for VS Code"` | `"HyperCode workspace sessions and sidebar workflows for VS Code"` | `PASS` | 当前测试版本保持 HyperCode 用户可见标识。 |
+| `version` | `"1.16.2"` | `"1.16.2"` | `"1.17.3"` | `NEEDS_HUMAN_CONFIRMATION` | 当前测试版本版本号与封档版本不同，版本线需要人工确认。 |
+| `publisher` | `"sst-dev"` | `"sst-dev"` | `"sst-dev"` | `PASS` | 当前测试版本保持封档发布者。 |
+| `engines` | `{"vscode":"^1.94.0"}` | `{"vscode":"^1.94.0"}` | `{"vscode":"^1.94.0"}` | `UNCHANGED` | 三方无实质变化。 |
+| `activationEvents` | `0 items` | `29 items` | `29 items` | `PASS` | 当前 `activationEvents` 仍以 HyperCode 公开入口为主。 |
+| `contributes.commands` | `3 commands` | `24 commands` | `24 commands` | `PASS` | 公开命令主入口保持 `hypercode.*`。 |
+| `contributes.configuration` | `(absent)` | `9 properties` | `9 properties` | `PASS` | 公开配置主入口保持 `hypercode.*`。 |
+| `contributes.viewsContainers` | `(absent)` | `2 containers` | `2 containers` | `PASS` | 当前仍保留 HyperCode Activity Bar 容器。 |
+| `contributes.views` | `(absent)` | `5 views` | `5 views` | `PASS` | 当前仍保留 HyperCode views / panels 结构。 |
+| `contributes.menus` | `1 menu entries` | `21 menu entries` | `21 menu entries` | `PASS` | 菜单入口保持 HyperCode 公开命令。 |
+| `contributes.keybindings` | `3 keybindings` | `3 keybindings` | `3 keybindings` | `PASS` | `keybindings` 仍绑定 HyperCode 公开命令。 |
+| `scripts` | `11 scripts` | `9 scripts` | `9 scripts` | `INTERNAL_TECHNICAL_NAME_ONLY` | 该字段属于内部技术依赖或构建脚本，保留 opencode 技术名不直接构成产品面回退。 |
+| `dependencies` | `(absent)` | `5 deps` | `5 deps` | `INTERNAL_TECHNICAL_NAME_ONLY` | 该字段属于内部技术依赖或构建脚本，保留 opencode 技术名不直接构成产品面回退。 |
+| `devDependencies` | `10 deps` | `13 deps` | `13 deps` | `INTERNAL_TECHNICAL_NAME_ONLY` | 该字段属于内部技术依赖或构建脚本，保留 opencode 技术名不直接构成产品面回退。 |
+
+### 10.3 公开入口扫描结果
+
+执行扫描：
+
+- `rg -n '"command"\s*:\s*"opencode\.|"command"\s*:\s*"hypercode\.' sdks/vscode/package.json`
+- `rg -n 'opencode\.|hypercode\.' sdks/vscode/package.json`
+- `rg -n '"activationEvents"|"viewsContainers"|"views"|"configuration"|"commands"' sdks/vscode/package.json`
+
+扫描结论：
+
+- 公开 `opencode.*` command：**未发现**
+- 公开 `opencode.*` configuration：**未发现**
+- 公开 `opencode.*` view / viewContainer / menu / keybinding：**未发现**
+- `hypercode.*` command：**存在**
+- `hypercode.*` configuration：**存在**
+- HyperCode Activity Bar / views / panels：**存在**
+
+当前 package.json 中仍可确认保留的 HyperCode 公开结构：
+
+- Activity Bar container：`hypercode`
+- Secondary container：`hypercode-secondary`
+- Views：`hypercode.sessions`、`hypercode.todo`、`hypercode.diff`、`hypercode.subagents`、`hypercode.sessionView`
+- 命令面：保持 `hypercode.*`
+- 配置面：保持 `hypercode.*`
+
+### 10.4 判断结果
+
+字段级判断只使用以下值：
+
+- `PASS`
+- `FAIL`
+- `NEEDS_HUMAN_CONFIRMATION`
+- `INTERNAL_TECHNICAL_NAME_ONLY`
+- `UNCHANGED`
+
+本轮总体结果：
+
+- `sdks/vscode/package.json` 产品化检查总体结果：`NEEDS_HUMAN_CONFIRMATION`
+
+原因：
+
+- 没有发现公开 `opencode.*` 入口，HyperCode 的公开命令、配置、Activity Bar、views、panels 结构都仍然保留。
+- `publisher` 保持封档值，可判定为 `PASS`。
+- `version` 从封档版本的 `1.16.2` 变为当前测试版本的 `1.17.3`，按规则必须标记为 `NEEDS_HUMAN_CONFIRMATION`。
+
+### 10.5 VSIX 手工验收结果
+
+执行：
+
+- `cd D:\project\hypercode-upstream-sync-test-20260611\sdks\vscode`
+- `dir *.vsix`
+
+当前结果：
+
+- VSIX 生成结果：
+  - VSIX 生成状态：**成功**
+  - VSIX 文件路径：`D:\project\hypercode-upstream-sync-test-20260611\sdks\vscode\hypercode-1.17.3.vsix`
+  - VSIX 文件名：`hypercode-1.17.3.vsix`
+  - 安装命令：`code --install-extension "D:\project\hypercode-upstream-sync-test-20260611\sdks\vscode\hypercode-1.17.3.vsix" --force`
+  - 说明：这是本次 upstream 更新适配后的测试 VSIX，不是封档版本 VSIX。
+- 使用的打包命令：`bunx @vscode/vsce package`
+- 打包补充说明：`vsce` 在成功生成 VSIX 后提示 `LICENSE, LICENSE.md, or LICENSE.txt not found`，这是警告，不影响本次测试 VSIX 产出。
+- 当前验收状态：**通过**
+- 验收结论：用户已确认 VSIX 人工验收通过。
+
+手工验收清单：
+
+| 验收项 | 结果 | 备注 |
+|---|---|---|
+| VSIX 能否安装成功 | 通过 | 用户已确认人工验收通过 |
+| Activity Bar 是否显示 HyperCode | 已通过 | 不在本报告中补写额外 UI 细节 |
+| 命令面板是否能看到 hypercode.* 命令 | 已通过 | 不在本报告中补写额外 UI 细节 |
+| `hypercode.quickNewSession` 是否能打开 Session Panel | 已通过 | 不在本报告中补写额外 UI 细节 |
+| 未配置 CLI 时是否提示 `hypercode.cliPath` | 已通过 | 不在本报告中补写额外 UI 细节 |
+| 配置 CLI 后 workspace runtime 是否能启动 | 已通过 | 不在本报告中补写额外 UI 细节 |
+| Sessions 树是否能刷新/打开 | 已通过 | 不在本报告中补写额外 UI 细节 |
+| Todo 视图是否可用 | 已通过 | 不在本报告中补写额外 UI 细节 |
+| Modified Files 视图是否可用 | 已通过 | 不在本报告中补写额外 UI 细节 |
+| Subagents 视图是否可用 | 已通过 | 不在本报告中补写额外 UI 细节 |
+| Session Panel 是否能正常显示和交互 | 已通过 | 不在本报告中补写额外 UI 细节 |
+| 是否没有退回旧终端启动器体验 | 已通过 | 不在本报告中补写额外 UI 细节 |
+| 是否没有非预期 opencode 公开入口 | 已通过 | 不在本报告中补写额外 UI 细节 |
+
+### 10.6 当前结论边界
+
+必须明确：
+
+- 当前只能证明工程层和 `package.json` 产品化规则检查结果。
+- 用户已确认测试 VSIX 人工验收通过，但这不等于正式主线已同步完成。
+- 正式主线仍未更新。
+
+## 11. upstream 更新融入隔离测试版本的具体验证
+
+说明：本节不使用文件数量作为唯一依据，而是列出 upstream 新增内容在当前隔离测试 worktree 中已经存在的具体例子。
+
+### 11.1 验证口径
+
+- `OPENCODE_BASE` 没有，或内容不同
+- `HyperCode ARCHIVE` 没有，或仍是旧状态
+- `UPSTREAM_HEAD` 有
+- 当前测试 worktree 有
+
+### 11.2 融入证据表
+
+| 例子 | 类型 | 文件/入口 | OPENCODE_BASE | HyperCode ARCHIVE | UPSTREAM_HEAD | 当前测试 worktree | 结论 |
+|---|---|---|---|---|---|---|---|
+| 1 | upstream 新增文件 | `packages/opencode/src/mcp/catalog.ts` | 无 | 无 | 有 | 有 | 已融入 |
+| 2 | upstream 新增用户可见 CLI 文案 | `packages/opencode/src/cli/error.ts` 中 `Failed to load remote config` | 无 | 无 | 有 | 有 | 已融入 |
+| 3 | upstream 新增用户可见文档页面 | `packages/web/src/content/docs/references.mdx` | 无 | 无 | 有 | 有 | 已融入 |
+| 4 | upstream 新增 package script | `packages/opencode/package.json` 中 `"test": "bun test --timeout 30000 --only-failures"` | 无 | 无 | 有 | 有 | 已融入 |
+
+命令证据：
+
+- 例子 1：
+  `git cat-file -e "0050134d9eca104b7e38b52b6f0aa62b8c0926db:packages/opencode/src/mcp/catalog.ts"`
+  `git cat-file -e "8c499856261dfffe8f31e17c675ea4abfd204091:packages/opencode/src/mcp/catalog.ts"`
+  `git cat-file -e "bf05e8a1224d6560f7a441f70d09e0c77e50e931:packages/opencode/src/mcp/catalog.ts"`
+  `Test-Path packages/opencode/src/mcp/catalog.ts`
+- 例子 2：
+  `git show "0050134d9eca104b7e38b52b6f0aa62b8c0926db:packages/opencode/src/cli/error.ts" | Select-String -SimpleMatch "Failed to load remote config"`
+  `git show "8c499856261dfffe8f31e17c675ea4abfd204091:packages/opencode/src/cli/error.ts" | Select-String -SimpleMatch "Failed to load remote config"`
+  `git show "bf05e8a1224d6560f7a441f70d09e0c77e50e931:packages/opencode/src/cli/error.ts" | Select-String -SimpleMatch "Failed to load remote config"`
+  `Get-Content packages/opencode/src/cli/error.ts | Select-String -SimpleMatch "Failed to load remote config"`
+- 例子 3：
+  `git cat-file -e "0050134d9eca104b7e38b52b6f0aa62b8c0926db:packages/web/src/content/docs/references.mdx"`
+  `git cat-file -e "8c499856261dfffe8f31e17c675ea4abfd204091:packages/web/src/content/docs/references.mdx"`
+  `git cat-file -e "bf05e8a1224d6560f7a441f70d09e0c77e50e931:packages/web/src/content/docs/references.mdx"`
+  `Test-Path packages/web/src/content/docs/references.mdx`
+- 例子 4：
+  `git show "0050134d9eca104b7e38b52b6f0aa62b8c0926db:packages/opencode/package.json" | Select-String -SimpleMatch '"test": "bun test --timeout 30000 --only-failures"'`
+  `git show "8c499856261dfffe8f31e17c675ea4abfd204091:packages/opencode/package.json" | Select-String -SimpleMatch '"test": "bun test --timeout 30000 --only-failures"'`
+  `git show "bf05e8a1224d6560f7a441f70d09e0c77e50e931:packages/opencode/package.json" | Select-String -SimpleMatch '"test": "bun test --timeout 30000 --only-failures"'`
+  `Get-Content packages/opencode/package.json | Select-String -SimpleMatch '"test": "bun test --timeout 30000 --only-failures"'`
+
+### 11.3 结论
+
+- 可以证明：至少有 4 个来自 `opencode upstream` 的具体更新已经进入当前隔离测试 worktree，而不是只停留在 `UPSTREAM_HEAD`。
+- 其中至少有 2 个属于用户可见内容：`packages/opencode/src/cli/error.ts` 的可操作报错文案，以及 `packages/web/src/content/docs/references.mdx` 文档页面。
+- 这可以证明 upstream 更新已经融入隔离测试版本。
+- 这不能证明正式主线已经同步；否，正式主线未同步。
+
+## 12. 正式同步分支准备结果
+
+- 正式同步分支：`sync/opencode-upstream-20260611`
+- 正式同步 worktree：`D:\project\hypercode-formal-sync-20260611`
+- 来源提交：`ff0d165f9f81c70225ec7c2c9d4ad3c6f1bbc60f`
+- VSIX 人工验收：用户已确认通过
+- 正式同步分支附加修复：
+  - 根 `package.json` 的 `typecheck` 已调整为 `bunx turbo typecheck`
+  - `sdks/vscode/package.json` 的 `check-types` / `watch:tsc` 已调整为 `bunx tsc ...`
+- 正式同步分支验证：
+  - `bun install`：通过
+  - `bun run typecheck`：通过
+  - `sdks/vscode` `bun install`：通过
+  - `sdks/vscode` `bun run check-types`：通过
+  - `sdks/vscode` `bun run package`：通过
+  - `sdks/vscode` `bunx @vscode/vsce package`：通过
+- 产品化公开面检查：
+  - 公开 `opencode.*` command / configuration / view：未发现
+  - `hypercode.*` command / configuration：保留
+  - HyperCode Activity Bar / views / panels：保留
+- 结论：
+  - 该分支是正式同步候选分支
+  - 正式主线尚未合入
+  - 后续仍需人工决定是否 push / PR / merge

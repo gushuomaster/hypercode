@@ -3,12 +3,7 @@ import { mkdir, symlink } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { afterEach, expect, spyOn, test } from "bun:test"
-import {
-  isZedTerminal,
-  offsetToPosition,
-  resolveZedDbPath,
-  resolveZedSelection,
-} from "../../../src/cli/cmd/tui/context/editor-zed"
+import { isZedTerminal, offsetToPosition, resolveZedDbPath, resolveZedSelection } from "@opencode-ai/tui/editor-zed"
 import { tmpdir } from "../../fixture/fixture"
 
 const originalZedTerm = process.env.ZED_TERM
@@ -84,6 +79,8 @@ test("offsetToPosition converts Zed offsets to 1-based editor positions", () => 
 })
 
 test("resolveZedDbPath skips candidates that cannot be stated", async () => {
+  if (process.platform === "win32") return
+
   await using tmp = await tmpdir()
   const loop = path.join(tmp.path, "loop")
   await symlink(loop, loop)

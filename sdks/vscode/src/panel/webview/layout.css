@@ -1,0 +1,157 @@
+.oc-shell {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "main"
+    "footer";
+  width: calc(100% + (var(--oc-webview-body-inset, 20px) * 2));
+  margin-inline: calc(var(--oc-webview-body-inset, 20px) * -1);
+  background: var(--oc-surface-canvas);
+}
+
+.oc-footer {
+  grid-area: footer;
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--oc-shell-divider, color-mix(in srgb, var(--oc-border-strong) 52%, var(--oc-border) 48%));
+  background: var(--oc-surface-canvas);
+}
+
+.oc-transcript {
+  grid-area: main;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--oc-transcript-pad-y-start, 10px) 0 var(--oc-transcript-pad-y-end, 12px);
+}
+
+.oc-transcriptInner {
+  width: 100%;
+  max-width: var(--oc-transcript-max-width, none);
+  margin: 0 auto;
+  padding: 0 var(--oc-shell-gutter, 0px);
+}
+
+.oc-log,
+.oc-footerInner,
+.oc-questionList,
+.oc-todoList,
+.oc-parts {
+  display: grid;
+  gap: 6px;
+}
+
+.oc-footerInner {
+  gap: 8px;
+  position: relative;
+}
+
+.oc-transcriptTools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.oc-scrollToBottom {
+  appearance: none;
+  position: absolute;
+  right: 18px;
+  top: -48px;
+  z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--oc-border-strong) 72%, transparent 28%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--oc-surface-elevated, var(--oc-surface-canvas)) 86%, var(--oc-surface-block) 14%);
+  color: var(--oc-fg-muted);
+  box-shadow: var(--oc-shadow-floating);
+  cursor: pointer;
+}
+
+.oc-scrollToBottom:hover,
+.oc-scrollToBottom:focus-visible {
+  border-color: color-mix(in srgb, var(--oc-accent) 54%, var(--oc-border-strong) 46%);
+  background: color-mix(in srgb, var(--oc-accent) 18%, var(--oc-surface-block) 82%);
+  color: var(--oc-fg-primary);
+  outline: none;
+}
+
+.oc-scrollToBottom svg {
+  width: 16px;
+  height: 16px;
+}
+
+.oc-scrollToBottom path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.oc-transcriptToggleGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oc-emptyWrap {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px 0;
+}
+
+.oc-transcriptHistory {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.oc-transcriptHistoryBadge {
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: color-mix(in srgb, var(--vscode-editorInfo-background, var(--vscode-button-secondaryBackground)) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vscode-editorInfo-foreground, var(--vscode-descriptionForeground)) 14%, transparent);
+  color: var(--oc-text-muted, var(--vscode-descriptionForeground));
+  font-size: 12px;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--vscode-editorInfo-background, var(--vscode-button-secondaryBackground)) 18%, transparent);
+}
+
+.oc-transcriptHistory.is-loading .oc-transcriptHistoryBadge {
+  opacity: 0.92;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-transcriptHistoryBadge {
+  background: color-mix(in srgb, #f6eee1 84%, transparent);
+  border-color: color-mix(in srgb, #b9915a 18%, transparent);
+  color: #8c6d48;
+  box-shadow: 0 14px 32px rgba(191, 157, 112, 0.14);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-transcriptHistoryBadge {
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--vscode-editorWidget-background) 92%, transparent);
+  border-color: color-mix(in srgb, var(--vscode-focusBorder) 22%, transparent);
+  color: color-mix(in srgb, var(--vscode-foreground) 74%, var(--vscode-descriptionForeground) 26%);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--vscode-focusBorder) 12%, transparent);
+}
+
+@media (max-width: 720px) {
+  .oc-footer,
+  .oc-transcript {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .oc-composerActions {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

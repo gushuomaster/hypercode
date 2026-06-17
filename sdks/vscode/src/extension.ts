@@ -1,138 +1,127 @@
-// This method is called when your extension is deactivated
-export function deactivate() {}
-
 import * as vscode from "vscode"
+import { SESSION_PANEL_VIEW_TYPE } from "./bridge/types"
+import { CapabilityStore, createEmptyCapabilities, probeRuntimeCapabilities } from "./core/capabilities"
+import { commands } from "./core/commands"
+import { EventHub } from "./core/events"
+import { affectsHttpProxySetting, proxyRestartMessage } from "./core/settings"
+import { HyperCodeStatusBar } from "./core/status-bar"
+import { SessionTagStore } from "./core/session-tags"
+import { SessionStore } from "./core/session"
+import { TabManager } from "./core/tabs"
+import { WorkspaceManager } from "./core/workspace"
+import { SessionPanelManager } from "./panel/provider"
+import { SessionPanelSerializer } from "./panel/serializer"
+import { FocusedSessionStore } from "./sidebar/focused"
+import { SessionItem } from "./sidebar/item"
+import { SidebarProvider } from "./sidebar/provider"
+import { syncTreeSelectionToActiveSession } from "./sidebar/tree-sync"
+import { SidebarViewProvider } from "./sidebar/view-provider"
+import { SessionViewProvider } from "./sidebar/session-view-provider"
 
-const CLI_COMMAND = "hypercode"
-const TERMINAL_NAME = "HyperCode"
+let mgr: WorkspaceManager | undefined
 
-export function activate(context: vscode.ExtensionContext) {
-  const openNewTerminalDisposable = vscode.commands.registerCommand("opencode.openNewTerminal", async () => {
-    await openTerminal()
-  })
-
-  const openTerminalDisposable = vscode.commands.registerCommand("opencode.openTerminal", async () => {
-    // A HyperCode terminal already exists => focus it
-    const existingTerminal = vscode.window.terminals.find((t) => t.name === TERMINAL_NAME)
-    if (existingTerminal) {
-      existingTerminal.show()
-      return
-    }
-
-    await openTerminal()
-  })
-
-  let addFilepathDisposable = vscode.commands.registerCommand("opencode.addFilepathToTerminal", async () => {
-    const fileRef = getActiveFile()
-    if (!fileRef) {
-      return
-    }
-
-    const terminal = vscode.window.activeTerminal
-    if (!terminal) {
-      return
-    }
-
-    if (terminal.name === TERMINAL_NAME) {
-      // @ts-ignore
-      const port = terminal.creationOptions.env?.["_EXTENSION_OPENCODE_PORT"]
-      port ? await appendPrompt(parseInt(port), fileRef) : terminal.sendText(fileRef, false)
-      terminal.show()
-    }
-  })
-
-  context.subscriptions.push(openNewTerminalDisposable, openTerminalDisposable, addFilepathDisposable)
-
-  async function openTerminal() {
-    // Create a new terminal in split screen
-    const port = Math.floor(Math.random() * (65535 - 16384 + 1)) + 16384
-    const terminal = vscode.window.createTerminal({
-      name: TERMINAL_NAME,
-      iconPath: {
-        light: vscode.Uri.file(context.asAbsolutePath("images/button-dark.svg")),
-        dark: vscode.Uri.file(context.asAbsolutePath("images/button-light.svg")),
-      },
-      location: {
-        viewColumn: vscode.ViewColumn.Beside,
-        preserveFocus: false,
-      },
-      env: {
-        _EXTENSION_OPENCODE_PORT: port.toString(),
-        OPENCODE_CALLER: "vscode",
-      },
-    })
-
-    terminal.show()
-    terminal.sendText(`${CLI_COMMAND} --port ${port}`)
-
-    const fileRef = getActiveFile()
-    if (!fileRef) {
-      return
-    }
-
-    // Wait for the terminal to be ready
-    let tries = 10
-    let connected = false
-    do {
-      await new Promise((resolve) => setTimeout(resolve, 200))
-      try {
-        await fetch(`http://localhost:${port}/app`)
-        connected = true
-        break
-      } catch {}
-
-      tries--
-    } while (tries > 0)
-
-    // If connected, append the prompt to the terminal
-    if (connected) {
-      await appendPrompt(port, `In ${fileRef}`)
-      terminal.show()
-    }
-  }
-
-  async function appendPrompt(port: number, text: string) {
-    await fetch(`http://localhost:${port}/tui/append-prompt`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ text }),
-    })
-  }
-
-  function getActiveFile() {
-    const activeEditor = vscode.window.activeTextEditor
-    if (!activeEditor) {
-      return
-    }
-
-    const document = activeEditor.document
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri)
-    if (!workspaceFolder) {
-      return
-    }
-
-    // Get the relative path from workspace root
-    const relativePath = vscode.workspace.asRelativePath(document.uri)
-    let filepathWithAt = `@${relativePath}`
-
-    // Check if there's a selection and add line numbers
-    const selection = activeEditor.selection
-    if (!selection.isEmpty) {
-      // Convert to 1-based line numbers
-      const startLine = selection.start.line + 1
-      const endLine = selection.end.line + 1
-
-      if (startLine === endLine) {
-        // Single line selection
-        filepathWithAt += `#L${startLine}`
-      } else {
-        // Multi-line selection
-        filepathWithAt += `#L${startLine}-${endLine}`
+export async function activate(ctx: vscode.ExtensionContext) {
+  const out = vscode.window.createOutputChannel("HyperCode")
+  out.appendLine(`HyperCode activating (remote=${vscode.env.remoteName || "local"}, uiKind=${vscode.UIKind[vscode.env.uiKind]})`)
+  const workspaceMgr = new WorkspaceManager(out)
+  mgr = workspaceMgr
+  const events = new EventHub(workspaceMgr, out)
+  const sessions = new SessionStore(workspaceMgr, events, out)
+  const panels = new SessionPanelManager(ctx.extensionUri, workspaceMgr, events, out)
+  const tabs = new TabManager(panels)
+  const focused = new FocusedSessionStore(workspaceMgr, panels, events, out)
+  const tags = new SessionTagStore(ctx.workspaceState)
+  const capabilities = new CapabilityStore({
+    probe: async (workspaceId) => {
+      const rt = workspaceMgr.get(workspaceId)
+      if (!rt || rt.state !== "ready" || !rt.sdk) {
+        return createEmptyCapabilities()
       }
+
+      return await probeRuntimeCapabilities(rt)
+    },
+  })
+  const statusBar = new HyperCodeStatusBar(workspaceMgr, panels)
+
+  const tree = new SidebarProvider(workspaceMgr, sessions, tags)
+  const todoView = new SidebarViewProvider(ctx.extensionUri, "todo", focused)
+  const diffView = new SidebarViewProvider(ctx.extensionUri, "diff", focused)
+  const subagentsView = new SidebarViewProvider(ctx.extensionUri, "subagents", focused)
+  const sessionView = new SessionViewProvider(ctx.extensionUri, workspaceMgr, events, focused, out)
+  const treeView = vscode.window.createTreeView("hypercode.sessions", {
+    treeDataProvider: tree,
+  })
+  const treeSelectionReg = treeView.onDidChangeSelection(({ selection }) => {
+    const item = selection[0]
+    if (!(item instanceof SessionItem)) {
+      return
     }
 
-    return filepathWithAt
-  }
+    focused.selectSession({
+      workspaceId: item.runtime.workspaceId,
+      dir: item.runtime.dir,
+      sessionId: item.session.id,
+    })
+  })
+  const treeActiveSyncReg = panels.onDidChangeActiveSession((ref) => {
+    void syncTreeSelectionToActiveSession({
+      ref,
+      tree,
+      treeView,
+    })
+  })
+  const treeVisibilityReg = treeView.onDidChangeVisibility(({ visible }) => {
+    if (!visible) {
+      return
+    }
+
+    void syncTreeSelectionToActiveSession({
+      ref: panels.activeSession(),
+      tree,
+      treeView,
+    })
+  })
+  const todoReg = vscode.window.registerWebviewViewProvider("hypercode.todo", todoView)
+  const diffReg = vscode.window.registerWebviewViewProvider("hypercode.diff", diffView)
+  const subagentsReg = vscode.window.registerWebviewViewProvider("hypercode.subagents", subagentsView)
+  const sessionViewReg = vscode.window.registerWebviewViewProvider("hypercode.sessionView", sessionView, {
+    webviewOptions: { retainContextWhenHidden: true },
+  })
+  const serializer = vscode.window.registerWebviewPanelSerializer(
+    SESSION_PANEL_VIEW_TYPE,
+    new SessionPanelSerializer(panels),
+  )
+
+  commands(ctx, workspaceMgr, sessions, out, tabs, panels, capabilities, tags, tree)
+
+  ctx.subscriptions.push(out, workspaceMgr, sessions, events, panels, focused, capabilities, statusBar, tree, todoView, diffView, subagentsView, sessionView, treeView, treeSelectionReg, treeActiveSyncReg, treeVisibilityReg, todoReg, diffReg, subagentsReg, sessionViewReg, serializer)
+  out.appendLine("HyperCode activated")
+
+  const folders = vscode.workspace.workspaceFolders ?? []
+  await workspaceMgr.sync(folders)
+  await sessions.refreshAll()
+  await events.sync()
+
+  ctx.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(async (event) => {
+      if (!affectsHttpProxySetting(event)) {
+        return
+      }
+
+      const action = await vscode.window.showInformationMessage(proxyRestartMessage(), "Reload Window")
+      if (action === "Reload Window") {
+        await vscode.commands.executeCommand("workbench.action.reloadWindow")
+      }
+    }),
+    vscode.workspace.onDidChangeWorkspaceFolders(async () => {
+      await mgr?.sync(vscode.workspace.workspaceFolders ?? [])
+      await events.sync()
+    }),
+  )
+}
+
+export async function deactivate() {
+  await mgr?.shutdown()
+  mgr?.dispose()
+  mgr = undefined
 }

@@ -18,12 +18,15 @@
 // without changing the fixture. Long-lived commands like `serve` will need a
 // different return shape — see the TODO at the bottom of OpencodeCli.
 import { test, type TestOptions } from "bun:test"
-import { AppFileSystem } from "@opencode-ai/core/filesystem"
+import { FSUtil } from "@opencode-ai/core/fs-util"
 import { AppProcess } from "@opencode-ai/core/process"
 import { Deferred, Duration, Effect, Layer, Queue, Scope, Stream } from "effect"
 import { FetchHttpClient, HttpClient } from "effect/unstable/http"
 import { ChildProcess } from "effect/unstable/process"
+import os from "node:os"
 import path from "node:path"
+import fsp from "node:fs/promises"
+import { setTimeout as sleep } from "node:timers/promises"
 import { TestLLMServer } from "./llm-server"
 import { testProviderConfig } from "./test-provider"
 import { it } from "./effect"
@@ -73,6 +76,24 @@ function isolatedEnv(home: string, configJson: string): Record<string, string> {
     OPENCODE_DISABLE_MODELS_FETCH: "1",
     OPENCODE_AUTH_CONTENT: "{}",
   }
+}
+
+function cleanupBusyDir(dir: string) {
+  const busy = (error: unknown) => typeof error === "object" && error !== null && "code" in error && error.code === "EBUSY"
+
+  const remove = (left: number): Promise<void> => {
+    Bun.gc(true)
+    return sleep(100)
+      .then(() => fsp.rm(dir, { recursive: true, force: true }))
+      .catch((error) => {
+        if (!busy(error)) throw error
+        if (left <= 1 && process.platform !== "win32") throw error
+        if (left <= 1) return
+        return remove(left - 1)
+      })
+  }
+
+  return Effect.promise(() => remove(30)).pipe(Effect.ignore)
 }
 
 export type RunResult = {
@@ -182,12 +203,15 @@ export function withCliFixture<A, E>(
 ): Effect.Effect<A, E | unknown, Scope.Scope> {
   return Effect.gen(function* () {
     const llm = yield* TestLLMServer
-    const fs = yield* AppFileSystem.Service
+    const fs = yield* FSUtil.Service
     const appProc = yield* AppProcess.Service
 
-    // FileSystem.makeTempDirectoryScoped handles both creation and scope-tied
-    // cleanup — replaces the old mkdir + addFinalizer pair.
-    const home = yield* fs.makeTempDirectoryScoped({ prefix: "oc-cli-" })
+    // Windows runners can keep tempdir handles alive briefly after the child
+    // exits, so manage this fixture's home explicitly and retry EBUSY cleanup.
+    const home = yield* Effect.acquireRelease(
+      Effect.promise(() => fsp.mkdtemp(path.join(os.tmpdir(), "oc-cli-"))),
+      cleanupBusyDir,
+    )
 
     const configJson = JSON.stringify(testProviderConfig(llm.url))
     const env = isolatedEnv(home, configJson)
@@ -408,7 +432,7 @@ export function withCliFixture<A, E>(
     // and hit endpoints on `opencode.serve()` without rolling their own fetch.
   }).pipe(
     Effect.provide(
-      Layer.mergeAll(TestLLMServer.layer, FetchHttpClient.layer, AppFileSystem.defaultLayer, AppProcess.defaultLayer),
+      Layer.mergeAll(TestLLMServer.layer, FetchHttpClient.layer, FSUtil.defaultLayer, AppProcess.defaultLayer),
     ),
   )
 }

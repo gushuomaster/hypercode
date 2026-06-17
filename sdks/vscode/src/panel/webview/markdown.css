@@ -1,0 +1,495 @@
+.oc-markdown {
+  --oc-md-current-text: var(--oc-md-text);
+  --oc-md-current-heading: var(--oc-md-heading);
+  --oc-md-current-link: var(--oc-md-link);
+  --oc-md-current-link-text: var(--oc-md-link-text);
+  --oc-md-current-code: var(--oc-md-code);
+  --oc-md-current-quote: var(--oc-md-quote);
+  --oc-md-current-emph: var(--oc-md-emph);
+  --oc-md-current-strong: var(--oc-md-strong);
+  --oc-md-current-rule: var(--oc-md-rule);
+  --oc-md-current-list: var(--oc-md-list);
+  --oc-md-current-list-enum: var(--oc-md-list-enum);
+  --oc-md-current-code-block: var(--oc-md-code-block);
+  --oc-md-current-syntax-comment: var(--oc-md-syntax-comment);
+  --oc-md-current-syntax-keyword: var(--oc-md-syntax-keyword);
+  --oc-md-current-syntax-function: var(--oc-md-syntax-function);
+  --oc-md-current-syntax-variable: var(--oc-md-syntax-variable);
+  --oc-md-current-syntax-string: var(--oc-md-syntax-string);
+  --oc-md-current-syntax-number: var(--oc-md-syntax-number);
+  --oc-md-current-syntax-type: var(--oc-md-syntax-type);
+  --oc-md-current-syntax-operator: var(--oc-md-syntax-operator);
+  --oc-md-current-syntax-punctuation: var(--oc-md-syntax-punctuation);
+  font-family: var(--oc-ui);
+  font-size: var(--oc-font-size);
+  line-height: 1.65;
+  color: var(--oc-md-current-text);
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.oc-markdown > * {
+  max-width: 100%;
+}
+
+.oc-markdown.is-subtle {
+  --oc-md-current-text: var(--oc-fg-muted);
+  --oc-md-current-heading: color-mix(in srgb, var(--oc-md-heading) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-link: color-mix(in srgb, var(--oc-md-link) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-link-text: color-mix(in srgb, var(--oc-md-link-text) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-code: color-mix(in srgb, var(--oc-md-code) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-quote: color-mix(in srgb, var(--oc-md-quote) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-emph: color-mix(in srgb, var(--oc-md-emph) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-strong: color-mix(in srgb, var(--oc-md-emph) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-rule: color-mix(in srgb, var(--oc-border-strong) 48%, transparent 52%);
+  --oc-md-current-list: color-mix(in srgb, var(--oc-md-list) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-list-enum: color-mix(in srgb, var(--oc-md-link-text) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-code-block: color-mix(in srgb, var(--oc-md-code-block) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-syntax-comment: color-mix(in srgb, var(--oc-md-syntax-comment) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-syntax-keyword: color-mix(in srgb, var(--oc-md-syntax-keyword) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-syntax-function: color-mix(in srgb, var(--oc-md-syntax-function) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-syntax-variable: color-mix(in srgb, var(--oc-md-syntax-variable) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-syntax-string: color-mix(in srgb, var(--oc-md-syntax-string) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-syntax-number: color-mix(in srgb, var(--oc-md-syntax-number) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-syntax-type: color-mix(in srgb, var(--oc-md-syntax-type) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-syntax-operator: color-mix(in srgb, var(--oc-md-syntax-operator) 60%, var(--oc-surface-canvas) 40%);
+  --oc-md-current-syntax-punctuation: color-mix(in srgb, var(--oc-md-syntax-punctuation) 60%, var(--oc-surface-canvas) 40%);
+  line-height: 1.5;
+}
+
+.oc-markdown p,
+.oc-markdown ul,
+.oc-markdown ol,
+.oc-markdown blockquote,
+.oc-markdown table,
+.oc-markdown hr {
+  margin: 0;
+}
+
+.oc-markdown pre,
+.oc-markdown p {
+  margin: 1em 0;
+}
+
+.oc-markdown li p {
+  margin: 0;
+}
+
+.oc-markdown h1,
+.oc-markdown h2,
+.oc-markdown h3,
+.oc-markdown h4,
+.oc-markdown h5,
+.oc-markdown h6 {
+  margin: 1em 0 0;
+  line-height: 1.45;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--oc-md-current-heading);
+}
+
+.oc-markdown h1 {
+  font-size: var(--oc-font-size-xl);
+  line-height: 1.22;
+}
+
+.oc-markdown h2 {
+  font-size: calc(var(--oc-font-size) + 3px);
+  line-height: 1.3;
+}
+
+.oc-markdown h3 {
+  font-size: var(--oc-font-size-lg);
+  line-height: 1.38;
+}
+
+.oc-markdown h4,
+.oc-markdown h5,
+.oc-markdown h6 {
+  font-size: var(--oc-font-size);
+}
+
+.oc-markdown h1::before,
+.oc-markdown h2::before,
+.oc-markdown h3::before {
+  content: "";
+  color: var(--oc-md-current-list);
+}
+
+.oc-markdown ul,
+.oc-markdown ol {
+  padding-left: 20px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.oc-markdown ul {
+  list-style-type: disc;
+}
+
+.oc-markdown ol {
+  list-style-type: decimal;
+  padding-left: 24px;
+}
+
+.oc-markdown li {
+  color: var(--oc-md-current-text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.oc-markdown ul li::marker {
+  color: var(--oc-md-current-list);
+}
+
+.oc-markdown ol li::marker {
+  color: var(--oc-md-current-list-enum);
+  font-family: var(--oc-mono);
+}
+
+.oc-markdown li + li {
+  margin-top: 0;
+}
+
+.oc-taskList {
+  padding-left: 0;
+  list-style: none;
+}
+
+.oc-taskList .oc-taskList {
+  margin-top: 0.35em;
+  padding-left: 22px;
+}
+
+.oc-taskListItem {
+  position: relative;
+  padding-left: 24px;
+}
+
+.oc-taskListCheckbox {
+  position: absolute;
+  left: 0;
+  top: 0.28em;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--oc-accent);
+  pointer-events: none;
+}
+
+.oc-taskListLabel {
+  margin: 0;
+}
+
+.oc-markdown blockquote {
+  padding: 8px 12px;
+  border-left: 2px solid color-mix(in srgb, var(--oc-md-current-quote) 28%, transparent 72%);
+  border-radius: var(--oc-radius-sm);
+  background: color-mix(in srgb, var(--oc-surface-secondary) 64%, transparent 36%);
+  color: var(--oc-md-current-quote);
+  font-style: italic;
+}
+
+.oc-markdown a {
+  color: var(--oc-md-current-link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--oc-md-current-link) 60%, transparent 40%);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.oc-markdown a code {
+  color: var(--oc-md-current-link-text);
+}
+
+.oc-markdown a:hover {
+  color: var(--oc-md-current-link-text);
+}
+
+.oc-inlineCode {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--oc-md-current-code);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.oc-inlineCode-file {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.12em;
+  text-decoration-color: color-mix(in srgb, var(--oc-md-current-code) 30%, transparent 70%);
+}
+
+.oc-inlineCode-file:hover {
+  text-decoration-color: color-mix(in srgb, var(--oc-md-current-code) 55%, transparent 45%);
+}
+
+.oc-modKey .oc-inlineCode-file {
+  cursor: pointer;
+}
+
+.oc-modKey .oc-inlineCode-file:hover {
+  color: color-mix(in srgb, var(--oc-md-current-code) 82%, var(--oc-bg) 18%);
+}
+
+.oc-fileRefText {
+  color: inherit;
+}
+
+.oc-fileRefText.is-openable {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.12em;
+  text-decoration-color: color-mix(in srgb, currentColor 24%, transparent 76%);
+}
+
+.oc-fileRefText.is-openable:hover {
+  text-decoration-color: color-mix(in srgb, currentColor 46%, transparent 54%);
+}
+
+.oc-modKey .oc-fileRefText.is-openable {
+  cursor: pointer;
+}
+
+.oc-modKey .oc-fileRefText.is-openable:hover {
+  color: color-mix(in srgb, currentColor 82%, var(--oc-bg) 18%);
+}
+
+.oc-markdown em {
+  color: var(--oc-md-current-emph);
+}
+
+.oc-markdown strong {
+  color: var(--oc-md-current-strong);
+}
+
+.oc-markdown pre {
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, var(--oc-border-strong) 58%, transparent 42%);
+  border-left: 1px solid color-mix(in srgb, var(--oc-border-strong) 62%, transparent 38%);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-code-surface);
+  color: var(--oc-md-current-code-block);
+}
+
+.oc-markdown .oc-outputWindow-markdownCode .oc-codeWindowBody {
+  margin: 0;
+  padding: 8px 10px 2px;
+}
+
+.oc-markdown pre code {
+  padding: 0;
+  border: 0;
+}
+
+.oc-markdown pre code .outputWindowHead {
+  padding: 2px 10px;
+}
+
+.oc-markdown img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1em 0;
+  border-radius: var(--oc-radius-md);
+}
+
+.oc-markdown table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  overflow-x: auto;
+}
+
+.oc-markdown th,
+.oc-markdown td {
+  padding: 6px 8px;
+  border: 1px solid var(--oc-border);
+  text-align: left;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.oc-markdown th {
+  color: var(--oc-fg-muted);
+}
+
+.oc-markdown hr {
+  margin: 1.25em 0;
+  border: 0;
+  border-top: 1px solid var(--oc-md-current-rule);
+}
+
+.oc-markdown .hljs {
+  display: block;
+  color: var(--oc-md-current-syntax-punctuation);
+}
+
+.oc-markdown .hljs-comment,
+.oc-markdown .hljs-quote {
+  color: var(--oc-md-current-syntax-comment);
+}
+
+.oc-markdown .hljs-keyword,
+.oc-markdown .hljs-selector-tag,
+.oc-markdown .hljs-literal,
+.oc-markdown .hljs-section,
+.oc-markdown .hljs-link {
+  color: var(--oc-md-current-syntax-keyword);
+}
+
+.oc-markdown .hljs-string,
+.oc-markdown .hljs-title,
+.oc-markdown .hljs-name,
+.oc-markdown .hljs-type,
+.oc-markdown .hljs-attribute,
+.oc-markdown .hljs-symbol,
+.oc-markdown .hljs-bullet,
+.oc-markdown .hljs-addition {
+  color: var(--oc-md-current-syntax-string);
+}
+
+.oc-markdown .hljs-number,
+.oc-markdown .hljs-built_in,
+.oc-markdown .hljs-variable,
+.oc-markdown .hljs-template-variable,
+.oc-markdown .hljs-meta,
+.oc-markdown .hljs-params {
+  color: var(--oc-md-current-syntax-variable);
+}
+
+.oc-markdown .hljs-function,
+.oc-markdown .hljs-subst,
+.oc-markdown .hljs-tag,
+.oc-markdown .hljs-regexp {
+  color: var(--oc-md-current-syntax-function);
+}
+
+.oc-markdown .hljs-type {
+  color: var(--oc-md-current-syntax-type);
+}
+
+.oc-markdown .hljs-operator,
+.oc-markdown .hljs-punctuation {
+  color: var(--oc-md-current-syntax-operator);
+}
+
+.oc-markdown .hljs-emphasis {
+  font-style: italic;
+}
+
+.oc-markdown .hljs-strong {
+  font-weight: 700;
+}
+
+.oc-shell[data-oc-theme="classic"] .oc-outputWindow-markdownCode .oc-codeWindowBody {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-markdown {
+  line-height: 1.72;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-markdown h1::before,
+.oc-shell[data-oc-theme="claude"] .oc-markdown h2::before,
+.oc-shell[data-oc-theme="claude"] .oc-markdown h3::before {
+  content: "";
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-markdown ul {
+  list-style-type: disc;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-markdown ol {
+  list-style-type: decimal;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-markdown h1,
+.oc-shell[data-oc-theme="claude"] .oc-markdown h2,
+.oc-shell[data-oc-theme="claude"] .oc-markdown h3 {
+  letter-spacing: 0;
+  font-weight: 650;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-markdown blockquote {
+  padding: 10px 14px;
+  border-left: 1px solid color-mix(in srgb, var(--oc-md-current-quote) 34%, transparent 66%);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--oc-surface-elevated) 78%, transparent 22%);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--oc-accent) 14%, transparent 86%);
+  font-style: normal;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-markdown pre {
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--oc-code-surface) 94%, var(--oc-surface-elevated) 6%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-outputWindow-markdownCode {
+  border: 0;
+  background: transparent;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-outputWindow-markdownCode .oc-codeWindowBody {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-markdown a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.16em;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-markdown {
+  line-height: 1.58;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-markdown h1::before,
+.oc-shell[data-oc-theme="codex"] .oc-markdown h2::before,
+.oc-shell[data-oc-theme="codex"] .oc-markdown h3::before {
+  content: "";
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-markdown ul {
+  list-style-type: disc;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-markdown ol {
+  list-style-type: decimal;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-markdown blockquote {
+  border: 1px solid color-mix(in srgb, var(--oc-border) 72%, transparent 28%);
+  border-left-width: 1px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--oc-surface-secondary) 82%, transparent 18%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent 94%);
+  font-style: normal;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-inlineCode {
+  padding: 1px 4px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--oc-accent) 8%, var(--oc-surface-secondary) 92%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-markdown pre {
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--oc-border) 72%, transparent 28%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent 95%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-outputWindow-markdownCode .oc-codeWindowBody {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}

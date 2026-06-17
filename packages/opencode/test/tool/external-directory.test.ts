@@ -1,3 +1,4 @@
+import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import { describe, expect } from "bun:test"
 import path from "path"
 import { Effect } from "effect"
@@ -25,8 +26,14 @@ const baseCtx: Omit<Tool.Context, "ask"> = {
 const glob = (p: string) =>
   process.platform === "win32" ? Filesystem.normalizePathPattern(p) : p.replaceAll("\\", "/")
 
+const bashPath = (p: string) => {
+  const match = p.match(/^([A-Za-z]):\\(.*)$/)
+  if (!match) return p.replaceAll("\\", "/")
+  return `/${match[1].toLowerCase()}/${match[2].replaceAll("\\", "/")}`
+}
+
 function makeCtx() {
-  const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
+  const requests: Array<Omit<PermissionV1.Request, "id" | "sessionID" | "tool">> = []
   const ctx: Tool.Context = {
     ...baseCtx,
     ask: (req) =>
@@ -114,10 +121,7 @@ describe("tool.assertExternalDirectory", () => {
           yield* Effect.promise(() => Bun.write(path.join(outerTmp, "outside.txt"), "x"))
 
           const target = path.join(outerTmp, "outside.txt")
-          const alt = target
-            .replace(/^[A-Za-z]:/, "")
-            .replaceAll("\\", "/")
-            .toLowerCase()
+          const alt = bashPath(target)
 
           yield* assertExternalDirectoryEffect(ctx, alt)
 

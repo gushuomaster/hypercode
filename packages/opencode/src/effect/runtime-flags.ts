@@ -1,19 +1,35 @@
 import { Config, ConfigProvider, Context, Effect, Layer, Option } from "effect"
 import { ConfigService } from "@/effect/config-service"
 
-function env(name: string) {
+function names(name: string) {
   const alias = name.startsWith("OPENCODE_") ? `HYPERCODE_${name.slice("OPENCODE_".length)}` : undefined
-  return (alias ? process.env[alias] : undefined) ?? process.env[name]
+  return alias ? [alias, name] : [name]
 }
 
-const bool = (name: string) => Config.succeed(["true", "1"].includes(env(name)?.toLowerCase() ?? ""))
-const positiveInteger = (name: string) => {
-  const value = Number(env(name))
-  return Config.succeed(Number.isInteger(value) && value > 0 ? value : undefined)
-}
+const string = (name: string) =>
+  names(name)
+    .map((key) => Config.string(key))
+    .reduce((left, right) => left.pipe(Config.orElse(() => right)))
+
+const lowerString = (name: string) => string(name).pipe(Config.map((value) => value.toLowerCase()))
+const maybeBool = (name: string) =>
+  lowerString(name).pipe(
+    Config.map((value) => ["true", "1"].includes(value)),
+    Config.option,
+  )
+const bool = (name: string) =>
+  maybeBool(name).pipe(Config.map((value) => Option.getOrElse(value, () => false)))
+const positiveInteger = (name: string) =>
+  string(name).pipe(
+    Config.map((value) => {
+      const parsed = Number(value)
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
+    }),
+    Config.withDefault(undefined),
+  )
 const experimental = bool("OPENCODE_EXPERIMENTAL")
 const enabledByExperimental = (name: string) =>
-  Config.all({ experimental, enabled: Config.boolean(name).pipe(Config.option) }).pipe(
+  Config.all({ experimental, enabled: maybeBool(name) }).pipe(
     Config.map((flags) => Option.getOrElse(flags.enabled, () => flags.experimental)),
   )
 
@@ -43,7 +59,7 @@ export class Service extends ConfigService.Service<Service>()("@opencode/Runtime
   }).pipe(Config.map((flags) => flags.enabled || flags.legacy)),
   enableExperimentalModels: bool("OPENCODE_ENABLE_EXPERIMENTAL_MODELS"),
   enableQuestionTool: bool("OPENCODE_ENABLE_QUESTION_TOOL"),
-  experimentalScout: enabledByExperimental("OPENCODE_EXPERIMENTAL_SCOUT"),
+  experimentalReferences: enabledByExperimental("OPENCODE_EXPERIMENTAL_REFERENCES"),
   experimentalBackgroundSubagents: enabledByExperimental("OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS"),
   experimentalLspTy: bool("OPENCODE_EXPERIMENTAL_LSP_TY"),
   experimentalLspTool: enabledByExperimental("OPENCODE_EXPERIMENTAL_LSP_TOOL"),
@@ -56,7 +72,7 @@ export class Service extends ConfigService.Service<Service>()("@opencode/Runtime
   bashDefaultTimeoutMs: positiveInteger("OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS"),
   experimentalNativeLlm: bool("OPENCODE_EXPERIMENTAL_NATIVE_LLM"),
   experimentalWebSockets: bool("OPENCODE_EXPERIMENTAL_WEBSOCKETS"),
-  client: Config.succeed(env("OPENCODE_CLIENT") ?? "cli"),
+  client: string("OPENCODE_CLIENT").pipe(Config.withDefault("cli")),
 }) {}
 
 export type Info = Context.Service.Shape<typeof Service>
@@ -77,4 +93,7 @@ export const layer = (overrides: Partial<Info> = {}) =>
 
 export const defaultLayer = Service.defaultLayer.pipe(Layer.orDie)
 
+export const node = LayerNode.make(defaultLayer, [])
+
 export * as RuntimeFlags from "./runtime-flags"
+import { LayerNode } from "@opencode-ai/core/effect/layer-node"

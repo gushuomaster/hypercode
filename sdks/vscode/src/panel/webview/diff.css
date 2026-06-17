@@ -1,0 +1,341 @@
+.oc-outputWindow.oc-outputWindow-markdownCode {
+  margin: 0;
+}
+
+.oc-outputWindow {
+  margin: 0;
+}
+
+.oc-partTerminal {
+  padding: 8px 10px;
+  border-left: 2px solid color-mix(in srgb, var(--oc-accent) 72%, transparent 28%);
+}
+
+.oc-outputWindow .oc-partTerminal {
+  padding: 8px 10px;
+  border: 0;
+}
+
+.oc-codeBlock,
+.oc-diffBlock {
+  overflow-x: auto;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--oc-border-strong) 72%, transparent 28%);
+  border-left: 2px solid color-mix(in srgb, var(--oc-accent) 72%, transparent 28%);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-code-surface);
+}
+
+.oc-diffBlock.is-window {
+  border: 0;
+  padding: 8px 10px;
+  color: var(--oc-outputWindow-body-fg);
+}
+
+.oc-codeBlock code {
+  display: block;
+}
+
+.oc-codeWindowBody {
+  margin: 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  color: var(--oc-outputWindow-body-fg);
+}
+
+.oc-outputWindow-markdownCode pre,
+.oc-outputWindow-markdownCode pre code {
+  border: 0;
+}
+
+.oc-codeWindowText {
+  display: block;
+}
+
+.oc-codeWindowLine {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: start;
+  padding: 2px 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.35;
+  font-size: var(--oc-font-size);
+}
+
+.oc-codeWindowLineNo {
+  color: var(--oc-fg-muted);
+  text-align: right;
+}
+
+.oc-codeWindowBody.oc-codeWindowBody-gutter-2 .oc-codeWindowLine {
+  grid-template-columns: calc(2ch + 12px) minmax(0, 1fr);
+}
+
+.oc-codeWindowBody.oc-codeWindowBody-gutter-3 .oc-codeWindowLine {
+  grid-template-columns: calc(3ch + 12px) minmax(0, 1fr);
+}
+
+.oc-codeWindowBody.oc-codeWindowBody-gutter-4 .oc-codeWindowLine {
+  grid-template-columns: calc(4ch + 12px) minmax(0, 1fr);
+}
+
+.oc-codeWindowBody.oc-codeWindowBody-gutter-5 .oc-codeWindowLine {
+  grid-template-columns: calc(5ch + 12px) minmax(0, 1fr);
+}
+
+.oc-codeWindowBody.oc-codeWindowBody-gutter-6 .oc-codeWindowLine {
+  grid-template-columns: calc(6ch + 12px) minmax(0, 1fr);
+}
+
+.oc-codeWindowLineText {
+  min-width: 0;
+  color: var(--oc-diff-context);
+}
+
+.oc-codeWindowLineText.hljs,
+.oc-codeWindowLineText .hljs {
+  display: block;
+  color: var(--oc-diff-syntax-punctuation);
+}
+
+.oc-codeWindowLineText .hljs-comment,
+.oc-codeWindowLineText .hljs-quote {
+  color: var(--oc-diff-syntax-comment);
+}
+
+.oc-codeWindowLineText .hljs-keyword,
+.oc-codeWindowLineText .hljs-selector-tag,
+.oc-codeWindowLineText .hljs-literal,
+.oc-codeWindowLineText .hljs-section,
+.oc-codeWindowLineText .hljs-link {
+  color: var(--oc-diff-syntax-keyword);
+}
+
+.oc-codeWindowLineText .hljs-string,
+.oc-codeWindowLineText .hljs-symbol,
+.oc-codeWindowLineText .hljs-bullet,
+.oc-codeWindowLineText .hljs-addition {
+  color: var(--oc-diff-syntax-string);
+}
+
+.oc-codeWindowLineText .hljs-title,
+.oc-codeWindowLineText .hljs-name,
+.oc-codeWindowLineText .hljs-type,
+.oc-codeWindowLineText .hljs-attribute {
+  color: var(--oc-diff-syntax-type);
+}
+
+.oc-codeWindowLineText .hljs-number,
+.oc-codeWindowLineText .hljs-built_in,
+.oc-codeWindowLineText .hljs-meta {
+  color: var(--oc-diff-syntax-number);
+}
+
+.oc-codeWindowLineText .hljs-variable,
+.oc-codeWindowLineText .hljs-template-variable,
+.oc-codeWindowLineText .hljs-params {
+  color: var(--oc-diff-syntax-variable);
+}
+
+.oc-codeWindowLineText .hljs-function,
+.oc-codeWindowLineText .hljs-subst,
+.oc-codeWindowLineText .hljs-tag,
+.oc-codeWindowLineText .hljs-regexp {
+  color: var(--oc-diff-syntax-function);
+}
+
+.oc-codeWindowLineText .hljs-operator,
+.oc-codeWindowLineText .hljs-punctuation {
+  color: var(--oc-diff-syntax-operator);
+}
+
+.oc-codeBlock .hljs {
+  color: var(--oc-fg-primary);
+}
+
+.oc-codeBlock .hljs-comment,
+.oc-codeBlock .hljs-quote {
+  color: var(--oc-md-syntax-comment);
+}
+
+.oc-codeBlock .hljs-keyword,
+.oc-codeBlock .hljs-selector-tag,
+.oc-codeBlock .hljs-literal,
+.oc-codeBlock .hljs-section,
+.oc-codeBlock .hljs-link {
+  color: var(--oc-md-syntax-keyword);
+}
+
+.oc-codeBlock .hljs-string,
+.oc-codeBlock .hljs-title,
+.oc-codeBlock .hljs-name,
+.oc-codeBlock .hljs-type,
+.oc-codeBlock .hljs-attribute,
+.oc-codeBlock .hljs-symbol,
+.oc-codeBlock .hljs-bullet,
+.oc-codeBlock .hljs-addition {
+  color: var(--oc-md-syntax-string);
+}
+
+.oc-codeBlock .hljs-number,
+.oc-codeBlock .hljs-built_in,
+.oc-codeBlock .hljs-variable,
+.oc-codeBlock .hljs-template-variable,
+.oc-codeBlock .hljs-meta,
+.oc-codeBlock .hljs-params {
+  color: var(--oc-md-syntax-variable);
+}
+
+.oc-codeBlock .hljs-function,
+.oc-codeBlock .hljs-subst,
+.oc-codeBlock .hljs-tag,
+.oc-codeBlock .hljs-regexp {
+  color: var(--oc-md-syntax-function);
+}
+
+.oc-diffLine {
+  display: grid;
+  grid-template-columns: 40px 40px 14px minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: start;
+  padding: 2px 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.35;
+  font-size: var(--oc-font-size-sm);
+}
+
+.oc-diffLineNo {
+  color: var(--oc-fg-muted);
+}
+
+.oc-diffLineMarker {
+  color: var(--oc-fg-muted);
+}
+
+.oc-diffLineNo {
+  text-align: right;
+}
+
+.oc-diffLineMarker {
+  text-align: center;
+}
+
+.oc-diffLineText {
+  min-width: 0;
+  color: var(--oc-diff-context);
+}
+
+.oc-diffLineText.hljs,
+.oc-diffLineText .hljs {
+  display: block;
+  color: var(--oc-diff-syntax-punctuation);
+}
+
+.oc-diffLineText .hljs-comment,
+.oc-diffLineText .hljs-quote {
+  color: var(--oc-diff-syntax-comment);
+}
+
+.oc-diffLineText .hljs-keyword,
+.oc-diffLineText .hljs-selector-tag,
+.oc-diffLineText .hljs-literal,
+.oc-diffLineText .hljs-section,
+.oc-diffLineText .hljs-link {
+  color: var(--oc-diff-syntax-keyword);
+}
+
+.oc-diffLineText .hljs-string,
+.oc-diffLineText .hljs-symbol,
+.oc-diffLineText .hljs-bullet,
+.oc-diffLineText .hljs-addition {
+  color: var(--oc-diff-syntax-string);
+}
+
+.oc-diffLineText .hljs-title,
+.oc-diffLineText .hljs-name,
+.oc-diffLineText .hljs-type,
+.oc-diffLineText .hljs-attribute {
+  color: var(--oc-diff-syntax-type);
+}
+
+.oc-diffLineText .hljs-number,
+.oc-diffLineText .hljs-built_in,
+.oc-diffLineText .hljs-meta {
+  color: var(--oc-diff-syntax-number);
+}
+
+.oc-diffLineText .hljs-variable,
+.oc-diffLineText .hljs-template-variable,
+.oc-diffLineText .hljs-params {
+  color: var(--oc-diff-syntax-variable);
+}
+
+.oc-diffLineText .hljs-function,
+.oc-diffLineText .hljs-subst,
+.oc-diffLineText .hljs-tag,
+.oc-diffLineText .hljs-regexp {
+  color: var(--oc-diff-syntax-function);
+}
+
+.oc-diffLineText .hljs-operator,
+.oc-diffLineText .hljs-punctuation {
+  color: var(--oc-diff-syntax-operator);
+}
+
+.oc-diffLine.is-add {
+  color: var(--oc-diff-add-fg);
+  background: var(--oc-diff-add-bg);
+}
+
+.oc-diffLine.is-del {
+  color: var(--oc-diff-del-fg);
+  background: var(--oc-diff-del-bg);
+}
+
+.oc-splitDiff {
+  display: grid;
+  gap: 0;
+  border: 1px solid color-mix(in srgb, var(--oc-border-strong) 72%, transparent 28%);
+}
+
+.oc-splitDiff.is-window {
+  border: 0;
+}
+
+.oc-splitDiffBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.oc-splitDiffLine {
+  display: grid;
+  grid-template-columns: 40px 14px minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: start;
+  padding: 2px 8px;
+}
+
+.oc-splitDiffLine:nth-child(2n) {
+  border-left: 1px solid color-mix(in srgb, var(--oc-border-strong) 58%, transparent 42%);
+}
+
+.oc-splitDiffLine {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--oc-mono);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.35;
+}
+
+.oc-splitDiffLine.is-add {
+  color: var(--oc-diff-add-fg);
+  background: var(--oc-diff-add-bg);
+}
+
+.oc-splitDiffLine.is-del {
+  color: var(--oc-diff-del-fg);
+  background: var(--oc-diff-del-bg);
+}

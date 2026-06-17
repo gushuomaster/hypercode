@@ -1,0 +1,382 @@
+import assert from "node:assert/strict"
+import { describe, test } from "node:test"
+
+import { SessionStore } from "../core/session"
+import type { SessionEvent, SessionInfo, SessionStatus } from "../core/sdk"
+
+type Runtime = {
+  workspaceId: string
+  dir: string
+  name: string
+  state: "ready"
+  sdk?: {
+    session: {
+      create?(input: { directory: string; title?: string }): Promise<{ data?: SessionInfo }>
+      list(input: { directory: string; roots: true }): Promise<{ data?: SessionInfo[] }>
+      status(input: { directory: string }): Promise<{ data?: Record<string, SessionStatus> }>
+    }
+  }
+  sessions: Map<string, SessionInfo>
+  sessionStatuses: Map<string, SessionStatus>
+  sessionsState: "idle" | "loading" | "ready" | "error"
+  sessionsErr?: string
+}
+
+function info(id: string, updated: number, parentID?: string): SessionInfo {
+  return {
+    id,
+    directory: "/workspace",
+    parentID,
+    title: id,
+    time: {
+      created: updated,
+      updated,
+    },
+  }
+}
+
+function archivedInfo(id: string, updated: number): SessionInfo {
+  return {
+    ...info(id, updated),
+    time: {
+      created: updated,
+      updated,
+      archived: updated,
+    },
+  }
+}
+
+function createHarness() {
+  const root = info("root", 1)
+  let rt: Runtime = {
+    workspaceId: "ws-1",
+    dir: "/workspace",
+    name: "workspace",
+    state: "ready",
+    sessions: new Map([[root.id, root]]),
+    sessionStatuses: new Map([[root.id, { type: "idle" }]]),
+    sessionsState: "ready",
+  }
+
+  let listener: ((item: { workspaceId: string; event: SessionEvent }) => void) | undefined
+  let invalidations = 0
+  const changeListeners: Array<() => void> = []
+
+  const mgr = {
+    get(id: string) {
+      return id === rt.workspaceId ? rt : undefined
+    },
+    list() {
+      return [rt]
+    },
+    invalidate() {
+      invalidations += 1
+      if (invalidations > 6) {
+        return
+      }
+      setTimeout(() => {
+        for (const next of changeListeners) {
+          next()
+        }
+      }, 0)
+    },
+    onDidChange(next: () => void) {
+      changeListeners.push(next)
+      return { dispose() {} }
+    },
+  }
+
+  const events = {
+    onDidEvent(next: (item: { workspaceId: string; event: SessionEvent }) => void) {
+      listener = next
+      return { dispose() {} }
+    },
+  }
+
+  const out = { appendLine() {} }
+  const store = new SessionStore(mgr as any, events as any, out as any)
+
+  return {
+    get rt() {
+      return rt
+    },
+    setRuntime(next: Runtime) {
+      rt = next
+    },
+    store,
+    invalidations: () => invalidations,
+    emit(event: SessionEvent) {
+      listener?.({ workspaceId: rt.workspaceId, event })
+    },
+  }
+}
+
+function deferred<T>() {
+  let resolve: (value: T) => void
+  let reject: (reason?: unknown) => void
+
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve
+    reject = nextReject
+  })
+
+  return {
+    promise,
+    resolve: resolve!,
+    reject: reject!,
+  }
+}
+
+describe("SessionStore child session filtering", () => {
+  test("creates sessions without overriding the upstream auto title flow", async () => {
+    const harness = createHarness()
+    const created = info("created", 2)
+    let input: { directory: string; title?: string } | undefined
+
+    harness.rt.sdk = {
+      session: {
+        create: async (next) => {
+          input = next
+          return {
+            data: {
+              ...created,
+              title: "New session",
+            },
+          }
+        },
+        list: async () => ({ data: [created] }),
+        status: async () => ({ data: { [created.id]: { type: "idle" } } }),
+      },
+    }
+
+    const result = await harness.store.create(harness.rt.workspaceId)
+
+    assert.deepEqual(input, {
+      directory: "/workspace",
+    })
+    assert.equal(result.title, "New session")
+  })
+
+  test("ignores child session create and status events in sidebar state", () => {
+    const harness = createHarness()
+    const child = info("child", 2, "root")
+
+    harness.emit({
+      type: "session.created",
+      properties: { info: child },
+    })
+    harness.emit({
+      type: "session.status",
+      properties: {
+        sessionID: child.id,
+        status: { type: "busy" },
+      },
+    })
+
+    assert.deepEqual(harness.store.list(harness.rt.workspaceId).map((item) => item.id), ["root"])
+    assert.equal(harness.rt.sessionStatuses.has(child.id), false)
+    assert.ok(harness.invalidations() >= 1)
+  })
+
+  test("ignores child session update events for sessions outside the root list", () => {
+    const harness = createHarness()
+
+    harness.emit({
+      type: "session.updated",
+      properties: { info: info("child", 2, "root") },
+    })
+
+    assert.deepEqual(harness.store.list(harness.rt.workspaceId).map((item) => item.id), ["root"])
+    assert.equal(harness.rt.sessionStatuses.has("child"), false)
+  })
+
+  test("removes a root session when an update turns it into a child", () => {
+    const harness = createHarness()
+    const moved = info("root", 2, "parent")
+
+    harness.emit({
+      type: "session.updated",
+      properties: { info: moved },
+    })
+
+    assert.deepEqual(harness.store.list(harness.rt.workspaceId).map((item) => item.id), [])
+    assert.equal(harness.rt.sessionStatuses.has("root"), false)
+  })
+
+  test("coalesces concurrent refreshes so startup does not keep a partial later result", async () => {
+    const harness = createHarness()
+    const first = deferred<{ data?: SessionInfo[] }>()
+    const second = deferred<{ data?: SessionInfo[] }>()
+    let listCalls = 0
+
+    harness.rt.sessions.clear()
+    harness.rt.sessionStatuses.clear()
+    harness.rt.sessionsState = "idle"
+    harness.rt.sdk = {
+      session: {
+        list: () => {
+          listCalls += 1
+          return listCalls === 1 ? first.promise : second.promise
+        },
+        status: async () => ({
+          data: {
+            root: { type: "idle" },
+            second: { type: "busy" },
+          },
+        }),
+      },
+    }
+
+    const firstRefresh = harness.store.refresh(harness.rt.workspaceId, true)
+    const secondRefresh = harness.store.refresh(harness.rt.workspaceId, true)
+
+    assert.equal(listCalls, 1)
+
+    first.resolve({ data: [info("root", 1), info("second", 2)] })
+    second.resolve({ data: [info("root", 1)] })
+
+    const [firstResult, secondResult] = await Promise.all([firstRefresh, secondRefresh])
+
+    assert.equal(listCalls, 1)
+    assert.deepEqual(firstResult.map((item) => item.id), ["root", "second"])
+    assert.deepEqual(secondResult.map((item) => item.id), ["root", "second"])
+    assert.deepEqual(harness.store.list(harness.rt.workspaceId).map((item) => item.id), ["second", "root"])
+  })
+
+  test("does not reuse an inflight refresh after the runtime instance changes", async () => {
+    const harness = createHarness()
+    const first = deferred<{ data?: SessionInfo[] }>()
+    const second = deferred<{ data?: SessionInfo[] }>()
+    let firstCalls = 0
+    let secondCalls = 0
+
+    harness.rt.sessions.clear()
+    harness.rt.sessionStatuses.clear()
+    harness.rt.sessionsState = "idle"
+    harness.rt.sdk = {
+      session: {
+        list: () => {
+          firstCalls += 1
+          return first.promise
+        },
+        status: async () => ({ data: {} }),
+      },
+    }
+
+    const staleRefresh = harness.store.refresh(harness.rt.workspaceId, true)
+
+    const nextRoot = info("next-root", 3)
+    harness.setRuntime({
+      workspaceId: "ws-1",
+      dir: "/workspace",
+      name: "workspace",
+      state: "ready",
+      sessions: new Map(),
+      sessionStatuses: new Map(),
+      sessionsState: "idle",
+      sdk: {
+        session: {
+          list: () => {
+            secondCalls += 1
+            return second.promise
+          },
+          status: async () => ({
+            data: {
+              [nextRoot.id]: { type: "idle" },
+            },
+          }),
+        },
+      },
+    })
+
+    const freshRefresh = harness.store.refresh("ws-1", true)
+
+    assert.equal(firstCalls, 1)
+    assert.equal(secondCalls, 1)
+
+    first.resolve({ data: [info("stale-root", 1)] })
+    second.resolve({ data: [nextRoot] })
+
+    await Promise.all([staleRefresh, freshRefresh])
+
+    assert.deepEqual(harness.store.list("ws-1").map((item) => item.id), [nextRoot.id])
+  })
+
+  test("authoritative refresh clears root sessions that only came from snapshot preloading", async () => {
+    const harness = createHarness()
+    const opened = info("opened", 5)
+
+    harness.rt.sessions = new Map([[opened.id, opened]])
+    harness.rt.sessionStatuses = new Map([[opened.id, { type: "busy" }]])
+    harness.rt.sessionsState = "idle"
+    harness.rt.sdk = {
+      session: {
+        list: async () => ({
+          data: [],
+        }),
+        status: async () => ({
+          data: {},
+        }),
+      },
+    }
+
+    await harness.store.refresh(harness.rt.workspaceId, true)
+
+    assert.deepEqual(harness.store.list(harness.rt.workspaceId).map((item) => item.id), [])
+    assert.equal(harness.rt.sessionStatuses.has(opened.id), false)
+  })
+
+  test("refresh filters archived root sessions out of the sidebar list", async () => {
+    const harness = createHarness()
+    const active = info("active", 4)
+    const archived = archivedInfo("archived", 5)
+
+    harness.rt.sessions.clear()
+    harness.rt.sessionStatuses.clear()
+    harness.rt.sessionsState = "idle"
+    harness.rt.sdk = {
+      session: {
+        list: async () => ({
+          data: [active, archived],
+        }),
+        status: async () => ({
+          data: {
+            [active.id]: { type: "idle" },
+            [archived.id]: { type: "idle" },
+          },
+        }),
+      },
+    }
+
+    await harness.store.refresh(harness.rt.workspaceId, true)
+
+    assert.deepEqual(harness.store.list(harness.rt.workspaceId).map((item) => item.id), [active.id])
+    assert.equal(harness.rt.sessionStatuses.has(archived.id), false)
+  })
+
+  test("does not auto-retry failed refreshes after invalidate while sessions are in error", async () => {
+    const harness = createHarness()
+    let listCalls = 0
+
+    harness.rt.sessions.clear()
+    harness.rt.sessionStatuses.clear()
+    harness.rt.sessionsState = "idle"
+    harness.rt.sdk = {
+      session: {
+        list: async () => {
+          listCalls += 1
+          throw new Error("boom")
+        },
+        status: async () => ({ data: {} }),
+      },
+    }
+
+    await harness.store.refresh(harness.rt.workspaceId, true)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    assert.equal(harness.rt.sessionsState, "error")
+    assert.equal(listCalls, 1)
+  })
+})

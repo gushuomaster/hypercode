@@ -1,0 +1,1006 @@
+.oc-turnUserWrap {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  justify-self: stretch;
+}
+
+.oc-assistantReplyWrap {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  justify-self: stretch;
+}
+
+.oc-turnUser {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  justify-self: stretch;
+}
+
+.oc-turnUser {
+  position: relative;
+  padding: 6px 96px 6px 12px;
+  border: 1px solid var(--oc-palette-user-border);
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-palette-user-bg);
+}
+
+.oc-turnUser::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--oc-palette-rail);
+  border-radius: var(--oc-radius-sm);
+}
+
+.oc-userStatusRow {
+  display: flex;
+  align-items: center;
+  min-height: 0;
+}
+
+.oc-turnMeta {
+  padding: 0 10px 4px;
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.4;
+  font-family: var(--oc-ui);
+}
+
+.oc-turnMetaContent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.oc-turnMetaSep {
+  color: var(--oc-fg-muted);
+}
+
+.oc-turnUser,
+.oc-codexActivityGroup,
+.oc-assistantError,
+.oc-turnMeta,
+.oc-revertNotice,
+.oc-toolRowWrap,
+.oc-dividerPart,
+.oc-part,
+.oc-dock,
+.oc-composer,
+.oc-questionCard,
+.oc-emptyState {
+  width: 100%;
+  margin: 0;
+  justify-self: stretch;
+}
+
+.oc-attachmentRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.oc-userAttachmentThumbStrip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  margin: 0 0 7px;
+}
+
+.oc-userAttachmentThumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--oc-border-strong) 58%, transparent 42%);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--oc-surface-control);
+  box-shadow: 0 6px 18px color-mix(in srgb, #000 12%, transparent 88%);
+  cursor: pointer;
+}
+
+.oc-userAttachmentThumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 22%, transparent 78%);
+  pointer-events: none;
+}
+
+.oc-userAttachmentThumbImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 140ms ease, opacity 140ms ease;
+}
+
+.oc-userAttachmentThumb:hover .oc-userAttachmentThumbImg,
+.oc-userAttachmentThumb:focus-visible .oc-userAttachmentThumbImg {
+  opacity: 0.92;
+  transform: scale(1.03);
+}
+
+.oc-messageActions {
+  position: absolute;
+  right: 8px;
+  bottom: 7px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(2px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.oc-revertActions {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(calc(-50% + 2px));
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.oc-turnUserWrap:hover .oc-messageActions,
+.oc-turnUserWrap:focus-within .oc-messageActions,
+.oc-assistantReplyWrap:hover .oc-messageActions,
+.oc-assistantReplyWrap:focus-within .oc-messageActions,
+.oc-revertNotice:hover .oc-revertActions,
+.oc-revertNotice:focus-within .oc-revertActions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.oc-turnUserWrap:hover .oc-messageActions,
+.oc-turnUserWrap:focus-within .oc-messageActions,
+.oc-assistantReplyWrap:hover .oc-messageActions,
+.oc-assistantReplyWrap:focus-within .oc-messageActions {
+  transform: translateY(0);
+}
+
+.oc-assistantReplyFooter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+  margin-top: 4px;
+  padding: 0 10px;
+  color: var(--oc-fg-muted);
+  font-family: var(--oc-ui);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.4;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.oc-assistantReplyWrap:hover .oc-assistantReplyFooter,
+.oc-assistantReplyWrap:focus-within .oc-assistantReplyFooter {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.oc-assistantReplyMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  user-select: none;
+}
+
+.oc-assistantReplyMeta .oc-agentBadge {
+  color: inherit;
+}
+
+.oc-revertNotice:hover .oc-revertActions,
+.oc-revertNotice:focus-within .oc-revertActions {
+  transform: translateY(-50%);
+}
+
+.oc-assistantError {
+  position: relative;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--oc-radius-lg);
+  background: var(--oc-message-assistant-bg);
+}
+
+.oc-assistantError::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--oc-error);
+  border-radius: var(--oc-radius-sm);
+}
+
+.oc-assistantError .oc-errorBlock {
+  font-family: var(--vscode-editor-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+}
+
+.oc-messageActionBtn {
+  appearance: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--oc-palette-action-border) 76%, transparent 24%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--oc-palette-action-bg) 34%, var(--oc-surface-elevated, var(--oc-surface-canvas)) 66%);
+  color: var(--oc-fg-muted);
+  cursor: pointer;
+}
+
+.oc-messageActionBtn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%) translateX(4px);
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--oc-border-strong) 65%, transparent 35%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--oc-surface-elevated, var(--oc-surface-canvas)) 94%, var(--oc-surface-block) 6%);
+  color: var(--oc-fg-primary);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: var(--oc-shadow-soft);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.oc-messageActionBtn:hover:not(:disabled)::after,
+.oc-messageActionBtn:focus-visible:not(:disabled)::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.oc-messageActionBtn[data-copied="true"]::after {
+  opacity: 0;
+}
+
+.oc-messageActionBtn[data-copied="true"]:hover:not(:disabled)::after,
+.oc-messageActionBtn[data-copied="true"]:focus-visible:not(:disabled)::after {
+  opacity: 0;
+  transform: translateY(-50%) translateX(4px);
+}
+
+.oc-messageActionCopiedTip {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%) translateX(4px);
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--oc-border-strong) 55%, transparent 45%);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--oc-surface-elevated, var(--oc-surface-canvas)) 92%, var(--oc-surface-block) 8%);
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: var(--oc-shadow-soft);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.oc-messageActionBtn[data-copied="true"] .oc-messageActionCopiedTip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.oc-messageActionBtn:hover:not(:disabled),
+.oc-messageActionBtn:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--oc-palette-action-bg) 72%, var(--oc-surface-block) 28%);
+  color: var(--oc-fg);
+  outline: none;
+}
+
+.oc-messageActionBtn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.oc-messageActionPath {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.oc-messageActionBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 720px) {
+  .oc-turnUser {
+    padding-right: 88px;
+  }
+
+  .oc-messageActions {
+    right: 6px;
+  }
+}
+
+.oc-part-text {
+  padding: 6px 10px;
+  border: 0;
+  background: var(--oc-palette-assistant-bg);
+}
+
+.oc-partText,
+.oc-partTerminal,
+.oc-codeBlock,
+.oc-diffBlock,
+.oc-composerInput,
+.oc-answerInput {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.65;
+  font-size: var(--oc-font-size);
+}
+
+.oc-partText,
+.oc-partTerminal {
+  overflow-x: auto;
+}
+
+.oc-collapsiblePrompt {
+  position: relative;
+  margin: 0;
+}
+
+.oc-collapsiblePromptContent {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.65;
+  font-size: var(--oc-font-size);
+  max-height: var(--oc-collapsiblePrompt-collapsed-height);
+  overflow: hidden;
+  transition: max-height 180ms ease, opacity 160ms ease;
+}
+
+.oc-collapsiblePrompt:not(.is-expanded):not(.no-overflow) .oc-collapsiblePromptContent {
+  cursor: pointer;
+}
+
+.oc-collapsiblePrompt.is-expanded .oc-collapsiblePromptContent {
+  max-height: var(--oc-collapsiblePrompt-expanded-height);
+  cursor: default;
+}
+
+.oc-collapsiblePrompt.no-overflow .oc-collapsiblePromptContent {
+  max-height: none;
+}
+
+.oc-collapsiblePromptFade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2em;
+  background: linear-gradient(to bottom, transparent, var(--oc-palette-user-bg));
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity 200ms ease;
+  cursor: pointer;
+}
+
+.oc-collapsiblePrompt.is-expanded .oc-collapsiblePromptFade {
+  opacity: 0;
+}
+
+.oc-collapsiblePromptToggle {
+  appearance: none;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--oc-border-strong) 65%, transparent 35%);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--oc-surface-elevated) 88%, var(--oc-surface-block) 12%);
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.4;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 180ms ease, transform 180ms ease, background 120ms ease, color 120ms ease;
+}
+
+.oc-collapsiblePrompt:not(.is-expanded) .oc-collapsiblePromptToggle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+}
+
+.oc-collapsiblePrompt.is-expanded .oc-collapsiblePromptToggle {
+  display: block;
+  margin-top: 8px;
+  margin-left: auto;
+  width: fit-content;
+}
+
+.oc-collapsiblePrompt:hover .oc-collapsiblePromptToggle,
+.oc-collapsiblePromptToggle:focus-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.oc-collapsiblePromptToggle:hover,
+.oc-collapsiblePromptToggle:focus-visible {
+  background: color-mix(in srgb, var(--oc-accent) 14%, var(--oc-surface-block) 86%);
+  color: var(--oc-fg);
+  outline: none;
+}
+
+.oc-collapsiblePrompt.is-expanded .oc-collapsiblePromptToggle {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.oc-part-inline {
+  padding: 6px 10px;
+  border: 0;
+  background: var(--oc-palette-assistant-bg);
+}
+
+.oc-part-compact {
+  padding: 6px 10px;
+  border: 0;
+  background: var(--oc-palette-assistant-bg);
+}
+
+.oc-part-reasoning {
+  padding: 6px 10px;
+  border: 0;
+  background: var(--oc-palette-assistant-bg);
+  border-left: 1px solid color-mix(in srgb, var(--oc-border-strong) 82%, transparent 18%);
+}
+
+@keyframes oc-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes oc-runBar {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.oc-part-tool,
+.oc-part-file,
+.oc-part-patch,
+.oc-part-retry,
+.oc-part-snapshot,
+.oc-part-agent,
+.oc-part-subtask,
+.oc-part-compaction,
+.oc-part-step-start,
+.oc-part-step-finish {
+}
+
+.oc-outputWindow.oc-outputWindow-markdownCode .oc-codeWindowBody {
+  margin-top: 0;
+}
+
+.oc-dividerPart {
+  display: grid;
+  grid-template-columns: minmax(16px, 1fr) auto minmax(16px, 1fr);
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 4px 10px;
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.4;
+}
+
+.oc-dividerPart-compaction {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding-top: 6px;
+  text-align: center;
+}
+
+.oc-dividerCompactionLine {
+  position: absolute;
+  top: 12px;
+  left: 10px;
+  right: 10px;
+  height: 1px;
+  background: color-mix(in srgb, var(--oc-accent) 56%, var(--oc-border) 44%);
+}
+
+.oc-dividerPart-compaction .oc-dividerText {
+  position: relative;
+  display: inline-block;
+  padding: 0 8px;
+  background: var(--oc-surface-canvas);
+  color: color-mix(in srgb, var(--oc-accent) 24%, var(--oc-fg-muted) 76%);
+}
+
+.oc-dividerText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oc-dividerLine {
+  height: 1px;
+  background: color-mix(in srgb, var(--oc-border-strong) 65%, transparent 35%);
+}
+
+.oc-revertNotice {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 8px 44px 8px 10px;
+  background: color-mix(in srgb, var(--oc-surface-block) 84%, var(--oc-surface-canvas) 16%);
+  border-left: 3px solid color-mix(in srgb, var(--oc-accent) 55%, var(--oc-border-strong) 45%);
+}
+
+.oc-revertNoticeTitle {
+  font-weight: 600;
+}
+
+.oc-revertNoticeText {
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+}
+
+.oc-revertFileList {
+  display: grid;
+  gap: 6px;
+}
+
+.oc-revertFileRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-family: var(--oc-ui);
+  font-size: var(--oc-font-size-sm);
+}
+
+.oc-revertFileAdd {
+  color: var(--oc-diff-add-fg);
+}
+
+.oc-revertFileDel {
+  color: var(--oc-diff-del-fg);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-log,
+.oc-shell[data-oc-theme="claude"] .oc-parts {
+  gap: 12px;
+}
+
+.oc-chainItem {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  justify-self: stretch;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem {
+  --oc-chain-gutter: 30px;
+  --oc-chain-x: 18px;
+  --oc-chain-gap: 12px;
+  --oc-chain-anchor-y: 22px;
+  --oc-chain-dot-color: color-mix(in srgb, var(--oc-fg-muted) 72%, var(--oc-fg-primary) 28%);
+  position: relative;
+  overflow: visible;
+  padding-left: var(--oc-chain-gutter);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-assistant-part.oc-chainItem-part-reasoning,
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-assistant-meta,
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-assistant-error,
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-revert {
+  --oc-chain-anchor-y: 20px;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-assistant-meta {
+  --oc-chain-anchor-y: 50%;
+  --oc-chain-dot-color: #8fa0b3;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-assistant-part.oc-chainItem-part-text {
+  --oc-chain-anchor-y: 30px;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-part-tool {
+  --oc-chain-anchor-y: 50%;
+  --oc-chain-dot-color: #cf8450;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-tool-bash,
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-tool-write,
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-tool-edit,
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-tool-apply_patch,
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-tool-lsp,
+.oc-shell[data-oc-theme="claude"] .oc-chainItem[class*="oc-chainItem-tool-lsp_"] {
+  --oc-chain-anchor-y: 18px;
+  --oc-chain-dot-color: #d28a57;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-tool-question {
+  --oc-chain-anchor-y: 18px;
+  --oc-chain-dot-color: #74b0d8;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-tool-todowrite {
+  --oc-chain-anchor-y: 16px;
+  --oc-chain-dot-color: #d8ba63;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-assistant-error {
+  --oc-chain-dot-color: #d66d6d;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-revert {
+  --oc-chain-dot-color: #b99768;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--oc-chain-x) - 1px);
+  top: calc(var(--oc-chain-gap, 12px) * -0.5);
+  bottom: calc(var(--oc-chain-gap, 12px) * -0.5);
+  width: 2px;
+  background: var(--oc-chain-line, color-mix(in srgb, var(--oc-border-strong) 30%, transparent 70%));
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-first::before {
+  top: var(--oc-chain-anchor-y);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem-last::before {
+  bottom: calc(100% - var(--oc-chain-anchor-y));
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-chainItem::after {
+  content: "";
+  position: absolute;
+  left: var(--oc-chain-x);
+  top: var(--oc-chain-anchor-y);
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  border: 0;
+  border-radius: 999px;
+  background: var(--oc-chain-dot-color);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-turnMeta {
+  padding: 2px 0 2px;
+  color: color-mix(in srgb, var(--oc-fg-muted) 92%, var(--oc-accent) 8%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-turnMeta .oc-agentBadge {
+  gap: 5px;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-turnMeta .oc-agentSwatch {
+  display: none;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-turnUserWrap-theme-claude {
+  box-sizing: border-box;
+  padding-right: 116px;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-assistantReplyWrap-theme-claude {
+  box-sizing: border-box;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-turnUser {
+  padding: 12px 18px;
+  border: 1px solid color-mix(in srgb, var(--oc-palette-user-border) 72%, transparent 28%);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--oc-palette-user-bg) 94%, var(--oc-surface-elevated) 6%);
+  box-shadow: var(--oc-card-shadow);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-turnUser::before {
+  display: none;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-messageActions-topRightExternal {
+  right: 0;
+  top: 8px;
+  bottom: auto;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-messageActionBtn {
+  border-color: color-mix(in srgb, var(--oc-palette-action-border) 58%, transparent 42%);
+  background: color-mix(in srgb, var(--oc-palette-action-bg) 44%, var(--oc-surface-elevated) 56%);
+  box-shadow: var(--oc-tool-shadow);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-assistantReplyFooter {
+  margin-top: 6px;
+  padding: 0 14px;
+  color: color-mix(in srgb, var(--oc-fg-muted) 92%, var(--oc-accent) 8%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-part,
+.oc-shell[data-oc-theme="claude"] .oc-dock,
+.oc-shell[data-oc-theme="claude"] .oc-questionCard,
+.oc-shell[data-oc-theme="claude"] .oc-emptyState,
+.oc-shell[data-oc-theme="claude"] .oc-revertNotice {
+  box-shadow: var(--oc-card-shadow);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-assistantError {
+  padding: 8px 14px 8px 16px;
+  border: 1px solid color-mix(in srgb, var(--oc-error) 18%, var(--oc-border-strong) 82%);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--oc-error) 6%, var(--oc-message-assistant-bg) 94%);
+  box-shadow: var(--oc-card-shadow);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-assistantError::before {
+  display: none;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-part-text,
+.oc-shell[data-oc-theme="claude"] .oc-part-inline,
+.oc-shell[data-oc-theme="claude"] .oc-part-compact {
+  padding: 8px 12px 8px 14px;
+  background: var(--oc-palette-assistant-bg);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-part-text {
+  background: var(--oc-palette-assistant-bg);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-part-reasoning {
+  padding: 10px 12px 10px 16px;
+  border-left: 2px solid color-mix(in srgb, var(--oc-palette-rail) 38%, transparent 62%);
+  border-radius: calc(var(--oc-radius-sm) + 2px);
+  background: color-mix(in srgb, var(--oc-accent) 4%, var(--oc-palette-assistant-bg) 96%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-dividerPart {
+  gap: 10px;
+  padding: 8px 14px;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-dividerCompactionLine {
+  background: color-mix(in srgb, var(--oc-accent) 26%, transparent 74%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-revertNotice {
+  border-left-width: 1px;
+  border-radius: calc(var(--oc-radius-md) - 2px);
+  background: color-mix(in srgb, var(--oc-surface-block) 92%, var(--oc-surface-elevated) 8%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-log,
+.oc-shell[data-oc-theme="codex"] .oc-parts {
+  gap: 10px;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-turnUser {
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--oc-palette-user-border) 72%, var(--oc-native-edge) 28%);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--oc-palette-user-bg) 94%, var(--oc-surface-elevated) 6%) 0%, var(--oc-palette-user-bg) 100%);
+  box-shadow: var(--oc-native-inset), var(--oc-card-shadow);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-turnUserWrap-compactEnd {
+  width: fit-content;
+  max-width: min(72ch, calc(100% - 8px));
+  justify-self: end;
+  padding-bottom: 30px;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-turnUser-compactEnd {
+  width: fit-content;
+  max-width: 100%;
+  justify-self: stretch;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-turnUser::before {
+  display: none;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-messageActions-belowHover {
+  top: auto;
+  right: 16px;
+  bottom: 0;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-messageActionBtn {
+  background: color-mix(in srgb, var(--oc-palette-action-bg) 38%, var(--oc-surface-elevated) 62%);
+  box-shadow: var(--oc-tool-shadow);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-assistantReplyFooter {
+  margin-top: 6px;
+  padding: 0 12px;
+  color: color-mix(in srgb, var(--oc-fg-muted) 76%, transparent 24%);
+  font-size: var(--oc-font-size-sm);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-assistantReplyFooter .oc-messageActionBtn {
+  width: 22px;
+  height: 22px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-assistantReplyFooter .oc-messageActionBtn:hover:not(:disabled),
+.oc-shell[data-oc-theme="codex"] .oc-assistantReplyFooter .oc-messageActionBtn:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--oc-accent-strong) 10%, transparent 90%);
+  color: color-mix(in srgb, var(--oc-fg-primary) 76%, var(--oc-fg-muted) 24%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-part,
+.oc-shell[data-oc-theme="codex"] .oc-dock,
+.oc-shell[data-oc-theme="codex"] .oc-questionCard,
+.oc-shell[data-oc-theme="codex"] .oc-emptyState,
+.oc-shell[data-oc-theme="codex"] .oc-revertNotice {
+  border-color: var(--oc-native-edge);
+  background: color-mix(in srgb, var(--oc-surface-block) 92%, var(--oc-surface-elevated) 8%);
+  box-shadow: var(--oc-tool-shadow);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-assistantError {
+  padding: 8px 14px 8px 16px;
+  border: 1px solid color-mix(in srgb, var(--oc-error) 24%, var(--oc-border-strong) 76%);
+  border-radius: 12px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--oc-message-assistant-bg) 94%, var(--oc-surface-elevated) 6%) 0%, color-mix(in srgb, var(--oc-error) 6%, var(--oc-message-assistant-bg) 94%) 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent 92%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-assistantError::before {
+  display: none;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-part-text,
+.oc-shell[data-oc-theme="codex"] .oc-part-inline,
+.oc-shell[data-oc-theme="codex"] .oc-part-compact {
+  padding: 10px 12px;
+  border-radius: calc(var(--oc-radius-md) + 4px);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--oc-palette-assistant-bg) 88%, var(--oc-surface-elevated) 12%) 0%, var(--oc-palette-assistant-bg) 100%);
+  box-shadow: var(--oc-native-inset);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-part-text {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--oc-palette-assistant-bg) 88%, var(--oc-surface-elevated) 12%) 0%, var(--oc-palette-assistant-bg) 100%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-part-reasoning {
+  padding: 10px 12px;
+  border-left: 0;
+  border-top: 1px solid color-mix(in srgb, var(--oc-accent) 18%, var(--oc-native-edge) 82%);
+  border-radius: calc(var(--oc-radius-md) + 4px);
+  background: color-mix(in srgb, var(--oc-accent) 8%, var(--oc-palette-assistant-bg) 92%);
+  box-shadow: var(--oc-native-inset);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-dividerPart {
+  padding: 8px 12px;
+  letter-spacing: 0.02em;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-revertNotice {
+  border-left: 0;
+  border-radius: calc(var(--oc-radius-md) + 2px);
+  background: color-mix(in srgb, var(--oc-surface-block) 88%, var(--oc-surface-canvas) 12%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexActivityGroup {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding-left: 10px;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexActivitySummary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: color-mix(in srgb, var(--oc-fg-muted) 82%, transparent 18%);
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexActivitySummary:hover,
+.oc-shell[data-oc-theme="codex"] .oc-codexActivitySummary:focus-visible {
+  background: color-mix(in srgb, var(--oc-accent-strong) 8%, transparent 92%);
+  color: color-mix(in srgb, var(--oc-fg-primary) 88%, var(--oc-fg-muted) 12%);
+  outline: none;
+  transform: translateX(2px);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexActivityText {
+  min-width: 0;
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexActivityDetails {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  opacity: 0;
+  padding-left: 0;
+  border-left: 0;
+  transition: grid-template-rows 180ms ease, opacity 160ms ease;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexActivityGroup.is-expanded .oc-codexActivityDetails {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-codexActivityDetailsClip {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+

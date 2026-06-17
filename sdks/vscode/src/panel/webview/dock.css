@@ -1,0 +1,272 @@
+.oc-question,
+.oc-questionList,
+.oc-questionItems,
+.oc-questionOptions {
+  display: grid;
+  gap: 10px;
+}
+
+.oc-questionProgress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oc-questionProgressItem {
+  width: 16px;
+  height: 2px;
+  padding: 0;
+  border: 0;
+  background: color-mix(in srgb, var(--oc-fg-muted) 42%, transparent 58%);
+  cursor: pointer;
+}
+
+.oc-questionProgressItem.is-done {
+  background: color-mix(in srgb, var(--oc-accent) 68%, transparent 32%);
+}
+
+.oc-questionProgressItem.is-active {
+  background: var(--oc-fg-primary);
+}
+
+.oc-questionCard {
+  display: grid;
+  gap: 6px;
+  border-color: color-mix(in srgb, var(--oc-palette-block-border) 72%, transparent 28%);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-palette-block-bg);
+}
+
+.oc-questionDetails {
+  display: grid;
+  gap: 6px;
+}
+
+.oc-questionItemHeadMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.oc-questionSummaryAction {
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.4;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.oc-questionSummaryAction:hover {
+  color: var(--oc-fg-primary);
+}
+
+.oc-questionItemHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.oc-questionState,
+.oc-questionHint,
+.oc-questionAnswerEmpty {
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.5;
+}
+
+.oc-questionPrompt {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.oc-questionOption {
+  appearance: none;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--oc-palette-block-border) 72%, transparent 28%);
+  background: color-mix(in srgb, var(--oc-palette-selection-bg) 84%, var(--oc-palette-block-bg) 16%);
+  color: var(--oc-fg-primary);
+  text-align: left;
+  border-radius: var(--oc-radius-sm);
+}
+
+button.oc-questionOption,
+label.oc-questionOption {
+  cursor: pointer;
+}
+
+button.oc-questionOption:hover,
+label.oc-questionOption:hover {
+  background: color-mix(in srgb, var(--oc-palette-selection-bg) 58%, var(--oc-palette-block-bg) 42%);
+}
+
+.oc-questionOption.is-selected {
+  border-color: color-mix(in srgb, var(--oc-accent) 62%, transparent 38%);
+  background: color-mix(in srgb, var(--oc-accent) 12%, var(--oc-surface-control) 88%);
+}
+
+.oc-question-answered .oc-questionOption:not(.is-selected) {
+  opacity: 0.72;
+}
+
+.oc-questionMark {
+  color: var(--oc-warning);
+  font-family: var(--oc-mono);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.oc-questionOptionBody {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.oc-questionOptionLabel {
+  color: var(--oc-fg-primary);
+  line-height: 1.5;
+}
+
+.oc-questionOptionDescription,
+.oc-questionAnswerText {
+  color: var(--oc-fg-muted);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.oc-questionInput {
+  margin-top: 6px;
+  min-height: 54px;
+  resize: vertical;
+}
+
+.oc-dock-warning {
+  --oc-warning-dock-bg: color-mix(in srgb, var(--oc-warning) 72%, var(--oc-warning-dock-mix-base) 28%);
+  --oc-warning-dock-bg-hover: color-mix(in srgb, var(--oc-warning) 82%, var(--oc-warning-dock-mix-hover) 18%);
+  --oc-warning-dock-fg: var(--oc-warning-dock-fg-strong);
+  border-color: color-mix(in srgb, var(--oc-warning) 42%, var(--oc-border) 58%);
+}
+
+.oc-dock-warning .oc-dockHeader {
+  margin: -10px -12px 10px;
+  padding: 8px 12px;
+  background: var(--oc-warning-dock-bg);
+  color: var(--oc-warning-dock-fg);
+}
+
+.oc-dock-warning .oc-kicker,
+.oc-dock-warning .oc-dockTitle {
+  color: var(--oc-warning-dock-fg);
+}
+
+.oc-dock-warning .oc-btn,
+.oc-dock-warning .oc-btn-primary {
+  border-color: transparent;
+  background: var(--oc-warning-dock-bg);
+  color: var(--oc-warning-dock-fg);
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.oc-dock-warning .oc-btn:hover:not(:disabled),
+.oc-dock-warning .oc-btn-primary:hover:not(:disabled) {
+  background: var(--oc-warning-dock-bg-hover);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--oc-warning) 30%, transparent 70%);
+}
+
+.oc-dock-error {
+  border-color: color-mix(in srgb, var(--oc-error) 42%, var(--oc-border) 58%);
+}
+
+.oc-subagentNavDock {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 10px;
+}
+
+.oc-subagentNavActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.oc-subagentNavActions .oc-btn {
+  padding: 6px 10px;
+  min-height: 32px;
+}
+
+.oc-subagentDock {
+  display: grid;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.oc-subagentDockHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.oc-subagentReadonly {
+  flex: 0 0 auto;
+  color: var(--oc-fg-muted);
+  font-size: var(--oc-font-size-lg);
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.oc-subagentDockStatus .oc-composerActions {
+  padding: 0;
+  gap: 8px;
+}
+
+.oc-subagentDockStatus .oc-composerActionsMain {
+  min-height: 20px;
+}
+
+.oc-subagentDockStatus .oc-contextButtonRing {
+  width: 18px;
+  height: 18px;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-questionCard {
+  border-color: color-mix(in srgb, var(--oc-palette-block-border) 62%, transparent 38%);
+  background: color-mix(in srgb, var(--oc-palette-block-bg) 82%, var(--oc-surface-elevated) 18%);
+  box-shadow: var(--oc-card-shadow);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-questionOption {
+  border-radius: calc(var(--oc-radius-sm) + 2px);
+  background: color-mix(in srgb, var(--oc-palette-selection-bg) 78%, var(--oc-palette-block-bg) 22%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-dock-warning .oc-dockHeader {
+  border-radius: calc(var(--oc-radius-md) - 6px) calc(var(--oc-radius-md) - 6px) 0 0;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-questionCard {
+  border-color: color-mix(in srgb, var(--oc-palette-block-border) 78%, transparent 22%);
+  background: color-mix(in srgb, var(--oc-palette-block-bg) 94%, var(--oc-surface-elevated) 6%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-questionOption {
+  border-radius: calc(var(--oc-radius-sm) + 1px);
+  background: color-mix(in srgb, var(--oc-palette-selection-bg) 88%, var(--oc-palette-block-bg) 12%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-dock-warning .oc-dockHeader {
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, black 10%, transparent 90%);
+}

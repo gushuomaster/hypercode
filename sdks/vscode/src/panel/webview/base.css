@@ -1,0 +1,481 @@
+@counter-style oc-md-ordered {
+  system: extends decimal;
+  suffix: ") ";
+}
+
+@counter-style oc-md-unordered {
+  system: cyclic;
+  symbols: "-";
+  suffix: " ";
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--oc-surface-canvas);
+  color: var(--oc-fg-primary);
+}
+
+body,
+button {
+  font-family: var(--oc-ui);
+  font-size: var(--oc-font-size);
+}
+
+textarea {
+  font-family: var(--oc-mono);
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+button {
+  appearance: none;
+}
+
+.oc-sessionBlock,
+.oc-turnUser,
+.oc-dock,
+.oc-questionCard,
+.oc-emptyState,
+.oc-part {
+  border: 1px solid var(--oc-border);
+  background: var(--oc-surface-block);
+  border-radius: var(--oc-radius-md);
+}
+
+.oc-kicker,
+.oc-partMeta,
+.oc-entryTime,
+.oc-help,
+.oc-dockText,
+.oc-emptyText,
+.oc-errorText,
+.oc-partEmpty {
+  color: var(--oc-fg-muted);
+}
+
+.oc-kicker,
+.oc-partMeta {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: var(--oc-font-size-sm);
+}
+
+.oc-emptyTitle {
+  margin: 6px 0 0;
+  font-size: var(--oc-font-size-xl);
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.oc-emptyText,
+.oc-dockText,
+.oc-errorText {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-size: var(--oc-font-size);
+}
+
+.oc-emptyTips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.oc-emptyTip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--oc-border-strong) 62%, transparent 38%);
+  border-radius: var(--oc-radius-sm);
+  background: color-mix(in srgb, var(--oc-surface-control) 80%, transparent 20%);
+  color: var(--oc-fg-muted);
+  line-height: 1.35;
+}
+
+.oc-emptyTipCommand {
+  flex: 0 0 auto;
+  color: var(--oc-fg-primary);
+  font-family: var(--oc-mono);
+  font-size: var(--oc-font-size-sm);
+}
+
+.oc-entryHeader,
+.oc-partHeader,
+.oc-dockHeader,
+.oc-composerHeader,
+.oc-composerMeta,
+.oc-composerActions,
+.oc-actionRow,
+.oc-pillRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.oc-entryRole,
+.oc-dockTitle,
+.oc-inlineValue {
+  font-size: var(--oc-font-size-lg);
+  font-weight: 600;
+}
+
+.oc-composerMeta {
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.oc-composerContextWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.oc-composerActionsMain {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.oc-entryTime {
+  font-size: var(--oc-font-size-sm);
+}
+
+.oc-queuedBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--oc-warning) 70%, transparent 30%);
+  color: var(--oc-warning);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.oc-part,
+.oc-dock,
+.oc-questionCard,
+.oc-emptyState {
+  padding: 10px 12px;
+}
+
+.oc-composer {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.oc-composer.is-compactFooter {
+  gap: 4px;
+}
+
+.oc-list {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.6;
+  font-size: var(--oc-font-size);
+}
+
+.oc-pill,
+.oc-chip {
+  border: 1px solid var(--oc-border-strong);
+  background: var(--oc-surface-control);
+  color: var(--oc-fg-primary);
+  padding: 5px 9px;
+  font-size: var(--oc-font-size-sm);
+  border-radius: var(--oc-radius-sm);
+}
+
+.oc-pill-file {
+  color: var(--oc-fg-muted);
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.oc-pillFileType {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  padding: 4px 6px;
+  background: var(--vscode-terminal-ansiBlue);
+  color: var(--oc-fg-primary);
+  flex: 0 0 auto;
+  font-weight: 700;
+}
+
+.oc-pillFilePath {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding: 5px 9px;
+}
+
+.oc-pill-skill .oc-pillFileType {
+  background: var(--oc-pill-skill-fill);
+}
+
+.oc-pill-command .oc-pillFileType {
+  background: color-mix(in srgb, var(--vscode-terminal-ansiCyan) 72%, var(--vscode-terminal-ansiGreen) 28%);
+}
+
+.oc-pill-command.oc-pillButton {
+  position: relative;
+}
+
+.oc-pill-command.oc-pillButton::after {
+  content: attr(data-preview);
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 4;
+  display: block;
+  width: min(520px, calc(100vw - 48px));
+  max-height: 240px;
+  overflow: hidden;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--oc-border-strong) 68%, transparent 32%);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--oc-surface-canvas) 94%, var(--vscode-terminal-ansiCyan) 6%);
+  color: var(--oc-fg-primary);
+  font-size: var(--oc-font-size-sm);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 16px 34px color-mix(in srgb, black 24%, transparent 76%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.oc-pill-command.oc-pillButton[data-preview=""]::after {
+  content: none;
+}
+
+.oc-pill-command.oc-pillButton:hover::after,
+.oc-pill-command.oc-pillButton:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.oc-pillButton {
+  appearance: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.oc-pillButton:hover,
+.oc-pillButton:focus-visible {
+  border-color: color-mix(in srgb, var(--oc-accent) 62%, var(--oc-border-strong) 38%);
+  background: color-mix(in srgb, var(--oc-accent) 12%, var(--oc-surface-control) 88%);
+  color: var(--oc-fg-primary);
+  outline: none;
+}
+
+.oc-chip {
+  cursor: pointer;
+}
+
+.oc-chip.is-active,
+.oc-btn-primary {
+  background: var(--oc-palette-action-bg);
+  color: var(--oc-palette-action-fg);
+  border-color: var(--oc-palette-action-border);
+}
+
+.oc-btn {
+  border: 1px solid var(--oc-palette-block-border);
+  background: var(--oc-palette-selection-bg);
+  color: var(--oc-fg-primary);
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: var(--oc-radius-sm);
+}
+
+.oc-toolTrigger,
+.oc-inlineLinkBtn {
+  appearance: none;
+  border: 0;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+}
+
+.oc-toolTrigger {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.oc-inlineLinkBtn {
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+  font-size: var(--oc-font-size-sm);
+}
+
+.oc-inlineLinkBtn:hover {
+  text-decoration: underline;
+}
+
+.oc-toggleBtn {
+  border: 1px solid var(--oc-border-strong);
+  color: var(--oc-fg-muted);
+  padding: 4px 8px;
+  font-size: var(--oc-font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.oc-toggleBtn.is-active {
+  color: var(--oc-fg-primary);
+  background: var(--oc-surface-control);
+}
+
+.oc-btn:disabled,
+.oc-composerInput:disabled,
+.oc-answerInput:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-pill-command,
+.oc-shell[data-oc-theme="claude"] .oc-pill-skill {
+  border-color: color-mix(in srgb, var(--oc-border-strong) 42%, transparent 58%);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--oc-surface-elevated) 82%, var(--oc-surface-control) 18%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 22%, transparent 78%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-pill-command .oc-pillFileType,
+.oc-shell[data-oc-theme="claude"] .oc-pill-skill .oc-pillFileType {
+  padding: 4px 7px;
+  border-right: 1px solid color-mix(in srgb, var(--oc-border-strong) 28%, transparent 72%);
+  color: color-mix(in srgb, var(--oc-fg-primary) 82%, var(--oc-surface-canvas) 18%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-pill-command .oc-pillFileType {
+  background: color-mix(in srgb, var(--oc-accent) 18%, var(--oc-surface-elevated) 82%);
+  font-style: italic;
+  letter-spacing: 0.04em;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-pill-skill .oc-pillFileType {
+  background: color-mix(in srgb, var(--oc-pill-skill-fill) 72%, white 28%);
+  letter-spacing: 0.06em;
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-pill-command.oc-pillButton::after {
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--oc-surface-elevated) 96%, var(--oc-surface-control) 4%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-btn {
+  border-color: color-mix(in srgb, var(--oc-palette-block-border) 72%, transparent 28%);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--oc-palette-selection-bg) 80%, var(--oc-surface-elevated) 20%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 22%, transparent 78%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-btn-primary {
+  background: color-mix(in srgb, var(--oc-palette-action-bg) 84%, var(--oc-accent) 16%);
+  color: var(--oc-palette-action-fg);
+  box-shadow: 0 12px 22px color-mix(in srgb, var(--oc-accent) 22%, transparent 78%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-toggleBtn {
+  border-radius: 12px;
+  border-color: color-mix(in srgb, var(--oc-border-strong) 48%, transparent 52%);
+}
+
+.oc-shell[data-oc-theme="claude"] .oc-inlineLinkBtn {
+  color: color-mix(in srgb, var(--oc-accent) 78%, var(--oc-fg-primary) 22%);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--oc-accent) 38%, transparent 62%);
+  text-underline-offset: 0.16em;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-pill-command,
+.oc-shell[data-oc-theme="codex"] .oc-pill-skill {
+  border-color: color-mix(in srgb, var(--oc-border-strong) 68%, transparent 32%);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--oc-surface-control) 90%, var(--oc-surface-elevated) 10%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent 92%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-pill-command .oc-pillFileType,
+.oc-shell[data-oc-theme="codex"] .oc-pill-skill .oc-pillFileType {
+  min-width: 62px;
+  justify-content: center;
+  padding: 4px 8px;
+  font-family: var(--oc-mono);
+  font-size: var(--oc-font-size-xs);
+  letter-spacing: 0.08em;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-pill-command .oc-pillFileType {
+  background: color-mix(in srgb, var(--oc-accent-strong) 76%, var(--oc-surface-elevated) 24%);
+  color: var(--oc-text-accent);
+  font-family: var(--oc-mono);
+  text-transform: uppercase;
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-pill-skill .oc-pillFileType {
+  background: color-mix(in srgb, var(--oc-pill-skill-fill) 82%, black 18%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-pill-command.oc-pillButton::after {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--oc-surface-elevated) 96%, var(--oc-accent) 4%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-btn {
+  border-color: color-mix(in srgb, var(--oc-palette-block-border) 78%, transparent 22%);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--oc-palette-selection-bg) 88%, var(--oc-surface-elevated) 12%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-btn-primary {
+  background: var(--oc-palette-action-bg);
+  color: var(--oc-accent);
+  border: 1px solid color-mix(in srgb, var(--oc-palette-action-border) 74%, transparent 26%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 9%, transparent 91%), 0 0 0 1px color-mix(in srgb, var(--oc-accent) 12%, transparent 88%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-toggleBtn {
+  border-radius: 10px;
+  border-color: color-mix(in srgb, var(--oc-border-strong) 72%, transparent 28%);
+}
+
+.oc-shell[data-oc-theme="codex"] .oc-inlineLinkBtn {
+  color: color-mix(in srgb, var(--oc-accent-strong) 88%, var(--oc-fg-primary) 12%);
+}

@@ -1,0 +1,154 @@
+import * as vscode from "vscode"
+
+export type DiffMode = "unified" | "split"
+export type PanelTheme = "classic" | "codex" | "claude"
+export type PanelColorScheme = "default" | "nocturne" | "orchid" | "verdant" | "solar" | "graphite" | "ember"
+
+export type DisplaySettings = {
+  showInternals: boolean
+  showThinking: boolean
+  diffMode: DiffMode
+  compactSkillInvocations?: boolean
+  showSkillsInSlashAutocomplete?: boolean
+  panelTheme: PanelTheme
+  panelColorScheme?: PanelColorScheme
+}
+
+const SECTION = "hypercode"
+
+export const HTTP_PROXY_KEY = "httpProxy"
+export const CLI_PATH_KEY = "cliPath"
+export const OPENCODE_PATH_KEY = "opencodePath"
+export const SHOW_INTERNALS_KEY = "showInternals"
+export const SHOW_THINKING_KEY = "showThinking"
+export const DIFF_MODE_KEY = "diffMode"
+export const COMPACT_SKILL_INVOCATIONS_KEY = "compactSkillInvocations"
+export const SHOW_SKILLS_IN_SLASH_AUTOCOMPLETE_KEY = "showSkillsInSlashAutocomplete"
+export const PANEL_THEME_KEY = "panelTheme"
+export const PANEL_COLOR_SCHEME_KEY = "panelColorScheme"
+
+export function getDisplaySettings(): DisplaySettings {
+  const config = vscode.workspace.getConfiguration(SECTION)
+  return {
+    showInternals: config.get<boolean>(SHOW_INTERNALS_KEY, false),
+    showThinking: config.get<boolean>(SHOW_THINKING_KEY, true),
+    diffMode: config.get<DiffMode>(DIFF_MODE_KEY, "unified") === "split" ? "split" : "unified",
+    compactSkillInvocations: config.get<boolean>(COMPACT_SKILL_INVOCATIONS_KEY, true),
+    showSkillsInSlashAutocomplete: config.get<boolean>(SHOW_SKILLS_IN_SLASH_AUTOCOMPLETE_KEY, false),
+    panelTheme: normalizePanelTheme(config.get<string>(PANEL_THEME_KEY, "classic")),
+    panelColorScheme: normalizePanelColorScheme(config.get<string>(PANEL_COLOR_SCHEME_KEY, "default")),
+  }
+}
+
+export function getCliPath() {
+  const config = vscode.workspace.getConfiguration(SECTION)
+  const direct = normalizeCliPath(config.get<string>(CLI_PATH_KEY, ""))
+  if (direct) {
+    return direct
+  }
+
+  return normalizeCliPath(config.get<string>(OPENCODE_PATH_KEY, ""))
+}
+
+export function getOpencodePath() {
+  return getCliPath()
+}
+
+export function getHttpProxy() {
+  const config = vscode.workspace.getConfiguration(SECTION)
+  const proxy = config.get<string>(HTTP_PROXY_KEY, "").trim()
+
+  if (proxy) {
+    return proxy
+  }
+
+  if (hasInheritedProxy()) {
+    return ""
+  }
+
+  return vscode.workspace.getConfiguration("http").get<string>("proxy", "").trim()
+}
+
+export function affectsDisplaySettings(event: vscode.ConfigurationChangeEvent) {
+  return event.affectsConfiguration(`${SECTION}.${SHOW_INTERNALS_KEY}`)
+    || event.affectsConfiguration(`${SECTION}.${SHOW_THINKING_KEY}`)
+    || event.affectsConfiguration(`${SECTION}.${DIFF_MODE_KEY}`)
+    || event.affectsConfiguration(`${SECTION}.${COMPACT_SKILL_INVOCATIONS_KEY}`)
+    || event.affectsConfiguration(`${SECTION}.${SHOW_SKILLS_IN_SLASH_AUTOCOMPLETE_KEY}`)
+    || event.affectsConfiguration(`${SECTION}.${PANEL_THEME_KEY}`)
+    || event.affectsConfiguration(`${SECTION}.${PANEL_COLOR_SCHEME_KEY}`)
+}
+
+export function affectsHttpProxySetting(event: vscode.ConfigurationChangeEvent) {
+  return event.affectsConfiguration(`${SECTION}.${HTTP_PROXY_KEY}`)
+    || event.affectsConfiguration("http.proxy")
+}
+
+export async function updatePanelTheme(theme: PanelTheme) {
+  await vscode.workspace.getConfiguration(SECTION).update(PANEL_THEME_KEY, normalizePanelTheme(theme), vscode.ConfigurationTarget.Global)
+}
+
+export async function updatePanelColorScheme(colorScheme: PanelColorScheme) {
+  await vscode.workspace.getConfiguration(SECTION).update(PANEL_COLOR_SCHEME_KEY, normalizePanelColorScheme(colorScheme), vscode.ConfigurationTarget.Global)
+}
+
+export function openSettingsQuery() {
+  return "@ext:sst-dev.hypercode"
+}
+
+export function proxyRestartMessage() {
+  return "Proxy settings changed. Reload VS Code so HyperCode runtime picks them up."
+}
+
+function hasInheritedProxy() {
+  return [
+    process.env.HTTP_PROXY,
+    process.env.HTTPS_PROXY,
+    process.env.http_proxy,
+    process.env.https_proxy,
+  ].some((value) => typeof value === "string" && value.trim().length > 0)
+}
+
+function normalizeCliPath(value: string) {
+  const trimmed = value.trim()
+  if (trimmed.length < 2) {
+    return trimmed
+  }
+
+  if (
+    (trimmed.startsWith(`"`) && trimmed.endsWith(`"`))
+    || (trimmed.startsWith(`'`) && trimmed.endsWith(`'`))
+  ) {
+    return trimmed.slice(1, -1).trim()
+  }
+
+  return trimmed
+}
+
+function normalizePanelTheme(value: string): PanelTheme {
+  switch (value) {
+    case "classic":
+    case "codex":
+    case "claude":
+      return value
+    case "default":
+      return "classic"
+    default:
+      return "classic"
+  }
+}
+
+function normalizePanelColorScheme(value: string): PanelColorScheme {
+  switch (value) {
+    case "default":
+    case "nocturne":
+    case "orchid":
+    case "verdant":
+    case "solar":
+    case "graphite":
+    case "ember":
+      return value
+    default:
+      return "default"
+  }
+}
