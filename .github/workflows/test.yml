@@ -98,8 +98,6 @@ jobs:
           - name: windows
             host: windows-latest
     runs-on: ${{ matrix.settings.host }}
-    env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
     defaults:
       run:
         shell: bash
@@ -117,61 +115,11 @@ jobs:
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
 
-      - name: Read Playwright version
-        id: playwright-version
-        run: |
-          version=$(node -e 'console.log(require("./package.json").workspaces.catalog["@playwright/test"])')
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Restore Playwright browsers cache
-        id: playwright-cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
-          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ steps.playwright-version.outputs.version }}-chromium
-
-      - name: Install Playwright system dependencies
-        if: runner.os == 'Linux'
-        working-directory: packages/app
-        run: npx --no-install playwright install-deps chromium
-
-      - name: Install Playwright browsers (attempt 1)
-        id: playwright-install-1
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        working-directory: packages/app
-        continue-on-error: true
-        timeout-minutes: 15
-        run: npx --no-install playwright install chromium
-        env:
-          DEBUG: pw:install
-          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: "120000"
-
-      - name: Reset Playwright browsers directory before retry
-        if: steps.playwright-cache.outputs.cache-hit != 'true' && steps.playwright-install-1.outcome == 'failure'
-        run: |
-          node -e "const fs = require('fs'); fs.rmSync(process.env.PLAYWRIGHT_BROWSERS_PATH, { recursive: true, force: true }); fs.mkdirSync(process.env.PLAYWRIGHT_BROWSERS_PATH, { recursive: true });"
-
-      - name: Install Playwright browsers (attempt 2)
-        id: playwright-install-2
-        if: steps.playwright-cache.outputs.cache-hit != 'true' && steps.playwright-install-1.outcome == 'failure'
-        working-directory: packages/app
-        timeout-minutes: 15
-        run: npx --no-install playwright install chromium
-        env:
-          DEBUG: pw:install
-          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: "120000"
-
-      - name: Save Playwright browsers cache
-        if: steps.playwright-cache.outputs.cache-hit != 'true' && (steps.playwright-install-1.outcome == 'success' || steps.playwright-install-2.outcome == 'success')
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
-          key: ${{ steps.playwright-cache.outputs.cache-primary-key }}
-
       - name: Run app e2e tests
         run: bun --cwd packages/app test:e2e:local
         env:
           CI: true
+          PLAYWRIGHT_BROWSER_CHANNEL: chrome
         timeout-minutes: 30
 
       - name: Upload Playwright artifacts
