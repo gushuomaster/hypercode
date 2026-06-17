@@ -1537,19 +1537,10 @@ it.instance(
         .shell({
           sessionID: chat.id,
           agent: "build",
-          command: `node -e "process.stdout.write('shell-ready\\n'); setTimeout(() => process.exit(0), 1000)"`,
+          command: `node -e "setTimeout(() => process.exit(0), 1000)"`,
         })
         .pipe(Effect.forkChild)
-      yield* pollWithTimeout(
-        Effect.gen(function* () {
-          const msgs = yield* MessageV2.filterCompactedEffect(chat.id)
-          const taskMsg = msgs.find((item) => item.info.role === "assistant")
-          const tool = taskMsg ? toolPart(taskMsg.parts) : undefined
-          if (tool?.state.status === "running" && tool.state.metadata?.output.includes("shell-ready")) return true
-        }),
-        "timed out waiting for shell ready output",
-        "5 seconds",
-      )
+      yield* waitForBusy(chat.id)
 
       const queued = yield* Deferred.make<void>()
       const loop = yield* Effect.gen(function* () {
@@ -1591,19 +1582,10 @@ it.instance(
         .shell({
           sessionID: chat.id,
           agent: "build",
-          command: `node -e "process.stdout.write('shell-ready\\n'); setTimeout(() => process.exit(0), 1000)"`,
+          command: `node -e "setTimeout(() => process.exit(0), 1000)"`,
         })
         .pipe(Effect.forkChild)
-      yield* pollWithTimeout(
-        Effect.gen(function* () {
-          const msgs = yield* MessageV2.filterCompactedEffect(chat.id)
-          const taskMsg = msgs.find((item) => item.info.role === "assistant")
-          const tool = taskMsg ? toolPart(taskMsg.parts) : undefined
-          if (tool?.state.status === "running" && tool.state.metadata?.output.includes("shell-ready")) return true
-        }),
-        "timed out waiting for shell ready output",
-        "5 seconds",
-      )
+      yield* waitForBusy(chat.id)
 
       const queuedA = yield* Deferred.make<void>()
       const queuedB = yield* Deferred.make<void>()
