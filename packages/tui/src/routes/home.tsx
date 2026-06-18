@@ -1,6 +1,7 @@
 import { Prompt, type PromptRef } from "../component/prompt"
 import { createEffect, createMemo, createSignal, onMount } from "solid-js"
-import { Logo } from "../component/logo"
+import { useTheme } from "../context/theme"
+import { TextAttributes } from "@opentui/core"
 import { useSync } from "../context/sync"
 import { Toast } from "../ui/toast"
 import { useArgs } from "../context/args"
@@ -14,6 +15,27 @@ import { useTuiConfig } from "../config"
 import { HomeSessionDestinationProvider } from "./home/session-destination"
 
 let once = false
+
+const HYPERCODE_ART = [
+  "█   █  █   █  ████   █████  ████    ████   ███   ████   █████",
+  "█   █   █ █   █   █  █      █   █  █      █   █  █   █  █    ",
+  "█████    █    ████   ███    ████   █      █   █  █   █  ███  ",
+  "█   █    █    █      █      █  █   █      █   █  █   █  █    ",
+  "█   █    █    █      █████  █   █   ████   ███   ████   █████",
+]
+
+function HyperCodeLogo() {
+  const { theme } = useTheme()
+  return (
+    <box flexDirection="column" alignItems="center">
+      {HYPERCODE_ART.map((line) => (
+        <text fg={theme.text} attributes={TextAttributes.BOLD} selectable={false}>
+          {line}
+        </text>
+      ))}
+    </box>
+  )
+}
 const placeholder = {
   normal: ["Fix a TODO in the codebase", "What is the tech stack of this project?", "Fix broken tests"],
   shell: ["ls -la", "git status", "pwd"],
@@ -74,7 +96,7 @@ export function Home() {
         <box height={4} minHeight={0} flexShrink={1} />
         <box flexShrink={0}>
           <pluginRuntime.Slot name="home_logo" mode="replace">
-            <Logo />
+            <HyperCodeLogo />
           </pluginRuntime.Slot>
         </box>
         <box height={1} minHeight={0} flexShrink={1} />
