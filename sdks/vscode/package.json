@@ -127,6 +127,10 @@
         "title": "HyperCode: Open Output"
       },
       {
+        "command": "hypercode.openLicenseFile",
+        "title": "HyperCode: 打开授权文件"
+      },
+      {
         "command": "hypercode.openSettings",
         "title": "HyperCode: Open Settings",
         "icon": "$(gear)"

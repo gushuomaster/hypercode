@@ -15,6 +15,7 @@ import { buildEditorSeed, buildExplorerSeed, type LaunchSeed } from "./launch-co
 import { applySessionSearchCapabilityResult, CapabilityState, CapabilityStore, classifyCapabilityError, createEmptyCapabilities, type RuntimeCapabilities } from "./capabilities"
 import { SidebarProvider } from "../sidebar/provider"
 import { buildSessionPickerPayload } from "../panel/provider/actions"
+import { openLicenseFile } from "../license"
 
 type SessionActionRuntime = Pick<WorkspaceRuntime, "workspaceId" | "dir" | "name" | "state"> & {
   sdk?: {
@@ -70,6 +71,9 @@ export function commands(
     }),
     vscode.commands.registerCommand("hypercode.openOutput", () => {
       out.show(true)
+    }),
+    vscode.commands.registerCommand("hypercode.openLicenseFile", async () => {
+      await openLicenseFile()
     }),
     vscode.commands.registerCommand("hypercode.openSettings", async () => {
       await vscode.commands.executeCommand("workbench.action.openSettings", openSettingsQuery())

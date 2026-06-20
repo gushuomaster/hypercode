@@ -29,6 +29,7 @@ import { DbCommand } from "./cli/cmd/db"
 import { errorMessage } from "./util/error"
 import { PluginCommand } from "./cli/cmd/plug"
 import { Heap } from "./cli/heap"
+import { LicenseCommand, enforceLicenseGate } from "./cli/cmd/license"
 
 const args = hideBin(process.argv)
 
@@ -70,6 +71,8 @@ const cli = yargs(args)
       process.env.OPENCODE_PURE = "1"
     }
 
+    await enforceLicenseGate(args)
+
     Heap.start()
 
     process.env.AGENT = "1"
@@ -101,6 +104,7 @@ const cli = yargs(args)
   .command(SessionCommand)
   .command(PluginCommand)
   .command(DbCommand)
+  .command(LicenseCommand)
   .fail((msg, err) => {
     if (
       msg?.startsWith("Unknown argument") ||
