@@ -1,0 +1,747 @@
+# HyperCode 项目阶段性汇报（更新版）
+
+> 汇报日期：2026-06-16  
+> 汇报版本：正式 upstream sync / 远端 CI 闭环更新版  
+> 当前主线：从“品牌化可行性验证”推进到“正式同步分支远端验证 + 品牌残留持续治理”。
+
+---
+
+## 一、项目总体定位
+
+HyperCode 项目的目标不是简单地把 `OpenCode` 全局替换为 `HyperCode`，而是基于 OpenCode 上游项目构建一个可长期维护、可持续同步、可交付给最终用户的 **HyperCode 品牌化发行版**。
+
+项目最终面向用户交付的不是源码，而是：
+
+```txt
+1. Windows 可执行文件：hypercode.exe
+2. VSCode 插件包：hypercode.vsix
+```
+
+因此，项目判断标准也不是“源码里是否完全没有 opencode 字符串”，而是：
+
+```txt
+用户实际使用 exe / VSIX / CLI / TUI / VSCode 插件时，看到的是 HyperCode 品牌；
+内部兼容、上游同步、历史配置和协议 ID 中必要的 opencode 标识可以保留。
+```
+
+当前项目采用的核心策略仍然是：
+
+```txt
+用户可见层：HyperCode
+内部兼容层：保留必要 opencode
+上游关系：OpenCode upstream 持续同步
+交付方式：exe + VSIX 产物验收
+```
+
+---
+
+## 二、与上一阶段相比的核心变化
+
+上一阶段的重点是验证：
+
+```txt
+HyperCode 品牌化主链路是否能跑通；
+exe / VSIX 是否能构建；
+OpenCode upstream sync 是否具备可行性；
+rebrand 脚本是否能从简单替换升级为安全审计和修复工具。
+```
+
+目前已经进入新的阶段：
+
+```txt
+正式 upstream sync 分支已经推进到远端；
+CI 已经开始在 GitHub Actions 上进行跨平台验证；
+项目重点从“本地能否跑通”转向“远端是否可持续验证、是否可合并、是否可作为后续正式版本基础”。
+```
+
+这意味着项目已经不再停留在“实验验证”阶段，而是进入了更接近工程交付的阶段。
+
+---
+
+## 三、当前最新进展
+
+### 1. 正式同步分支已推进到远端
+
+当前正式同步工作已经从本地演练推进到远端分支和 PR 检查流程。
+
+当前同步分支为：
+
+```txt
+sync/opencode-upstream-20260611
+```
+
+该分支用于承载本轮从 OpenCode upstream 同步后的 HyperCode 修改，不直接在 `dev` 上做高风险合并。
+
+这样做的好处是：
+
+```txt
+1. dev 分支保持相对稳定；
+2. upstream merge 风险集中在 sync 分支；
+3. 可以通过 PR checks 做远端验证；
+4. 验证通过后再决定是否合回 dev；
+5. 避免把半成品同步直接带入主开发分支。
+```
+
+---
+
+### 2. 正式 upstream sync 已完成多轮修复和 push
+
+本轮正式同步过程中，已经不只是“能 merge”，而是进入了“发现问题 -> 定位问题 -> 最小修复 -> 重新 push -> 等待 CI 验证”的闭环。
+
+已经处理过的典型问题包括：
+
+```txt
+1. 品牌化改动与 upstream 新代码之间的冲突；
+2. TypeScript 类型检查问题；
+3. 单元测试中由异步时序变化引发的失败；
+4. Windows / Linux 行为差异导致的潜在 CI 风险；
+5. VSCode 插件独立依赖环境问题；
+6. 文件 mode / symlink 在跨平台环境下可能引发的差异问题。
+```
+
+这说明当前同步不是单次脚本化替换，而是在按正式维护流程推进。
+
+---
+
+### 3. 远端 PR / CI 已启动
+
+远端 GitHub Actions 已经开始对正式同步分支进行检查。
+
+当前已确认的远端检查项包括：
+
+```txt
+check-standards
+check-compliance
+unit (linux)
+unit (windows)
+e2e (linux)
+e2e (windows)
+```
+
+截至本次汇报整理时，已确认的状态是：
+
+```txt
+check-standards：已通过
+check-compliance：已通过
+unit / e2e：新一轮 run 已启动，仍在远端执行中
+```
+
+需要特别说明的是：前面看到的 `unit (windows)` 失败页面属于旧 run，不是最新提交后的最终结果。旧 run 已经被取消；当前应以最新 PR head 对应的新 run 为准。
+
+本轮最新确认过的 PR head 为：
+
+```txt
+d24478f125c2f3ea8c58e27af49c4d2134a4f709
+```
+
+对应的新 test run 为：
+
+```txt
+27603547912
+```
+
+旧失败 run 为：
+
+```txt
+27600960396
+```
+
+该旧 run 当前状态为：
+
+```txt
+cancelled
+```
+
+因此，当前判断不是“新一轮又失败了”，而是：
+
+```txt
+旧失败页面造成了判断干扰；
+最新提交后的新一轮 CI 正在执行；
+最终结果仍需以最新 checks 完成后的状态为准。
+```
+
+---
+
+### 4. 已经进入 CI 闭环阶段
+
+目前项目最重要的阶段性变化是：
+
+```txt
+本地验证已基本完成；
+远端 CI 验证已经启动；
+项目进入 CI 闭环阶段。
+```
+
+CI 闭环意味着每一轮问题都按照以下路径处理：
+
+```txt
+1. 查看最新 PR head；
+2. 确认失败是否来自最新 run；
+3. 如果是旧 run，忽略并等待新 run；
+4. 如果是新 run，定位第一个真实失败；
+5. 做最小修复；
+6. 本地最小验证；
+7. push 到 sync 分支；
+8. 等待新一轮远端 checks；
+9. 直到 matrix 全部通过。
+```
+
+这是后续让 HyperCode 成为可维护 branded fork 的关键能力。
+
+---
+
+## 四、当前已经完成的能力
+
+### 1. 品牌化主链路已跑通
+
+目前已完成并验证过：
+
+```txt
+CLI 显示 HyperCode；
+TUI 启动界面显示 HyperCode；
+Windows exe 命名为 hypercode.exe；
+构建目录命名为 hypercode-windows-x64；
+VSIX 文件命名为 hypercode.vsix；
+VSCode 插件 displayName 为 HyperCode；
+VSCode 插件 description 为 HyperCode for VS Code；
+VSCode 插件启动命令使用 hypercode --port；
+运行时 provider 显示名从 OpenCode Zen 修正为 HyperCode Zen。
+```
+
+这些都属于用户实际可见层，是品牌化优先级最高的部分。
+
+---
+
+### 2. 内部兼容策略已经明确
+
+当前项目已经明确区分两类内容：
+
+```txt
+应该改成 HyperCode 的内容：
+- 用户界面文案
+- CLI / TUI 显示
+- exe / VSIX 名称
+- VSCode 插件显示名
+- 交付物名称
+- 用户文档中的产品名
+- provider 用户可见显示名
+
+应该保留 opencode 的内容：
+- 内部 package 名
+- import 路径
+- provider id
+- VSCode command id
+- 旧配置 fallback
+- OPENCODE_* 环境变量 fallback
+- .opencode 目录兼容
+- opencode.json / opencode.jsonc 配置兼容
+- upstream attribution / license 相关引用
+```
+
+这个原则已经被证明是必要的。全局替换会破坏内部协议和上游同步能力。
+
+---
+
+### 3. hardened rebrand 脚本已经成为核心工具
+
+rebrand 脚本目前不再只是简单字符串替换，而是一个面向长期维护的品牌补丁审计工具。
+
+它的定位是：
+
+```txt
+1. 找出用户可见的 OpenCode / opencode 残留；
+2. 判断哪些可以自动修复；
+3. 判断哪些必须保护；
+4. 判断哪些需要人工确认；
+5. 在 upstream sync 后恢复 HyperCode 品牌层；
+6. 防止误改内部兼容项。
+```
+
+当前脚本已经具备以下关键能力：
+
+```txt
+dry-run
+structured report
+protected / patchable / manual-check-required 分类
+synthetic safety drill
+对 @opencode-ai/* 的保护
+对 provider.id = "opencode" 的保护
+对 opencode.* command id 的保护
+对 OPENCODE_* fallback 的保护
+对 .opencode fallback 的保护
+对 upstream attribution URL 的保护
+```
+
+这为后续每次同步 upstream 提供了可重复执行的品牌治理能力。
+
+---
+
+### 4. exe / VSIX 交付路径已经验证
+
+当前已经验证过：
+
+```txt
+hypercode.exe 可以构建；
+hypercode.exe --help 可以执行；
+hypercode.exe --version 可以执行；
+VSIX 可以打包；
+VSCode 插件可以指向 hypercode --port；
+VSCode 插件显示名和描述可以品牌化。
+```
+
+同时已经明确：
+
+```txt
+sdks/vscode 是独立项目；
+VSIX 构建前需要在 sdks/vscode 下单独执行 bun install；
+不能假设 root bun install 会覆盖 VSCode 插件依赖。
+```
+
+这已经被纳入后续 SOP。
+
+---
+
+### 5. 正式同步 SOP 已沉淀
+
+项目已经沉淀正式 upstream sync 流程文档：
+
+```txt
+docs/hypercode-upstream-sync-procedure.md
+```
+
+该 SOP 覆盖：
+
+```txt
+origin / upstream 关系；
+sync 分支创建；
+upstream/dev merge；
+冲突处理原则；
+hardened rebrand dry-run / write；
+品牌检查清单；
+typecheck / build；
+exe 验证；
+VSIX 独立安装、打包和解包检查；
+禁止事项；
+最终合并策略。
+```
+
+这意味着项目已经从“靠临时经验推进”转向“按流程维护”。
+
+---
+
+## 五、当前技术难点
+
+### 1. 不能做全局替换
+
+这是项目最大的技术边界。
+
+`opencode` 在项目中同时承担多种角色：
+
+```txt
+品牌名
+包名
+目录名
+provider id
+配置 fallback
+VSCode command id
+历史兼容入口
+上游 attribution
+```
+
+其中只有一部分是用户可见品牌。其余很多是工程内部协议，不能随意替换。
+
+如果做全局替换，可能导致：
+
+```txt
+TypeScript import 失效；
+workspace package 找不到；
+VSCode command id 失效；
+provider 缓存匹配失败；
+旧配置无法读取；
+环境变量 fallback 损坏；
+upstream merge 冲突显著增加；
+license / attribution 语义错误。
+```
+
+因此，当前方案必须坚持：
+
+```txt
+用户可见改 HyperCode；
+内部兼容保留 opencode。
+```
+
+---
+
+### 2. upstream sync 会持续产生冲突
+
+OpenCode 上游项目仍在持续更新，且更新经常触碰 CLI、TUI、配置、VSCode 插件和 runtime 逻辑。
+
+这些区域恰好也是 HyperCode 做品牌化修改最多的区域，因此后续同步不可能完全无冲突。
+
+典型高风险区域包括：
+
+```txt
+packages/opencode
+packages/core
+packages/tui
+sdks/vscode
+配置加载逻辑
+provider metadata
+CLI logo / help / runtime 文案
+```
+
+处理原则不是简单选择 `ours` 或 `theirs`，而是：
+
+```txt
+保留 upstream 的真实功能更新；
+恢复 HyperCode 的用户可见品牌；
+保留内部兼容标识；
+最小化 diff，降低后续同步成本。
+```
+
+---
+
+### 3. CI 是跨平台 matrix，不是单点验证
+
+本地通过不等于远端完全通过。
+
+当前远端检查至少包含：
+
+```txt
+Linux unit
+Windows unit
+Linux e2e
+Windows e2e
+standards
+compliance
+```
+
+其中 Windows / Linux 的差异可能体现在：
+
+```txt
+文件路径；
+换行符；
+shell 行为；
+异步时序；
+文件 mode / symlink；
+终端行为；
+测试稳定性。
+```
+
+因此，后续不能只看本地一条命令是否通过，而要以远端 matrix 全部通过作为阶段性完成标准。
+
+---
+
+### 4. 异步测试修复需要保持语义
+
+本轮 CI 中已经出现过与 session/prompt 异步时序相关的真实失败。
+
+这类问题的风险在于：
+
+```txt
+改测试可能让测试更快，但也可能改变原测试语义；
+改生产代码可能扩大影响面；
+必须优先定位第一个真实失败；
+必须做最小修复；
+必须避免为了通过 CI 而弱化测试覆盖。
+```
+
+当前处理方式是：
+
+```txt
+只针对真实失败点做最小调整；
+必要时回退过度修改；
+保持原测试描述的业务语义；
+本地做最小复现验证后再 push。
+```
+
+---
+
+### 5. GitHub 页面容易显示旧 run，判断要以最新 head 为准
+
+当前已经遇到过一次典型误判：
+
+```txt
+页面上看到 unit (windows) 失败；
+但该失败属于旧 workflow run；
+旧 run 已 cancelled；
+新提交后的 checks 仍在执行。
+```
+
+因此后续判断 CI 状态必须同时确认：
+
+```txt
+1. 当前 PR head hash；
+2. 当前 run id；
+3. 失败是否来自最新提交；
+4. 旧 run 是否已取消或过期；
+5. 最新 checks 是否已经结束。
+```
+
+否则容易把历史失败误认为当前失败。
+
+---
+
+## 六、当前风险评估
+
+### 风险 1：远端 CI 尚未最终全部通过
+
+当前已进入远端 CI 闭环，但不能把“CI 正在跑”表述为“已经完全通过”。
+
+当前准确表述应该是：
+
+```txt
+standards / compliance 已通过；
+unit / e2e 新一轮远端 checks 已启动；
+最终是否全部通过，需要等待最新 run 完成。
+```
+
+---
+
+### 风险 2：品牌残留仍需以最终产物为准
+
+源码中出现 `opencode` 不一定是问题，产物中出现用户可见 `OpenCode` 才是重点问题。
+
+后续验收应聚焦：
+
+```txt
+hypercode.exe --help
+hypercode.exe --version
+TUI 首页
+登录 / provider 页面
+模型选择页面
+错误提示
+VSCode 插件详情页
+VSCode command palette
+VSCode terminal title
+VSIX 解包后的 package.json / README / assets
+```
+
+---
+
+### 风险 3：过度品牌化会破坏兼容性
+
+如果为了“看起来干净”删除所有 `opencode`，反而可能带来更大风险。
+
+必须保留：
+
+```txt
+旧配置读取；
+旧缓存读取；
+OPENCODE_* 环境变量 fallback；
+.opencode 目录 fallback；
+opencode.json / opencode.jsonc fallback；
+内部 provider id；
+内部 command id。
+```
+
+这些兼容项不是品牌残留，而是升级安全性的一部分。
+
+---
+
+### 风险 4：后续 release 前还需要人工验收
+
+即使 CI 全部通过，也不能直接发布。
+
+原因是 CI 主要覆盖构建、测试和规范检查，但用户可见品牌残留需要人工或半自动检查。
+
+release 前仍需完成：
+
+```txt
+exe 实机运行检查；
+VSIX 安装检查；
+核心 UI 截图检查；
+品牌残留扫描；
+关键路径 smoke test；
+产物命名和版本号确认；
+release notes / 内部交付说明。
+```
+
+---
+
+## 七、当前可行性判断
+
+当前项目可行性判断为：
+
+```txt
+可行，并且已经进入正式工程化闭环；
+但不能定义为完全一键自动化，也不能在 CI 未完成前定义为可发布。
+```
+
+### 已经证明可行的部分
+
+```txt
+1. HyperCode 用户可见品牌化可行；
+2. exe 构建和运行可行；
+3. VSIX 构建和插件启动可行；
+4. OpenCode upstream sync 可行；
+5. hardened rebrand 可用于同步后的品牌恢复；
+6. 正式 sync 分支推送到远端可行；
+7. GitHub Actions 可用于远端验证；
+8. CI 失败可以按“定位第一个真实失败 -> 最小修复 -> 重新验证”的方式推进。
+```
+
+### 仍然需要人工参与的部分
+
+```txt
+1. upstream merge 冲突处理；
+2. 高风险品牌点确认；
+3. 远端 CI 失败定位；
+4. exe / VSIX 最终体验验收；
+5. 是否合并回 dev 的决策；
+6. 是否进入 v0.1.0-internal 的发布决策。
+```
+
+---
+
+## 八、当前阶段结论
+
+当前项目已经从上一阶段的：
+
+```txt
+HyperCode 品牌化方案是否可行？
+```
+
+推进到现在的：
+
+```txt
+HyperCode 是否可以作为 OpenCode 的长期 branded fork，通过正式 sync 分支和远端 CI 持续维护？
+```
+
+目前答案是：
+
+```txt
+方向可行；
+主链路已跑通；
+正式 sync 分支已进入远端 CI；
+仍需等待最新 CI matrix 完整结果；
+通过后可进入 dev 合并评估和内部版发布准备。
+```
+
+当前不建议直接发布，也不建议继续扩大无差别替换范围。
+
+当前最合理的阶段定义是：
+
+```txt
+HyperCode 已进入正式 upstream sync 验证收尾阶段。
+```
+
+---
+
+## 九、下一步工作计划
+
+### 第一优先级：完成当前 PR 的 CI 闭环
+
+继续跟进最新 run，而不是旧失败页面。
+
+后续处理路径：
+
+```txt
+1. 确认最新 PR head；
+2. 查看最新 GitHub Actions run；
+3. 等待 unit / e2e matrix 完成；
+4. 如果失败，只看最新 run 的第一个真实失败；
+5. 做最小修复；
+6. 本地验证；
+7. push；
+8. 重复直到 checks 全部通过。
+```
+
+---
+
+### 第二优先级：CI 通过后做最终品牌验收
+
+重点不是源码全局无 `opencode`，而是产物无用户可见 `OpenCode`。
+
+建议检查清单：
+
+```txt
+hypercode.exe --help
+hypercode.exe --version
+hypercode.exe 启动首页
+TUI provider / model 页面
+错误提示与引导文案
+VSCode 插件详情页
+VSCode command palette
+VSCode terminal title
+VSIX 解包后的 package.json / README / assets
+```
+
+---
+
+### 第三优先级：决定是否合回 dev
+
+只有在以下条件满足后，才建议合回 dev：
+
+```txt
+1. 当前 sync 分支远端 CI 全部通过；
+2. exe smoke test 通过；
+3. VSIX smoke test 通过；
+4. 品牌残留检查通过；
+5. 没有未跟踪的大型产物被误提交；
+6. diff 符合“最小必要修改”原则；
+7. rebrand report 没有未处理的高风险项。
+```
+
+---
+
+### 第四优先级：准备 v0.1.0-internal
+
+如果 sync 分支通过并合回 dev，可以进入内部版准备。
+
+建议内部版目标：
+
+```txt
+版本：v0.1.0-internal
+产物：hypercode.exe + hypercode.vsix
+范围：内部试用，不对外正式发布
+目标：验证真实用户使用路径和剩余品牌残留
+```
+
+内部版前需要准备：
+
+```txt
+1. 产物构建记录；
+2. 安装说明；
+3. 已知问题；
+4. 兼容说明；
+5. 品牌残留检查结果；
+6. 回滚方案。
+```
+
+---
+
+## 十、对管理层的汇报口径
+
+可以对外简化为以下表述：
+
+```txt
+HyperCode 品牌化项目已经完成主链路验证，并进入正式 upstream sync 的远端 CI 闭环阶段。
+
+目前 exe、VSIX、CLI/TUI、VSCode 插件等关键用户可见层面的品牌化方案已经跑通；内部仍保留必要的 opencode 兼容标识，以保证上游同步、历史配置和插件协议不被破坏。
+
+当前正式同步分支已经推送到远端，standards 和 compliance 检查已通过，unit/e2e 跨平台检查正在新一轮 CI 中执行。之前看到的 Windows unit 失败属于旧 run，不代表最新提交后的最终结果。
+
+下一步重点是等待并处理最新 CI matrix 的真实结果。CI 全部通过后，将进行 exe/VSIX 的最终品牌验收，再决定是否合回 dev 并准备 v0.1.0-internal 内部试用版。
+```
+
+---
+
+## 十一、阶段性结论
+
+本阶段结论如下：
+
+```txt
+1. HyperCode 不是一次性改名项目，而是 OpenCode 的可维护品牌化发行版；
+2. “用户可见 HyperCode + 内部兼容 opencode”的路线是正确且必要的；
+3. 品牌化主链路、exe 构建、VSIX 构建、上游同步流程均已验证可行；
+4. 正式 sync 分支已进入 GitHub Actions 远端验证；
+5. 当前尚不能宣布最终可发布，必须等待最新 CI matrix 完整通过；
+6. 通过后可进入 dev 合并评估和 v0.1.0-internal 内部版准备。
+```
+
+因此，当前项目状态可以定义为：
+
+```txt
+HyperCode 已完成品牌化工程主链路验证，正在进行正式 upstream sync 的远端 CI 收尾验证。
+```
