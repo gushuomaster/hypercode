@@ -4,6 +4,7 @@ import { effectCmd, fail } from "../effect-cmd"
 import { Git } from "@/git"
 import { InstanceRef } from "@/effect/instance-ref"
 import { Process } from "@/util/process"
+import { Brand } from "@/brand"
 
 export const PrCommand = effectCmd({
   command: "pr <number>",
@@ -80,7 +81,7 @@ export const PrCommand = effectCmd({
           UI.println(`Importing session...`)
 
           const importResult = yield* Effect.promise(() =>
-            Process.text(["opencode", "import", sessionUrl], { nothrow: true }),
+            Process.text([Brand.command, "import", sessionUrl], { nothrow: true }),
           )
           if (importResult.code === 0) {
             const sessionIdMatch = importResult.text.trim().match(/Imported session: ([a-zA-Z0-9_-]+)/)
@@ -101,7 +102,7 @@ export const PrCommand = effectCmd({
     const opencodeArgs = sessionId ? ["-s", sessionId] : []
     const code = yield* Effect.promise(
       () =>
-        Process.spawn(["opencode", ...opencodeArgs], {
+        Process.spawn([Brand.command, ...opencodeArgs], {
           stdin: "inherit",
           stdout: "inherit",
           stderr: "inherit",

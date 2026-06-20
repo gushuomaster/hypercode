@@ -1,4 +1,5 @@
 import { cmd } from "./cmd"
+import { Brand } from "@/brand"
 import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
 import { effectCmd } from "../effect-cmd"
 import { Cause } from "effect"
@@ -569,7 +570,7 @@ export const McpAddCommand = effectCmd({
       if (type === "local") {
         const command = await prompts.text({
           message: "Enter command to run",
-          placeholder: "e.g., opencode x @modelcontextprotocol/server-filesystem",
+          placeholder: `e.g., ${Brand.command} x @modelcontextprotocol/server-filesystem`,
           validate: (x) => (x && x.length > 0 ? undefined : "Required"),
         })
         if (prompts.isCancel(command)) throw new UI.CancelledError()
@@ -754,7 +755,7 @@ export const McpDebugCommand = effectCmd({
             params: {
               protocolVersion: "2024-11-05",
               capabilities: {},
-              clientInfo: { name: "opencode-debug", version: InstallationVersion },
+              clientInfo: { name: `${Brand.command}-debug`, version: InstallationVersion },
             },
             id: 1,
           }),
@@ -798,7 +799,7 @@ export const McpDebugCommand = effectCmd({
 
           try {
             const client = new Client({
-              name: "opencode-debug",
+              name: `${Brand.command}-debug`,
               version: InstallationVersion,
             })
             await client.connect(transport)

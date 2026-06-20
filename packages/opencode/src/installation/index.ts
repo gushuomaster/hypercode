@@ -5,6 +5,7 @@ import { serviceUse } from "@opencode-ai/core/effect/service-use"
 import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 import { withTransientReadRetry } from "@/util/effect-http-client"
 import { errorMessage } from "@/util/error"
+import { Brand } from "@/brand"
 import { ChildProcess } from "effect/unstable/process"
 import { AppProcess } from "@opencode-ai/core/process"
 import path from "path"
@@ -51,7 +52,7 @@ export const Info = Schema.Struct({
 export type Info = Schema.Schema.Type<typeof Info>
 
 export function userAgent(client = "cli") {
-  return `opencode/${InstallationChannel}/${InstallationVersion}/${client}`
+  return `${Brand.command}/${InstallationChannel}/${InstallationVersion}/${client}`
 }
 
 export const USER_AGENT = userAgent()
