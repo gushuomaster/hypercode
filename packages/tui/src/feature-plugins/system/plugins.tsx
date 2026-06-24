@@ -5,6 +5,7 @@ import { fileURLToPath } from "url"
 import { DialogSelect, type DialogSelectOption } from "../../ui/dialog-select"
 import { Show, createEffect, createMemo, createSignal } from "solid-js"
 import { useBindings } from "../../keymap"
+import { translate } from "../../context/language"
 
 const id = "internal:plugin-manager"
 
@@ -41,7 +42,14 @@ function Install(props: { api: TuiPluginApi }) {
 
   useBindings(() => ({
     enabled: !busy(),
-    bindings: [{ key: "tab", desc: "Toggle install scope", group: "Plugins", cmd: () => setGlobal((value) => !value) }],
+    bindings: [
+      {
+        key: "tab",
+        desc: translate("command.plugins.toggleInstallScope"),
+        group: translate("command.category.plugins"),
+        cmd: () => setGlobal((value) => !value),
+      },
+    ],
   }))
 
   return (
@@ -200,7 +208,7 @@ function View(props: { api: TuiPluginApi }) {
 
   return (
     <DialogSelect
-      title="Plugins"
+      title={translate("command.system.plugins")}
       options={rows()}
       current={cur()}
       onMove={(item) => setCur(item.value)}
@@ -240,8 +248,12 @@ const tui: TuiPlugin = async (api) => {
     commands: [
       {
         name: "plugins.list",
-        title: "Plugins",
-        category: "System",
+        get title() {
+          return translate("command.system.plugins")
+        },
+        get category() {
+          return translate("command.category.system")
+        },
         namespace: "palette",
         run() {
           show(api)
@@ -249,8 +261,12 @@ const tui: TuiPlugin = async (api) => {
       },
       {
         name: "plugins.install",
-        title: "Install plugin",
-        category: "System",
+        get title() {
+          return translate("command.system.installPlugin")
+        },
+        get category() {
+          return translate("command.category.system")
+        },
         namespace: "palette",
         run() {
           showInstall(api)
