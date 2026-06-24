@@ -591,6 +591,12 @@ export const layer: Layer.Layer<
         projectID: ctx.project.id,
         experimentalWorkspaces: flags.experimentalWorkspaces,
         ...input,
+        // 修复:按 directory 过滤会话时,调用方(如 VSCode 扩展)传入的可能是未规范化路径
+        // (例如 d:\test —— 小写盘符 + 反斜杠),而会话写入时用的是已规范化的
+        // ctx.directory(例如 D:/test)。两者做 eq 精确匹配会失败,导致历史会话无法列出
+        // (表现为每次重开项目都"丢失"历史)。这里统一改用与写入同源的 ctx.directory,
+        // 保证查询值与存储值字节一致。input.directory 为 undefined 时(如 CLI 列全项目)保持不过滤。
+        directory: input?.directory !== undefined ? ctx.directory : undefined,
       })
     })
 
