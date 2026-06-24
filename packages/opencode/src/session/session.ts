@@ -9,6 +9,7 @@ import { Decimal } from "decimal.js"
 import type { ProviderMetadata, Usage } from "@opencode-ai/llm"
 import { InstallationVersion } from "@opencode-ai/core/installation/version"
 import { Database } from "@opencode-ai/core/database/database"
+import { FSUtil } from "@opencode-ai/core/fs-util"
 import { makeRuntime } from "@opencode-ai/core/effect/runtime"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { EventV2 } from "@opencode-ai/core/event"
@@ -591,6 +592,13 @@ export const layer: Layer.Layer<
         projectID: ctx.project.id,
         experimentalWorkspaces: flags.experimentalWorkspaces,
         ...input,
+        // 修复:按 directory 过滤会话时,调用方(如 VSCode 扩展)传入的可能是未规范化路径
+        // (例如 Windows 下 d:\test —— 小写盘符 + 反斜杠),而会话写入时 directory 经
+        // instance-store 的 FSUtil.resolve 规范化后存储(例如 D:/test)。若直接用原始查询值
+        // 做 eq 精确匹配会失败,导致历史会话无法列出(表现为每次重开项目都"丢失"历史)。
+        // 这里对查询用的 directory 应用同一个 FSUtil.resolve,保证与存储值一致;不同分隔符/
+        // 盘符大小写都会归一到同一形式。input.directory 为 undefined 时(如 CLI 列全项目)不过滤。
+        directory: input?.directory !== undefined ? FSUtil.resolve(input.directory) : undefined,
       })
     })
 
