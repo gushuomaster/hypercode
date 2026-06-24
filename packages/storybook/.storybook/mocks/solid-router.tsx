@@ -11,6 +11,10 @@ export function useNavigate() {
   return () => undefined
 }
 
+export function useSearchParams() {
+  return [{}, () => undefined] as const
+}
+
 export function useLocation() {
   return {
     pathname: "/story/session/story-session",
@@ -19,10 +23,30 @@ export function useLocation() {
   }
 }
 
+export function useIsRouting() {
+  return () => false
+}
+
+export function useMatch() {
+  return () => undefined
+}
+
 export function MemoryRouter(props: ParentProps) {
+  return props.children
+}
+
+export function Router(props: ParentProps) {
   return props.children
 }
 
 export function Route(props: ParentProps) {
   return props.children
+}
+
+export function A(props: ParentProps) {
+  return props.children
+}
+
+export function Navigate() {
+  return null
 }
