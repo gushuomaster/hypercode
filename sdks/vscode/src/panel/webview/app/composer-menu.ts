@@ -14,7 +14,7 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
     {
       id: "slash-new",
       label: "new",
-      detail: "Start a new session in this workspace.",
+      detail: "在此工作区开启新会话。",
       keywords: ["session", "fresh", "conversation"],
       trigger: "slash",
       kind: "action",
@@ -22,7 +22,7 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
     {
       id: "slash-compact",
       label: "compact",
-      detail: "Summarize this session immediately using the current model.",
+      detail: "立即用当前模型总结此会话。",
       keywords: ["summarize", "summary", "compress", "session"],
       trigger: "slash",
       kind: "action",
@@ -30,7 +30,7 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
     {
       id: "slash-model",
       label: "model",
-      detail: "Open the model picker for the current agent.",
+      detail: "为当前智能体打开模型选择器。",
       keywords: ["switch", "provider", "variant", "llm"],
       trigger: "slash",
       kind: "action",
@@ -38,7 +38,7 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
     {
       id: "slash-theme",
       label: "theme",
-      detail: "Open the theme picker for session panels.",
+      detail: "打开会话面板的主题选择器。",
       keywords: ["switch", "appearance", "panel", "claude", "codex"],
       trigger: "slash",
       kind: "action",
@@ -46,7 +46,7 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
     {
       id: "slash-sessions",
       label: "sessions",
-      detail: "Open the session picker for this workspace.",
+      detail: "打开此工作区的会话选择器。",
       keywords: ["switch", "session", "related", "workspace", "tags"],
       trigger: "slash",
       kind: "action",
@@ -54,7 +54,7 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
     {
       id: "slash-undo",
       label: "undo",
-      detail: "Revert the previous user turn immediately.",
+      detail: "立即撤销上一轮用户消息。",
       keywords: ["revert", "previous", "message", "back"],
       trigger: "slash",
       kind: "action",
@@ -62,7 +62,7 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
     {
       id: "slash-refresh",
       label: "refresh",
-      detail: "Ask the host to reload the current session snapshot.",
+      detail: "请求宿主重新加载当前会话快照。",
       keywords: ["reload", "snapshot", "panel", "host"],
       trigger: "slash",
       kind: "action",
@@ -70,7 +70,7 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
     {
       id: "slash-skills",
       label: "skills",
-      detail: "Open the skill picker and insert a skill command.",
+      detail: "打开技能选择器并插入技能命令。",
       keywords: ["skill", "picker", "workflow"],
       trigger: "slash",
       kind: "action",
@@ -81,7 +81,7 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
     slashItems.push({
       id: "slash-redo",
       label: "redo",
-      detail: "Restore previously reverted messages immediately.",
+      detail: "立即恢复先前撤销的消息。",
       keywords: ["unrevert", "restore", "forward"],
       trigger: "slash",
       kind: "action",
@@ -92,7 +92,7 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
     slashItems.push({
       id: "slash-reset-agent",
       label: "reset-agent",
-      detail: "Return the composer to the default agent selection.",
+      detail: "将输入框恢复为默认智能体。",
       keywords: ["agent", "default", "override"],
       trigger: "slash",
       kind: "action",
@@ -248,16 +248,16 @@ function localizeAutocompleteKind(kind: ComposerAutocompleteItem["kind"]) {
 
 function localizeCommandDescription(name: string, description: string, isMcp: boolean) {
   const localized = (() => {
-    if (description === "guided AGENTS.md setup") return "create/update AGENTS.md"
-    if (description === "review changes") return "review current changes"
-    if (description === "review outstanding items") return "review outstanding items"
-    if (description === "debug current issue") return "debug current issue"
-    if (description === "show current status") return "show current status"
-    if (name === "init") return "create/update AGENTS.md"
-    if (name === "review" && description.includes("[commit|branch|pr]")) return "review changes [commit|branch|pr]"
-    if (name === "review") return "review current changes"
-    if (name === "debug") return "debug current issue"
-    if (name === "status") return "show current status"
+    if (description === "guided AGENTS.md setup") return "创建/更新 AGENTS.md"
+    if (description === "review changes") return "审查当前变更"
+    if (description === "review outstanding items") return "审查待办事项"
+    if (description === "debug current issue") return "调试当前问题"
+    if (description === "show current status") return "显示当前状态"
+    if (name === "init") return "创建/更新 AGENTS.md"
+    if (name === "review" && description.includes("[commit|branch|pr]")) return "审查变更 [commit|branch|pr]"
+    if (name === "review") return "审查当前变更"
+    if (name === "debug") return "调试当前问题"
+    if (name === "status") return "显示当前状态"
     if (description) return description
     return ""
   })()
