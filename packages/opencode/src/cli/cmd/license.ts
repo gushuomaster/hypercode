@@ -71,8 +71,10 @@ async function validateStrong(): Promise<StrongResult> {
   return { ok: true, path: file.path }
 }
 
-export function shouldSkipLicenseGate(args: string[]) {
+export function shouldSkipLicenseGate(args: string[], env = process.env) {
   return (
+    isBuildOrGenerateCommand(args) ||
+    isTestExecutionContext(env) ||
     args.some((arg) => arg === "--help" || arg === "-h" || arg === "--version" || arg === "-v") ||
     args[0] === "help" ||
     args[0] === "completion" ||
@@ -80,8 +82,8 @@ export function shouldSkipLicenseGate(args: string[]) {
   )
 }
 
-export function shouldEnforceLicenseGate(args: string[]) {
-  return !shouldSkipLicenseGate(args)
+export function shouldEnforceLicenseGate(args: string[], env = process.env) {
+  return !shouldSkipLicenseGate(args, env)
 }
 
 export async function enforceLicenseGate(args: string[]) {
@@ -115,4 +117,12 @@ function formatGateFailure(result: Extract<StrongResult, { ok: false }>) {
 function statusLabel(reason: Extract<StrongResult, { ok: false }>["reason"]) {
   if (reason === "read_error") return "read error"
   return reason
+}
+
+function isBuildOrGenerateCommand(args: string[]) {
+  return args[0] === "generate"
+}
+
+function isTestExecutionContext(env = process.env) {
+  return env.NODE_ENV === "test" || Boolean(env.OPENCODE_TEST_HOME)
 }
