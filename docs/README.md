@@ -4,7 +4,7 @@
 
 ## 先看什么
 
-- 想快速了解 HyperCode 相对 OpenCode 的整体差异与保留点，先看 [HyperCode 相对 OpenCode 的特色改动总览](HyperCode 相对 OpenCode 的特色改动总览.md) — 长期总览 HyperCode 的核心产品化与工程化差异，以及维护时应关注的保留点。
+- 想快速了解 HyperCode 相对 OpenCode 的整体差异与保留点，先看 [HyperCode 相对 OpenCode 的特色改动总览](<HyperCode 相对 OpenCode 的特色改动总览.md>) — 长期总览 HyperCode 的核心产品化与工程化差异，以及维护时应关注的保留点。
 - 想理解长期有效的规则、边界和禁止事项，先看 [规范](规范/)
 - 想执行一次上游同步、构建或交付流程，先看 [操作手册](操作手册/)
 - 想回溯项目推进过程、阶段结论和关键证据，查看 [阶段记录](阶段记录/)
