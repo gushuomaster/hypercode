@@ -75,7 +75,7 @@ HyperCode 的长期产品方向，是不把 license 门禁作为公开面叙事�
 这条边界的含义是：
 
 - 不恢复 `hypercode.openLicenseFile`
-- 不恢复 `src/license/*`
+- 不恢复 `packages/opencode/src/license/*` 与 `sdks/vscode/src/license/*`
 - 不恢复启动前授权阻断
 - 不恢复授权测试
 
