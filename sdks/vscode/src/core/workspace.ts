@@ -1,13 +1,7 @@
 import * as vscode from "vscode"
 import { client } from "./sdk"
 import { freeport, health, spawn, startupFailure, stop, type WorkspaceRuntime } from "./server"
-import {
-  licenseEnforceEnabled,
-  openLicenseFile,
-  promptForLicenseIssue,
-  resolveLicensePath,
-  validateLicense,
-} from "../license"
+import { openLicenseFile, promptForLicenseIssue, resolveLicensePath, validateLicense } from "../license"
 
 type WorkspaceManagerDeps = {
   freeport?: typeof freeport
@@ -18,7 +12,6 @@ type WorkspaceManagerDeps = {
   validateLicense?: typeof validateLicense
   promptForLicenseIssue?: typeof promptForLicenseIssue
   openLicenseFile?: typeof openLicenseFile
-  licenseEnforceEnabled?: typeof licenseEnforceEnabled
 }
 
 export class WorkspaceManager implements vscode.Disposable {
@@ -161,31 +154,27 @@ export class WorkspaceManager implements vscode.Disposable {
       await stop(cur.proc)
     }
 
-    // License 网关:默认关闭,仅当 HYPERCODE_LICENSE_ENFORCE=1 时强制生效。
-    const enforce = (this.deps.licenseEnforceEnabled ?? licenseEnforceEnabled)()
-    if (enforce) {
-      const licensePath = (this.deps.resolveLicensePath ?? resolveLicensePath)()
-      const license = await (this.deps.validateLicense ?? validateLicense)({ licensePath, enforce: true })
-      if (!license.ok) {
-        const rt: WorkspaceRuntime = {
-          workspaceId: id,
-          dir,
-          name: folder.name,
-          port: 0,
-          url: "",
-          state: "error",
-          sessions: new Map(),
-          sessionStatuses: new Map(),
-          sessionsState: "idle",
-          err: license.message,
-        }
-        this.state.set(id, rt)
-        this.dirIndex.set(dir, id)
-        this.log(rt, `license check failed: ${license.reason} ${license.message}`)
-        this.fire()
-        void this.handleLicenseFailure(license.message)
-        return rt
+    const licensePath = (this.deps.resolveLicensePath ?? resolveLicensePath)()
+    const license = await (this.deps.validateLicense ?? validateLicense)({ licensePath })
+    if (!license.ok) {
+      const rt: WorkspaceRuntime = {
+        workspaceId: id,
+        dir,
+        name: folder.name,
+        port: 0,
+        url: "",
+        state: "error",
+        sessions: new Map(),
+        sessionStatuses: new Map(),
+        sessionsState: "idle",
+        err: license.message,
       }
+      this.state.set(id, rt)
+      this.dirIndex.set(dir, id)
+      this.log(rt, `license check failed: ${license.reason} ${license.message}`)
+      this.fire()
+      void this.handleLicenseFailure(license.message)
+      return rt
     }
 
     const port = await (this.deps.freeport ?? freeport)()

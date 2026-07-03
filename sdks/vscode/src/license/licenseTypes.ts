@@ -14,7 +14,5 @@ export type MachineIdOptions = {
 
 export type LicenseValidatorOptions = {
   licensePath: string
-  // 默认仅做弱校验(文件非空)。开启 enforce 时做机器码强校验。
-  enforce?: boolean
   machineId?: string
 }

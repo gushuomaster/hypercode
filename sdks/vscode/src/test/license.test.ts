@@ -50,21 +50,14 @@ describe("license validator", () => {
     })
   })
 
-  test("weak mode passes on any non-empty content", async () => {
-    await withTmp(async (file) => {
-      await fs.writeFile(file, "anything")
-      assert.equal((await validateLicense({ licensePath: file })).ok, true)
-    })
-  })
-
-  test("enforce mode rejects invalid key but accepts a signed one", async () => {
+  test("default validation rejects invalid key but accepts a signed one", async () => {
     await withTmp(async (file) => {
       await fs.writeFile(file, "garbage")
-      const bad = await validateLicense({ licensePath: file, enforce: true, machineId: machine })
+      const bad = await validateLicense({ licensePath: file, machineId: machine })
       assert.equal(bad.ok, false)
 
       await fs.writeFile(file, generateExpectedLicense(machine))
-      const good = await validateLicense({ licensePath: file, enforce: true, machineId: machine })
+      const good = await validateLicense({ licensePath: file, machineId: machine })
       assert.equal(good.ok, true)
     })
   })

@@ -6,12 +6,6 @@ import { Brand } from "@/brand"
 
 const unsupported = "License validation only supports Windows and Linux."
 
-// License 网关默认关闭,仅当 HYPERCODE_LICENSE_ENFORCE=1 时强制生效。
-// 关闭时不影响日常开发;分发时设置该环境变量即开启机器码强校验。
-function enforceEnabled() {
-  return process.env.HYPERCODE_LICENSE_ENFORCE === "1"
-}
-
 export const LicenseCommand = cmd({
   command: "license",
   describe: "license tools",
@@ -60,7 +54,6 @@ type StrongResult =
   | { ok: true; path: string }
   | { ok: false; path: string; reason: "missing" | "empty" | "read_error" | "invalid" | "expired"; message?: string }
 
-// 强校验:先确认文件存在且非空,再用机器码做内容校验(机器码绑定 + 到期)。
 async function validateStrong(): Promise<StrongResult> {
   const file = await License.validateFile()
   if (file.status !== "valid") {
@@ -87,9 +80,12 @@ export function shouldSkipLicenseGate(args: string[]) {
   )
 }
 
+export function shouldEnforceLicenseGate(args: string[]) {
+  return !shouldSkipLicenseGate(args)
+}
+
 export async function enforceLicenseGate(args: string[]) {
-  if (!enforceEnabled()) return
-  if (shouldSkipLicenseGate(args)) return
+  if (!shouldEnforceLicenseGate(args)) return
   const result = await validateStrong()
   if (result.ok) return
 
