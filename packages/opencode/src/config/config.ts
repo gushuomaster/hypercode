@@ -277,7 +277,7 @@ export const layer = Layer.effect(
       yield* syncBundledGlobalConfig()
       // Seed the default global config with the schema for editor completion, but avoid writing when the user
       // explicitly routes config through env-provided paths or content.
-      if (shouldSyncBundledGlobalConfig()) {
+      if (shouldSyncBundledGlobalConfig() && !hasExistingGlobalConfigFile()) {
         const file = globalConfigFile()
         if (!existsSync(file)) {
           yield* fs

@@ -390,6 +390,9 @@ it.effect("does not create bundled opencode.json when legacy config already exis
         yield* Config.use.get().pipe(provideInstanceEffect(dir))
 
         expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
+        expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.jsonc"))).toBe(false)
+        expect(yield* FSUtil.use.existsSafe(path.join(dir, "hypercode.json"))).toBe(false)
+        expect(yield* FSUtil.use.existsSafe(path.join(dir, "hypercode.jsonc"))).toBe(false)
         expect(yield* FSUtil.use.existsSafe(path.join(dir, "config.json"))).toBe(true)
       }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
     ),
