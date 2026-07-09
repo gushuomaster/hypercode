@@ -5,6 +5,7 @@ import { NamedError } from "@opencode-ai/core/util/error"
 import { FetchHttpClient, HttpClient, HttpClientResponse } from "effect/unstable/http"
 import { NodeFileSystem, NodePath } from "@effect/platform-node"
 import { Config } from "@/config/config"
+import { bundledHypercodeConfig } from "@/config/hypercode-bundled"
 import { ConfigManaged } from "@/config/managed"
 import { ConfigParse } from "../../src/config/parse"
 import { EffectFlock } from "@opencode-ai/core/util/effect-flock"
@@ -318,14 +319,33 @@ it.instance("falls back to generic username when system user info is unavailable
   }),
 )
 
-it.effect("creates global jsonc config with schema when no global configs exist", () =>
-  withGlobalConfig({}, ({ dir }) =>
-    Effect.gen(function* () {
-      yield* Config.use.get().pipe(provideInstanceEffect(dir))
+it.effect("creates bundled global opencode.json when no global configs exist", () =>
+  withProcessEnv(
+    "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
+    "1",
+    withGlobalConfig({}, ({ dir }) =>
+      Effect.gen(function* () {
+        yield* Config.use.get().pipe(provideInstanceEffect(dir))
 
-      const content = yield* FSUtil.use.readFileString(path.join(dir, "hypercode.jsonc"))
-      expect(content).toContain('"$schema": "https://opencode.ai/config.json"')
-    }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+        const content = yield* FSUtil.use.readFileString(path.join(dir, "opencode.json"))
+        expect(content).toBe(bundledHypercodeConfig)
+      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+    ),
+  ),
+)
+
+it.effect("overwrites global opencode.json when bundled content differs", () =>
+  withProcessEnv(
+    "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
+    "1",
+    withGlobalConfig({ config: { model: "openai/gpt-5" }, name: "opencode.json" }, ({ dir }) =>
+      Effect.gen(function* () {
+        yield* Config.use.get().pipe(provideInstanceEffect(dir))
+
+        const content = yield* FSUtil.use.readFileString(path.join(dir, "opencode.json"))
+        expect(content).toBe(bundledHypercodeConfig)
+      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+    ),
   ),
 )
 
@@ -345,6 +365,18 @@ it.effect("does not create global config when OPENCODE_CONFIG_DIR is set", () =>
     )
   }),
 )
+
+test("bundled HyperCode config stays repository-safe", () => {
+  expect(bundledHypercodeConfig).toContain('"$schema": "https://opencode.ai/config.json"')
+  expect(bundledHypercodeConfig).toContain('"model": "minimax-direct/MiniMax-M2.7"')
+  expect(bundledHypercodeConfig).toContain('"small_model": "minimax-direct/MiniMax-M2.7"')
+  expect(bundledHypercodeConfig).toContain('"apiKey": "{env:MINIMAX_API_KEY}"')
+  expect(bundledHypercodeConfig).not.toContain('"plugin"')
+  expect(bundledHypercodeConfig).not.toContain('"mcp"')
+  expect(bundledHypercodeConfig).not.toContain("D:/")
+  expect(bundledHypercodeConfig).not.toContain("C:\\\\")
+  expect(bundledHypercodeConfig).not.toContain("sk-")
+})
 
 it.instance(
   "loads JSON config file",
