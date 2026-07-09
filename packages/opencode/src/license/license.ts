@@ -51,10 +51,7 @@ export function parseWindowsMachineID(stdout: string) {
 
 export async function machineID(platform: NodeJS.Platform = process.platform) {
   if (platform === "win32") {
-    const output = await Process.text(["wmic", "cpu", "get", "processorid"])
-    const id = parseWindowsMachineID(output.text)
-    if (id) return id
-    throw new Error("Unable to get Windows CPU processor ID")
+    return await windowsMachineID()
   }
 
   if (platform === "linux") {
@@ -64,6 +61,29 @@ export async function machineID(platform: NodeJS.Platform = process.platform) {
   }
 
   throw new Error(`Unsupported platform for HyperCode license: ${platform}`)
+}
+
+async function windowsMachineID() {
+  const command = "(Get-CimInstance Win32_Processor | Select-Object -First 1 -ExpandProperty ProcessorId).Trim()"
+  const commands = [
+    ["wmic", "cpu", "get", "processorid"],
+    ["powershell", "-NoProfile", "-Command", command],
+    ["pwsh", "-NoProfile", "-Command", command],
+  ]
+  let lastError: unknown
+
+  for (const item of commands) {
+    try {
+      const output = await Process.text(item)
+      const id = parseWindowsMachineID(output.text)
+      if (id) return id
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  if (lastError instanceof Error) throw lastError
+  throw new Error("Unable to get Windows CPU processor ID")
 }
 
 export function validateLicenseKey(licenseKey: string, machineID: string, now = new Date()) {

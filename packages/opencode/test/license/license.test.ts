@@ -1,11 +1,50 @@
 import { describe, expect, test } from "bun:test"
+import { createRequire } from "node:module"
 import path from "path"
+import * as fs from "fs/promises"
 import * as License from "../../src/license/license"
 import { tmpdir } from "../fixture/fixture"
+
+const require = createRequire(import.meta.url)
 
 describe("license", () => {
   test("parses Windows processor ID output", () => {
     expect(License.parseWindowsMachineID("ProcessorId\r\nBFEBFBFF000B0671\r\n\r\n")).toBe("BFEBFBFF000B0671")
+  })
+
+  test.if(process.platform === "win32")("falls back to PowerShell when wmic is unavailable on Windows", async () => {
+    await using tmp = await tmpdir()
+    const originalPath = process.env.PATH
+    const powershell = path.join(tmp.path, "powershell.cmd")
+
+    await fs.writeFile(powershell, "@echo off\r\necho BFEBFBFF000B0671\r\n")
+    process.env.PATH = tmp.path
+
+    try {
+      const id = await License.machineID("win32")
+      expect(id).toBe("BFEBFBFF000B0671")
+    } finally {
+      process.env.PATH = originalPath
+    }
+  })
+
+  test("license generator falls back to PowerShell when wmic is unavailable on Windows", async () => {
+    await using tmp = await tmpdir()
+    const originalPath = process.env.PATH
+    const powershell = path.join(tmp.path, "powershell.cmd")
+    await fs.writeFile(powershell, "@echo off\r\necho BFEBFBFF000B0671\r\n")
+    process.env.PATH = tmp.path
+    const modulePath = require.resolve("../../script/license/licenseGenerator.cjs")
+    delete require.cache[modulePath]
+    const { LicenseGenerator } = require(modulePath)
+
+    try {
+      const id = await new LicenseGenerator().getSystemId()
+      expect(id).toBe("BFEBFBFF000B0671")
+    } finally {
+      process.env.PATH = originalPath
+      delete require.cache[modulePath]
+    }
   })
 
   test("reports missing, empty, and valid license files", async () => {
