@@ -174,12 +174,12 @@ export const layer = Layer.effect(
         const plugins = flags.pure ? [] : (cfg.plugin_origins ?? [])
         if (flags.pure && cfg.plugin_origins?.length) {
         }
-        if (plugins.length) yield* config.waitForDependencies()
 
         const loaded = yield* Effect.promise(() =>
           PluginLoader.loadExternal({
             items: plugins,
             kind: "server",
+            wait: () => bridge.promise(config.waitForDependencies()),
             report: {
               start(candidate) {},
               missing(candidate, _retry, message) {},

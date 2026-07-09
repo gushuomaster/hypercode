@@ -2,7 +2,7 @@ import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { httpClient } from "@opencode-ai/core/effect/layer-node-platform"
 import { serviceUse } from "@opencode-ai/core/effect/service-use"
 import path from "path"
-import { pathToFileURL } from "url"
+import { fileURLToPath, pathToFileURL } from "url"
 import os from "os"
 import { mergeDeep } from "remeda"
 import { Global } from "@opencode-ai/core/global"
@@ -180,6 +180,20 @@ function writableGlobal(info: Info) {
   // When a user changes config from a value back to default in the Desktop app, we don't want to leave a blank `"shell": "",` key
   if ("shell" in next && next.shell === "") return { ...next, shell: undefined }
   return next
+}
+
+function shouldInstallPluginDependencies(dir: string, plugins: ConfigPlugin.Origin[] | undefined, discovered: ConfigPluginV1.Spec[]) {
+  if (dir === Flag.OPENCODE_CONFIG_DIR) return true
+  if (discovered.length) return true
+  if (!plugins?.length) return false
+  return plugins.some((origin) => {
+    if (origin.source.startsWith("http://") || origin.source.startsWith("https://")) return false
+    if (origin.source === "OPENCODE_CONFIG_CONTENT") return false
+    if (path.dirname(origin.source) !== dir) return false
+    const spec = ConfigPlugin.pluginSpecifier(origin.spec)
+    if (!spec.startsWith("file://")) return false
+    return FSUtil.contains(dir, fileURLToPath(spec))
+  })
 }
 
 function shouldSyncBundledGlobalConfig() {
@@ -468,6 +482,16 @@ export const layer = Layer.effect(
             }
           }
 
+          result.command = mergeDeep(result.command ?? {}, yield* Effect.promise(() => ConfigCommand.load(dir)))
+          result.agent = mergeDeep(result.agent ?? {}, yield* Effect.promise(() => ConfigAgent.load(dir)))
+          result.agent = mergeDeep(result.agent ?? {}, yield* Effect.promise(() => ConfigAgent.loadMode(dir)))
+          // Auto-discovered plugins under `.opencode/plugin(s)` are already local files, so ConfigPlugin.load
+          // returns normalized Specs and we only need to attach origin metadata here.
+          const list = yield* Effect.promise(() => ConfigPlugin.load(dir))
+          yield* mergePluginOrigins(dir, list)
+
+          if (!shouldInstallPluginDependencies(dir, result.plugin_origins, list)) continue
+
           yield* ensureGitignore(dir).pipe(Effect.orDie)
 
           const dep = yield* npmSvc
@@ -490,14 +514,6 @@ export const layer = Layer.effect(
               Effect.forkDetach,
             )
           deps.push(dep)
-
-          result.command = mergeDeep(result.command ?? {}, yield* Effect.promise(() => ConfigCommand.load(dir)))
-          result.agent = mergeDeep(result.agent ?? {}, yield* Effect.promise(() => ConfigAgent.load(dir)))
-          result.agent = mergeDeep(result.agent ?? {}, yield* Effect.promise(() => ConfigAgent.loadMode(dir)))
-          // Auto-discovered plugins under `.opencode/plugin(s)` are already local files, so ConfigPlugin.load
-          // returns normalized Specs and we only need to attach origin metadata here.
-          const list = yield* Effect.promise(() => ConfigPlugin.load(dir))
-          yield* mergePluginOrigins(dir, list)
         }
 
         if (process.env.OPENCODE_CONFIG_CONTENT) {

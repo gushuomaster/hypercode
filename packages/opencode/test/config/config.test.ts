@@ -35,6 +35,7 @@ import os from "os"
 import { pathToFileURL } from "url"
 import { Global } from "@opencode-ai/core/global"
 import { ProjectV2 } from "@opencode-ai/core/project"
+import { Npm } from "@opencode-ai/core/npm"
 import { Filesystem } from "@/util/filesystem"
 import { ConfigPlugin } from "@/config/plugin"
 import { ConfigPluginV1 } from "@opencode-ai/core/v1/config/plugin"
@@ -103,6 +104,7 @@ const configLayer = (
     auth?: Layer.Layer<Auth.Service>
     account?: Layer.Layer<Account.Service>
     client?: HttpClient.HttpClient
+    npm?: Layer.Layer<Npm.Service>
   } = {},
 ) =>
   Config.layer.pipe(
@@ -111,15 +113,17 @@ const configLayer = (
     Layer.provide(options.auth ?? AuthTest.empty),
     Layer.provide(options.account ?? AccountTest.empty),
     Layer.provideMerge(infra),
-    Layer.provide(NpmTest.noop),
+    Layer.provide(options.npm ?? NpmTest.noop),
     Layer.provide(Layer.succeed(HttpClient.HttpClient, options.client ?? unexpectedHttp)),
     Layer.provideMerge(FSUtil.defaultLayer),
   )
 
 const layer = configLayer()
+const dependencyInstalls: string[] = []
 
 const it = testEffect(layer)
 const configIt = (options?: Parameters<typeof configLayer>[0]) => testEffect(configLayer(options))
+const installSpyIt = configIt({ npm: npmSpy(dependencyInstalls) })
 
 const schemaConfig = (config: object) => ({ $schema: "https://opencode.ai/config.json", ...config })
 
@@ -145,6 +149,7 @@ const originalTestToken = process.env.TEST_TOKEN
 const originalConsoleToken = process.env.OPENCODE_CONSOLE_TOKEN
 
 beforeEach(async () => {
+  dependencyInstalls.length = 0
   await clear(true)
 })
 
@@ -267,6 +272,20 @@ function withProcessEnvs<A, E, R>(entries: Record<string, string | undefined>, e
           else delete process.env[key]
         }
       }),
+  )
+}
+
+function npmSpy(installs: string[]) {
+  return Layer.succeed(
+    Npm.Service,
+    Npm.Service.of({
+      add: () => Effect.die("unexpected npm add"),
+      install: (dir) =>
+        Effect.sync(() => {
+          installs.push(dir)
+        }),
+      which: () => Effect.succeed(Option.none()),
+    }),
   )
 }
 
@@ -1077,6 +1096,46 @@ it.effect("installs dependencies in writable OPENCODE_CONFIG_DIR", () =>
 
     expect(yield* FSUtil.use.readFileString(path.join(configDir, ".gitignore"))).toContain("package-lock.json")
   }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+)
+
+installSpyIt.instance("does not install dependencies for direct file plugins without local extension directories", () =>
+  Effect.gen(function* () {
+    const test = yield* TestInstance
+    const file = path.join(test.directory, "plugin.ts")
+
+    yield* FSUtil.use.writeWithDirs(
+      file,
+      [
+        "export default async () => ({})",
+        "",
+      ].join("\n"),
+    )
+    yield* writeConfigEffect(test.directory, {
+      plugin: [pathToFileURL(file).href],
+    })
+
+    yield* Config.Service.use((svc) => svc.get().pipe(Effect.andThen(svc.waitForDependencies())))
+
+    expect(dependencyInstalls).toEqual([])
+  }),
+)
+
+installSpyIt.instance("installs dependencies for local extension directories that contain auto-discovered plugins", () =>
+  Effect.gen(function* () {
+    const test = yield* TestInstance
+
+    yield* FSUtil.use.writeWithDirs(
+      path.join(test.directory, ".opencode", "plugin", "demo.ts"),
+      [
+        "export default async () => ({})",
+        "",
+      ].join("\n"),
+    )
+
+    yield* Config.Service.use((svc) => svc.get().pipe(Effect.andThen(svc.waitForDependencies())))
+
+    expect(dependencyInstalls).toEqual([path.join(test.directory, ".opencode")])
+  }),
 )
 
 // Note: deduplication and serialization of npm installs is now handled by the
