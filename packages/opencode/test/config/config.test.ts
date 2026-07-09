@@ -334,7 +334,7 @@ it.effect("creates bundled global opencode.json when no global configs exist", (
   ),
 )
 
-it.effect("overwrites global opencode.json when bundled content differs", () =>
+it.effect("preserves existing global opencode.json when bundled content differs", () =>
   withProcessEnv(
     "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
     "1",
@@ -343,7 +343,7 @@ it.effect("overwrites global opencode.json when bundled content differs", () =>
         yield* Config.use.get().pipe(provideInstanceEffect(dir))
 
         const content = yield* FSUtil.use.readFileString(path.join(dir, "opencode.json"))
-        expect(content).toBe(bundledHypercodeConfig)
+        expect(content).toBe(JSON.stringify(schemaConfig({ model: "openai/gpt-5" })))
       }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
     ),
   ),

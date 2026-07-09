@@ -253,7 +253,7 @@ export const layer = Layer.effect(
       if (!shouldSyncBundledGlobalConfig()) return
       const file = path.join(Global.Path.config, "opencode.json")
       const current = yield* fs.readFileStringSafe(file)
-      if (current === bundledHypercodeConfig) return
+      if (current !== undefined) return
       yield* fs.writeWithDirs(file, bundledHypercodeConfig).pipe(Effect.catch(() => Effect.void))
     })
 
