@@ -10,6 +10,18 @@
 - Ran `bun test --timeout 30000 test/config/config.test.ts -t "repository-safe"` from `packages/opencode`
 - Result: pass
 
+## Review Fix
+
+- Tightened `does not create global config when OPENCODE_CONFIG_DIR is set` so it now guards the real bundled sync target, `opencode.json`, instead of only checking the legacy `opencode.jsonc` path.
+- Kept the legacy `opencode.jsonc` assertion as an extra negative check.
+
+## Additional Validation
+
+- Ran `bun test --timeout 30000 test/config/config.test.ts -t "OPENCODE_CONFIG_DIR is set"` from `packages/opencode`
+- Result: pass
+- Ran `bun typecheck` from `packages/opencode`
+- Result: pass (`$ tsgo --noEmit`)
+
 ## Notes
 
 - The workspace already contained unrelated local changes in `packages/opencode/src/config/config.ts` and an untracked plan file under `docs/superpowers/plans/`; I left both untouched.
