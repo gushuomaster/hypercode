@@ -368,12 +368,16 @@ it.effect("does not create global config when OPENCODE_CONFIG_DIR is set", () =>
 )
 
 test("bundled HyperCode config stays repository-safe", () => {
+  const parsed = JSON.parse(bundledHypercodeConfig) as { provider?: Record<string, unknown> }
+
   expect(bundledHypercodeConfig).toContain('"$schema": "https://opencode.ai/config.json"')
   expect(bundledHypercodeConfig).toContain('"model": "minimax-direct/MiniMax-M2.7"')
   expect(bundledHypercodeConfig).toContain('"small_model": "minimax-direct/MiniMax-M2.7"')
   expect(bundledHypercodeConfig).toContain('"apiKey": "{env:MINIMAX_API_KEY}"')
+  expect(Object.keys(parsed.provider ?? {})).toEqual(["minimax-direct"])
   expect(bundledHypercodeConfig).not.toContain('"plugin"')
   expect(bundledHypercodeConfig).not.toContain('"mcp"')
+  expect(bundledHypercodeConfig).not.toContain('"command": [')
   expect(bundledHypercodeConfig).not.toContain("D:/")
   expect(bundledHypercodeConfig).not.toContain("C:\\\\")
   expect(bundledHypercodeConfig).not.toContain("sk-")
