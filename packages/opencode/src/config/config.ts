@@ -2,7 +2,7 @@ import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { httpClient } from "@opencode-ai/core/effect/layer-node-platform"
 import { serviceUse } from "@opencode-ai/core/effect/service-use"
 import path from "path"
-import { pathToFileURL } from "url"
+import { fileURLToPath, pathToFileURL } from "url"
 import os from "os"
 import { mergeDeep } from "remeda"
 import { Global } from "@opencode-ai/core/global"
@@ -33,6 +33,7 @@ import { ConfigParse } from "./parse"
 import { ConfigPaths } from "./paths"
 import { ConfigPlugin } from "./plugin"
 import { ConfigVariable } from "./variable"
+import { bundledHypercodeConfig } from "./hypercode-bundled"
 import { Npm } from "@opencode-ai/core/npm"
 import { withTransientReadRetry } from "@/util/effect-http-client"
 
@@ -136,14 +137,23 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/Co
 
 export const use = serviceUse(Service)
 
-function globalConfigFile() {
-  const candidates = ["hypercode.jsonc", "hypercode.json", "opencode.jsonc", "opencode.json", "config.json"].map((file) =>
+function globalConfigCandidates() {
+  return ["hypercode.jsonc", "hypercode.json", "opencode.jsonc", "opencode.json", "config.json"].map((file) =>
     path.join(Global.Path.config, file),
   )
-  for (const file of candidates) {
+}
+
+function globalConfigFile() {
+  for (const file of globalConfigCandidates()) {
     if (existsSync(file)) return file
   }
-  return candidates[0]
+  return globalConfigCandidates()[0]
+}
+
+function hasExistingGlobalConfigFile() {
+  return (
+    globalConfigCandidates().some((file) => existsSync(file)) || existsSync(path.join(Global.Path.config, "config"))
+  )
 }
 
 function patchJsonc(input: string, patch: unknown, path: string[] = []): string {
@@ -170,6 +180,32 @@ function writableGlobal(info: Info) {
   // When a user changes config from a value back to default in the Desktop app, we don't want to leave a blank `"shell": "",` key
   if ("shell" in next && next.shell === "") return { ...next, shell: undefined }
   return next
+}
+
+function shouldInstallPluginDependencies(dir: string, plugins: ConfigPlugin.Origin[] | undefined, discovered: ConfigPluginV1.Spec[]) {
+  if (dir === Flag.OPENCODE_CONFIG_DIR) return true
+  if (discovered.length) return true
+  if (!plugins?.length) return false
+  return plugins.some((origin) => {
+    if (origin.source.startsWith("http://") || origin.source.startsWith("https://")) return false
+    if (origin.source === "OPENCODE_CONFIG_CONTENT") return false
+    if (path.dirname(origin.source) !== dir) return false
+    const spec = ConfigPlugin.pluginSpecifier(origin.spec)
+    if (!spec.startsWith("file://")) return false
+    return FSUtil.contains(dir, fileURLToPath(spec))
+  })
+}
+
+function shouldSyncBundledGlobalConfig() {
+  if (process.env.OPENCODE_TEST_HOME && process.env.OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC !== "1") return false
+  return (
+    !Flag.OPENCODE_CONFIG &&
+    !Flag.OPENCODE_CONFIG_DIR &&
+    !Flag.OPENCODE_CONFIG_CONTENT &&
+    !process.env.OPENCODE_CONFIG &&
+    !process.env.OPENCODE_CONFIG_DIR &&
+    !process.env.OPENCODE_CONFIG_CONTENT
+  )
 }
 
 export const layer = Layer.effect(
@@ -243,11 +279,19 @@ export const layer = Layer.effect(
       return yield* loadConfig(text, { path: filepath }, env)
     })
 
+    const syncBundledGlobalConfig = Effect.fnUntraced(function* () {
+      if (!shouldSyncBundledGlobalConfig()) return
+      if (hasExistingGlobalConfigFile()) return
+      const file = path.join(Global.Path.config, "opencode.json")
+      yield* fs.writeWithDirs(file, bundledHypercodeConfig).pipe(Effect.catch(() => Effect.void))
+    })
+
     const loadGlobal = Effect.fnUntraced(function* (env?: Record<string, string>) {
       let result: Info = {}
+      yield* syncBundledGlobalConfig()
       // Seed the default global config with the schema for editor completion, but avoid writing when the user
       // explicitly routes config through env-provided paths or content.
-      if (!Flag.OPENCODE_CONFIG && !Flag.OPENCODE_CONFIG_DIR && !Flag.OPENCODE_CONFIG_CONTENT) {
+      if (shouldSyncBundledGlobalConfig() && !hasExistingGlobalConfigFile()) {
         const file = globalConfigFile()
         if (!existsSync(file)) {
           yield* fs
@@ -438,6 +482,16 @@ export const layer = Layer.effect(
             }
           }
 
+          result.command = mergeDeep(result.command ?? {}, yield* Effect.promise(() => ConfigCommand.load(dir)))
+          result.agent = mergeDeep(result.agent ?? {}, yield* Effect.promise(() => ConfigAgent.load(dir)))
+          result.agent = mergeDeep(result.agent ?? {}, yield* Effect.promise(() => ConfigAgent.loadMode(dir)))
+          // Auto-discovered plugins under `.opencode/plugin(s)` are already local files, so ConfigPlugin.load
+          // returns normalized Specs and we only need to attach origin metadata here.
+          const list = yield* Effect.promise(() => ConfigPlugin.load(dir))
+          yield* mergePluginOrigins(dir, list)
+
+          if (!shouldInstallPluginDependencies(dir, result.plugin_origins, list)) continue
+
           yield* ensureGitignore(dir).pipe(Effect.orDie)
 
           const dep = yield* npmSvc
@@ -460,14 +514,6 @@ export const layer = Layer.effect(
               Effect.forkDetach,
             )
           deps.push(dep)
-
-          result.command = mergeDeep(result.command ?? {}, yield* Effect.promise(() => ConfigCommand.load(dir)))
-          result.agent = mergeDeep(result.agent ?? {}, yield* Effect.promise(() => ConfigAgent.load(dir)))
-          result.agent = mergeDeep(result.agent ?? {}, yield* Effect.promise(() => ConfigAgent.loadMode(dir)))
-          // Auto-discovered plugins under `.opencode/plugin(s)` are already local files, so ConfigPlugin.load
-          // returns normalized Specs and we only need to attach origin metadata here.
-          const list = yield* Effect.promise(() => ConfigPlugin.load(dir))
-          yield* mergePluginOrigins(dir, list)
         }
 
         if (process.env.OPENCODE_CONFIG_CONTENT) {

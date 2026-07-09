@@ -97,6 +97,60 @@ describe("plugin.loader.shared", () => {
     ),
   )
 
+  it.live("does not eagerly wait for dependencies before loading ready file plugins", () =>
+    withTmp(
+      async (dir) => {
+        const file = path.join(dir, "plugin.ts")
+        const mark = path.join(dir, "called.txt")
+        await Bun.write(
+          file,
+          [
+            "export default async () => {",
+            `  await Bun.write(${JSON.stringify(mark)}, "called")`,
+            "  return {}",
+            "}",
+            "",
+          ].join("\n"),
+        )
+
+        return { file: pathToFileURL(file).href, mark }
+      },
+      (tmp) =>
+        Effect.suspend(() => {
+          let waits = 0
+          const source = path.join(tmp.path, "opencode.json")
+          return Effect.gen(function* () {
+            const plugin = yield* Plugin.Service
+            yield* plugin.init()
+            expect(waits).toBe(0)
+            expect(yield* Effect.promise(() => fs.readFile(tmp.extra.mark, "utf8"))).toBe("called")
+          }).pipe(
+            Effect.provide(
+              Plugin.layer.pipe(
+                Layer.provide(EventV2Bridge.defaultLayer),
+                Layer.provide(RuntimeFlags.layer({ disableDefaultPlugins: true })),
+                Layer.provide(
+                  TestConfig.layer({
+                    get: () =>
+                      Effect.succeed({
+                        plugin: [tmp.extra.file],
+                        plugin_origins: [{ spec: tmp.extra.file, source, scope: "local" as const }],
+                      }),
+                    directories: () => Effect.succeed([tmp.path]),
+                    waitForDependencies: () =>
+                      Effect.sync(() => {
+                        waits += 1
+                      }),
+                  }),
+                ),
+              ),
+            ),
+            provideInstance(tmp.path),
+          )
+        }),
+    ),
+  )
+
   it.live("deduplicates same function exported as default and named", () =>
     withTmp(
       async (dir) => {

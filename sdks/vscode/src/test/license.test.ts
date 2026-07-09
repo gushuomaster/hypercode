@@ -5,6 +5,7 @@ import * as path from "node:path"
 import { describe, test } from "node:test"
 
 import { generateExpectedLicense, validateLicenseKey } from "../license/licenseAlgorithm"
+import { getMachineId } from "../license/machineId"
 import { resolveLicensePath } from "../license/licensePaths"
 import { validateLicense } from "../license/licenseValidator"
 
@@ -28,6 +29,31 @@ describe("license algorithm", () => {
 describe("license paths", () => {
   test("uses fixed Windows path", () => {
     assert.equal(resolveLicensePath({ platform: "win32" }), "C:\\hyper-aicode\\license.txt")
+  })
+})
+
+describe("machine id", () => {
+  test("falls back to PowerShell when wmic is unavailable on Windows", async () => {
+    const seen: string[] = []
+    const id = await getMachineId({
+      platform: "win32",
+      run: async (command) => {
+        seen.push(command)
+        if (command === "wmic cpu get processorid") {
+          throw new Error("spawn wmic ENOENT")
+        }
+        if (command.includes("Get-CimInstance Win32_Processor")) {
+          return "BFEBFBFF000B0671\r\n"
+        }
+        throw new Error(`unexpected command: ${command}`)
+      },
+    })
+
+    assert.equal(id, machine)
+    assert.deepEqual(seen, [
+      "wmic cpu get processorid",
+      'powershell -NoProfile -Command "(Get-CimInstance Win32_Processor | Select-Object -First 1 -ExpandProperty ProcessorId).Trim()"',
+    ])
   })
 })
 

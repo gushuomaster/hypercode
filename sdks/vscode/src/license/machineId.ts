@@ -14,18 +14,36 @@ export async function getMachineId(options: MachineIdOptions = {}) {
   const run = options.run ?? defaultRun
 
   if (platform === "win32") {
-    const lines = (await run("wmic cpu get processorid")).split("\n").map((line) => line.trim()).filter(Boolean)
-    if (lines.length > 1) {
-      return lines[1]
+    const commands = [
+      "wmic cpu get processorid",
+      'powershell -NoProfile -Command "(Get-CimInstance Win32_Processor | Select-Object -First 1 -ExpandProperty ProcessorId).Trim()"',
+      'pwsh -NoProfile -Command "(Get-CimInstance Win32_Processor | Select-Object -First 1 -ExpandProperty ProcessorId).Trim()"',
+    ]
+    let lastError: unknown
+
+    for (const command of commands) {
+      try {
+        const id = parseWindowsMachineId(await run(command))
+        if (id) return id
+      } catch (error) {
+        lastError = error
+      }
     }
 
-    throw new Error("无法获取系统标识符")
+    if (lastError instanceof Error) throw lastError
+    throw new Error("Unable to get Windows machine ID")
   }
 
   const value = (await run("cat /etc/machine-id")).trim()
-  if (value) {
-    return value
-  }
+  if (value) return value
 
-  throw new Error("无法获取系统标识符")
+  throw new Error("Unable to get machine ID")
+}
+
+function parseWindowsMachineId(stdout: string) {
+  return stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .find((line) => !/^processorid$/i.test(line))
 }

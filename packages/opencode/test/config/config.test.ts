@@ -5,6 +5,7 @@ import { NamedError } from "@opencode-ai/core/util/error"
 import { FetchHttpClient, HttpClient, HttpClientResponse } from "effect/unstable/http"
 import { NodeFileSystem, NodePath } from "@effect/platform-node"
 import { Config } from "@/config/config"
+import { bundledHypercodeConfig } from "@/config/hypercode-bundled"
 import { ConfigManaged } from "@/config/managed"
 import { ConfigParse } from "../../src/config/parse"
 import { EffectFlock } from "@opencode-ai/core/util/effect-flock"
@@ -34,6 +35,7 @@ import os from "os"
 import { pathToFileURL } from "url"
 import { Global } from "@opencode-ai/core/global"
 import { ProjectV2 } from "@opencode-ai/core/project"
+import { Npm } from "@opencode-ai/core/npm"
 import { Filesystem } from "@/util/filesystem"
 import { ConfigPlugin } from "@/config/plugin"
 import { ConfigPluginV1 } from "@opencode-ai/core/v1/config/plugin"
@@ -102,6 +104,7 @@ const configLayer = (
     auth?: Layer.Layer<Auth.Service>
     account?: Layer.Layer<Account.Service>
     client?: HttpClient.HttpClient
+    npm?: Layer.Layer<Npm.Service>
   } = {},
 ) =>
   Config.layer.pipe(
@@ -110,15 +113,17 @@ const configLayer = (
     Layer.provide(options.auth ?? AuthTest.empty),
     Layer.provide(options.account ?? AccountTest.empty),
     Layer.provideMerge(infra),
-    Layer.provide(NpmTest.noop),
+    Layer.provide(options.npm ?? NpmTest.noop),
     Layer.provide(Layer.succeed(HttpClient.HttpClient, options.client ?? unexpectedHttp)),
     Layer.provideMerge(FSUtil.defaultLayer),
   )
 
 const layer = configLayer()
+const dependencyInstalls: string[] = []
 
 const it = testEffect(layer)
 const configIt = (options?: Parameters<typeof configLayer>[0]) => testEffect(configLayer(options))
+const installSpyIt = configIt({ npm: npmSpy(dependencyInstalls) })
 
 const schemaConfig = (config: object) => ({ $schema: "https://opencode.ai/config.json", ...config })
 
@@ -144,6 +149,7 @@ const originalTestToken = process.env.TEST_TOKEN
 const originalConsoleToken = process.env.OPENCODE_CONSOLE_TOKEN
 
 beforeEach(async () => {
+  dependencyInstalls.length = 0
   await clear(true)
 })
 
@@ -269,6 +275,20 @@ function withProcessEnvs<A, E, R>(entries: Record<string, string | undefined>, e
   )
 }
 
+function npmSpy(installs: string[]) {
+  return Layer.succeed(
+    Npm.Service,
+    Npm.Service.of({
+      add: () => Effect.die("unexpected npm add"),
+      install: (dir) =>
+        Effect.sync(() => {
+          installs.push(dir)
+        }),
+      which: () => Effect.succeed(Option.none()),
+    }),
+  )
+}
+
 async function check(map: (dir: string) => string) {
   if (process.platform !== "win32") return
   await using globalTmp = await tmpdir()
@@ -318,14 +338,83 @@ it.instance("falls back to generic username when system user info is unavailable
   }),
 )
 
-it.effect("creates global jsonc config with schema when no global configs exist", () =>
-  withGlobalConfig({}, ({ dir }) =>
-    Effect.gen(function* () {
-      yield* Config.use.get().pipe(provideInstanceEffect(dir))
+it.effect("creates bundled global opencode.json when no global configs exist", () =>
+  withProcessEnv(
+    "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
+    "1",
+    withGlobalConfig({}, ({ dir }) =>
+      Effect.gen(function* () {
+        yield* Config.use.get().pipe(provideInstanceEffect(dir))
 
-      const content = yield* FSUtil.use.readFileString(path.join(dir, "hypercode.jsonc"))
-      expect(content).toContain('"$schema": "https://opencode.ai/config.json"')
-    }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+        const content = yield* FSUtil.use.readFileString(path.join(dir, "opencode.json"))
+        expect(content).toBe(bundledHypercodeConfig)
+      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+    ),
+  ),
+)
+
+it.effect("preserves existing global opencode.json when bundled content differs", () =>
+  withProcessEnv(
+    "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
+    "1",
+    withGlobalConfig({ config: { model: "openai/gpt-5" }, name: "opencode.json" }, ({ dir }) =>
+      Effect.gen(function* () {
+        yield* Config.use.get().pipe(provideInstanceEffect(dir))
+
+        const content = yield* FSUtil.use.readFileString(path.join(dir, "opencode.json"))
+        expect(content).toBe(JSON.stringify(schemaConfig({ model: "openai/gpt-5" })))
+      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+    ),
+  ),
+)
+
+it.effect("does not create bundled opencode.json when hypercode.jsonc already exists", () =>
+  withProcessEnv(
+    "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
+    "1",
+    withGlobalConfig({ config: { model: "openai/gpt-5" }, name: "hypercode.jsonc" }, ({ dir }) =>
+      Effect.gen(function* () {
+        yield* Config.use.get().pipe(provideInstanceEffect(dir))
+
+        expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
+      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+    ),
+  ),
+)
+
+it.effect("does not create bundled opencode.json when config.json already exists", () =>
+  withProcessEnv(
+    "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
+    "1",
+    withGlobalConfig({ config: { model: "openai/gpt-5" }, name: "config.json" }, ({ dir }) =>
+      Effect.gen(function* () {
+        yield* Config.use.get().pipe(provideInstanceEffect(dir))
+
+        expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
+      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+    ),
+  ),
+)
+
+it.effect("does not create bundled opencode.json when legacy config already exists", () =>
+  withProcessEnv(
+    "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
+    "1",
+    withGlobalConfigDir(
+      path.join(os.tmpdir(), `hypercode-legacy-config-${Date.now()}-${Math.random().toString(16).slice(2)}`),
+      Effect.gen(function* () {
+        const dir = Global.Path.config
+        yield* FSUtil.use.writeWithDirs(path.join(dir, "config"), 'provider = "openai"\nmodel = "gpt-5"\n')
+
+        yield* Config.use.get().pipe(provideInstanceEffect(dir))
+
+        expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
+        expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.jsonc"))).toBe(false)
+        expect(yield* FSUtil.use.existsSafe(path.join(dir, "hypercode.json"))).toBe(false)
+        expect(yield* FSUtil.use.existsSafe(path.join(dir, "hypercode.jsonc"))).toBe(false)
+        expect(yield* FSUtil.use.existsSafe(path.join(dir, "config.json"))).toBe(true)
+      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+    ),
   ),
 )
 
@@ -339,12 +428,69 @@ it.effect("does not create global config when OPENCODE_CONFIG_DIR is set", () =>
         Effect.gen(function* () {
           yield* Config.use.get().pipe(provideInstanceEffect(dir))
 
+          expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
           expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.jsonc"))).toBe(false)
         }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
       ),
     )
   }),
 )
+
+it.effect("does not create bundled opencode.json when OPENCODE_CONFIG is set", () =>
+  withProcessEnv(
+    "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
+    "1",
+    Effect.gen(function* () {
+      const custom = yield* tmpdirScoped()
+      yield* writeConfigEffect(custom, schemaConfig({ model: "openai/gpt-5" }))
+      yield* withGlobalConfig({}, ({ dir }) =>
+        withProcessEnv(
+          "OPENCODE_CONFIG",
+          path.join(custom, "opencode.json"),
+          Effect.gen(function* () {
+            yield* Config.use.get().pipe(provideInstanceEffect(dir))
+
+            expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
+          }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+        ),
+      )
+    }),
+  ),
+)
+
+it.effect("does not create bundled opencode.json when OPENCODE_CONFIG_CONTENT is set", () =>
+  withProcessEnv(
+    "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
+    "1",
+    withGlobalConfig({}, ({ dir }) =>
+      withProcessEnv(
+        "OPENCODE_CONFIG_CONTENT",
+        JSON.stringify(schemaConfig({ model: "openai/gpt-5" })),
+        Effect.gen(function* () {
+          yield* Config.use.get().pipe(provideInstanceEffect(dir))
+
+          expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
+        }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+      ),
+    ),
+  ),
+)
+
+test("bundled HyperCode config stays repository-safe", () => {
+  const parsed = JSON.parse(bundledHypercodeConfig) as { provider?: Record<string, unknown> }
+
+  expect(bundledHypercodeConfig).toContain('"$schema": "https://opencode.ai/config.json"')
+  expect(bundledHypercodeConfig).toContain('"model": "minimax-direct/MiniMax-M2.7"')
+  expect(bundledHypercodeConfig).toContain('"small_model": "minimax-direct/MiniMax-M2.7"')
+  expect(bundledHypercodeConfig).toContain('"apiKey": "{env:MINIMAX_API_KEY}"')
+  expect(Object.keys(parsed.provider ?? {})).toEqual(["minimax-direct"])
+  expect(bundledHypercodeConfig).not.toContain('"plugin"')
+  expect(bundledHypercodeConfig).not.toContain('"mcp"')
+  expect(bundledHypercodeConfig).not.toContain('"command": [')
+  expect(bundledHypercodeConfig).not.toContain("D:/")
+  expect(bundledHypercodeConfig).not.toContain("C:\\\\")
+  expect(bundledHypercodeConfig).not.toContain("sk-")
+})
 
 it.instance(
   "loads JSON config file",
@@ -950,6 +1096,46 @@ it.effect("installs dependencies in writable OPENCODE_CONFIG_DIR", () =>
 
     expect(yield* FSUtil.use.readFileString(path.join(configDir, ".gitignore"))).toContain("package-lock.json")
   }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+)
+
+installSpyIt.instance("does not install dependencies for direct file plugins without local extension directories", () =>
+  Effect.gen(function* () {
+    const test = yield* TestInstance
+    const file = path.join(test.directory, "plugin.ts")
+
+    yield* FSUtil.use.writeWithDirs(
+      file,
+      [
+        "export default async () => ({})",
+        "",
+      ].join("\n"),
+    )
+    yield* writeConfigEffect(test.directory, {
+      plugin: [pathToFileURL(file).href],
+    })
+
+    yield* Config.Service.use((svc) => svc.get().pipe(Effect.andThen(svc.waitForDependencies())))
+
+    expect(dependencyInstalls).toEqual([])
+  }),
+)
+
+installSpyIt.instance("installs dependencies for local extension directories that contain auto-discovered plugins", () =>
+  Effect.gen(function* () {
+    const test = yield* TestInstance
+
+    yield* FSUtil.use.writeWithDirs(
+      path.join(test.directory, ".opencode", "plugin", "demo.ts"),
+      [
+        "export default async () => ({})",
+        "",
+      ].join("\n"),
+    )
+
+    yield* Config.Service.use((svc) => svc.get().pipe(Effect.andThen(svc.waitForDependencies())))
+
+    expect(dependencyInstalls).toEqual([path.join(test.directory, ".opencode")])
+  }),
 )
 
 // Note: deduplication and serialization of npm installs is now handled by the
