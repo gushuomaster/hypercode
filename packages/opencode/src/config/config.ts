@@ -151,7 +151,9 @@ function globalConfigFile() {
 }
 
 function hasExistingGlobalConfigFile() {
-  return globalConfigCandidates().some((file) => existsSync(file))
+  return (
+    globalConfigCandidates().some((file) => existsSync(file)) || existsSync(path.join(Global.Path.config, "config"))
+  )
 }
 
 function patchJsonc(input: string, patch: unknown, path: string[] = []): string {
@@ -182,7 +184,14 @@ function writableGlobal(info: Info) {
 
 function shouldSyncBundledGlobalConfig() {
   if (process.env.OPENCODE_TEST_HOME && process.env.OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC !== "1") return false
-  return !Flag.OPENCODE_CONFIG && !Flag.OPENCODE_CONFIG_DIR && !Flag.OPENCODE_CONFIG_CONTENT
+  return (
+    !Flag.OPENCODE_CONFIG &&
+    !Flag.OPENCODE_CONFIG_DIR &&
+    !Flag.OPENCODE_CONFIG_CONTENT &&
+    !process.env.OPENCODE_CONFIG &&
+    !process.env.OPENCODE_CONFIG_DIR &&
+    !process.env.OPENCODE_CONFIG_CONTENT
+  )
 }
 
 export const layer = Layer.effect(

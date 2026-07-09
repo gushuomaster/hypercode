@@ -377,6 +377,25 @@ it.effect("does not create bundled opencode.json when config.json already exists
   ),
 )
 
+it.effect("does not create bundled opencode.json when legacy config already exists", () =>
+  withProcessEnv(
+    "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
+    "1",
+    withGlobalConfigDir(
+      path.join(os.tmpdir(), `hypercode-legacy-config-${Date.now()}-${Math.random().toString(16).slice(2)}`),
+      Effect.gen(function* () {
+        const dir = Global.Path.config
+        yield* FSUtil.use.writeWithDirs(path.join(dir, "config"), 'provider = "openai"\nmodel = "gpt-5"\n')
+
+        yield* Config.use.get().pipe(provideInstanceEffect(dir))
+
+        expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
+        expect(yield* FSUtil.use.existsSafe(path.join(dir, "config.json"))).toBe(true)
+      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+    ),
+  ),
+)
+
 it.effect("does not create global config when OPENCODE_CONFIG_DIR is set", () =>
   Effect.gen(function* () {
     const custom = yield* tmpdirScoped()
@@ -393,6 +412,46 @@ it.effect("does not create global config when OPENCODE_CONFIG_DIR is set", () =>
       ),
     )
   }),
+)
+
+it.effect("does not create bundled opencode.json when OPENCODE_CONFIG is set", () =>
+  withProcessEnv(
+    "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
+    "1",
+    Effect.gen(function* () {
+      const custom = yield* tmpdirScoped()
+      yield* writeConfigEffect(custom, schemaConfig({ model: "openai/gpt-5" }))
+      yield* withGlobalConfig({}, ({ dir }) =>
+        withProcessEnv(
+          "OPENCODE_CONFIG",
+          path.join(custom, "opencode.json"),
+          Effect.gen(function* () {
+            yield* Config.use.get().pipe(provideInstanceEffect(dir))
+
+            expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
+          }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+        ),
+      )
+    }),
+  ),
+)
+
+it.effect("does not create bundled opencode.json when OPENCODE_CONFIG_CONTENT is set", () =>
+  withProcessEnv(
+    "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
+    "1",
+    withGlobalConfig({}, ({ dir }) =>
+      withProcessEnv(
+        "OPENCODE_CONFIG_CONTENT",
+        JSON.stringify(schemaConfig({ model: "openai/gpt-5" })),
+        Effect.gen(function* () {
+          yield* Config.use.get().pipe(provideInstanceEffect(dir))
+
+          expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
+        }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+      ),
+    ),
+  ),
 )
 
 test("bundled HyperCode config stays repository-safe", () => {
