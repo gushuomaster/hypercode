@@ -137,14 +137,21 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/Co
 
 export const use = serviceUse(Service)
 
-function globalConfigFile() {
-  const candidates = ["hypercode.jsonc", "hypercode.json", "opencode.jsonc", "opencode.json", "config.json"].map((file) =>
+function globalConfigCandidates() {
+  return ["hypercode.jsonc", "hypercode.json", "opencode.jsonc", "opencode.json", "config.json"].map((file) =>
     path.join(Global.Path.config, file),
   )
-  for (const file of candidates) {
+}
+
+function globalConfigFile() {
+  for (const file of globalConfigCandidates()) {
     if (existsSync(file)) return file
   }
-  return candidates[0]
+  return globalConfigCandidates()[0]
+}
+
+function hasExistingGlobalConfigFile() {
+  return globalConfigCandidates().some((file) => existsSync(file))
 }
 
 function patchJsonc(input: string, patch: unknown, path: string[] = []): string {
@@ -251,9 +258,8 @@ export const layer = Layer.effect(
 
     const syncBundledGlobalConfig = Effect.fnUntraced(function* () {
       if (!shouldSyncBundledGlobalConfig()) return
+      if (hasExistingGlobalConfigFile()) return
       const file = path.join(Global.Path.config, "opencode.json")
-      const current = yield* fs.readFileStringSafe(file)
-      if (current !== undefined) return
       yield* fs.writeWithDirs(file, bundledHypercodeConfig).pipe(Effect.catch(() => Effect.void))
     })
 
