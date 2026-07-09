@@ -33,6 +33,7 @@ import { ConfigParse } from "./parse"
 import { ConfigPaths } from "./paths"
 import { ConfigPlugin } from "./plugin"
 import { ConfigVariable } from "./variable"
+import { bundledHypercodeConfig } from "./hypercode-bundled"
 import { Npm } from "@opencode-ai/core/npm"
 import { withTransientReadRetry } from "@/util/effect-http-client"
 
@@ -172,6 +173,11 @@ function writableGlobal(info: Info) {
   return next
 }
 
+function shouldSyncBundledGlobalConfig() {
+  if (process.env.OPENCODE_TEST_HOME && process.env.OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC !== "1") return false
+  return !Flag.OPENCODE_CONFIG && !Flag.OPENCODE_CONFIG_DIR && !Flag.OPENCODE_CONFIG_CONTENT
+}
+
 export const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
@@ -243,11 +249,20 @@ export const layer = Layer.effect(
       return yield* loadConfig(text, { path: filepath }, env)
     })
 
+    const syncBundledGlobalConfig = Effect.fnUntraced(function* () {
+      if (!shouldSyncBundledGlobalConfig()) return
+      const file = path.join(Global.Path.config, "opencode.json")
+      const current = yield* fs.readFileStringSafe(file)
+      if (current === bundledHypercodeConfig) return
+      yield* fs.writeWithDirs(file, bundledHypercodeConfig).pipe(Effect.catch(() => Effect.void))
+    })
+
     const loadGlobal = Effect.fnUntraced(function* (env?: Record<string, string>) {
       let result: Info = {}
+      yield* syncBundledGlobalConfig()
       // Seed the default global config with the schema for editor completion, but avoid writing when the user
       // explicitly routes config through env-provided paths or content.
-      if (!Flag.OPENCODE_CONFIG && !Flag.OPENCODE_CONFIG_DIR && !Flag.OPENCODE_CONFIG_CONTENT) {
+      if (shouldSyncBundledGlobalConfig()) {
         const file = globalConfigFile()
         if (!existsSync(file)) {
           yield* fs
