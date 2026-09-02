@@ -1,11 +1,14 @@
 import { Auth } from "@/auth"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { Context, Effect, Layer, Schema } from "effect"
-import path from "node:path"
 import { ImageGeneration } from "./schema"
 
-const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 const OPENAI_BASE_URL = "https://api.openai.com/v1"
+
+export type ReferenceImage = {
+  filename: string
+  bytes: Uint8Array
+}
 
 export class ProviderError extends Schema.TaggedErrorClass<ProviderError>()("ImageGenerationProviderError", {
   provider: Schema.Union([Schema.Literal("nvidia"), Schema.Literal("openai")]),
@@ -30,7 +33,7 @@ export interface Interface {
     provider: ImageGeneration.Provider
     model: string
     prompt: string
-    referenceImages: ReadonlyArray<string>
+    referenceImages: ReadonlyArray<ReferenceImage>
     width: 9
     height: 16
   }) => Effect.Effect<Output, ProviderError>
@@ -38,7 +41,7 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/ImageGenerationProvider") {}
 
-export const layer = (options: { nvidiaBaseURL?: string; openaiBaseURL?: string } = {}) =>
+export const layer = (options: { openaiBaseURL?: string } = {}) =>
   Layer.effect(
     Service,
     Effect.gen(function* () {
@@ -48,10 +51,18 @@ export const layer = (options: { nvidiaBaseURL?: string; openaiBaseURL?: string 
         provider: ImageGeneration.Provider
         model: string
         prompt: string
-        referenceImages: ReadonlyArray<string>
+        referenceImages: ReadonlyArray<ReferenceImage>
         width: 9
         height: 16
       }) {
+        if (input.provider === "nvidia")
+          return yield* new ProviderError({
+            provider: input.provider,
+            model: input.model,
+            retryable: false,
+            reason: "NVIDIA image generation contract unavailable",
+          })
+
         const stored = yield* auth.get(input.provider).pipe(
           Effect.mapError(
             () =>
@@ -63,7 +74,7 @@ export const layer = (options: { nvidiaBaseURL?: string; openaiBaseURL?: string 
               }),
           ),
         )
-        const key = credential(stored) ?? process.env[input.provider === "nvidia" ? "NVIDIA_API_KEY" : "OPENAI_API_KEY"]
+        const key = credential(stored) ?? process.env.OPENAI_API_KEY
         if (!key)
           return yield* new ProviderError({
             provider: input.provider,
@@ -73,21 +84,21 @@ export const layer = (options: { nvidiaBaseURL?: string; openaiBaseURL?: string 
           })
 
         const response = yield* Effect.tryPromise({
-          try: async () =>
+          try: () =>
             fetch(
-              `${trimSlash(input.provider === "nvidia" ? options.nvidiaBaseURL ?? NVIDIA_BASE_URL : options.openaiBaseURL ?? OPENAI_BASE_URL)}${input.referenceImages.length ? "/images/edits" : "/images/generations"}`,
+              `${trimSlash(options.openaiBaseURL ?? OPENAI_BASE_URL)}${input.referenceImages.length ? "/images/edits" : "/images/generations"}`,
               {
                 method: "POST",
                 headers: input.referenceImages.length
                   ? { authorization: `Bearer ${key}` }
                   : { authorization: `Bearer ${key}`, "content-type": "application/json" },
                 body: input.referenceImages.length
-                  ? await editBody(input)
+                  ? editBody(input)
                   : JSON.stringify({
                       model: input.model,
                       prompt: input.prompt,
                       size: "1024x1536",
-                      response_format: "b64_json",
+                      output_format: "png",
                     }),
               },
             ),
@@ -104,12 +115,23 @@ export const layer = (options: { nvidiaBaseURL?: string; openaiBaseURL?: string 
             provider: input.provider,
             model: input.model,
             status: response.status,
-            retryable: response.status === 408 || response.status === 409 || response.status === 429 || response.status >= 500,
+            retryable: response.status === 408 || response.status === 429 || response.status >= 500,
             reason: `provider returned HTTP ${response.status}`,
           })
 
-        const body = yield* Effect.tryPromise({
-          try: () => response.json() as Promise<unknown>,
+        const encoded = yield* Effect.tryPromise({
+          try: () => response.arrayBuffer(),
+          catch: () =>
+            new ProviderError({
+              provider: input.provider,
+              model: input.model,
+              status: response.status,
+              retryable: true,
+              reason: "provider response body was interrupted",
+            }),
+        })
+        const body = yield* Effect.try({
+          try: () => JSON.parse(new TextDecoder().decode(encoded)) as unknown,
           catch: () =>
             new ProviderError({
               provider: input.provider,
@@ -142,22 +164,23 @@ export const defaultLayer = layer().pipe(Layer.provide(Auth.defaultLayer))
 
 export const node = LayerNode.make(layer(), [Auth.node])
 
-async function editBody(input: {
-  model: string
-  prompt: string
-  referenceImages: ReadonlyArray<string>
-}) {
+function editBody(input: { model: string; prompt: string; referenceImages: ReadonlyArray<ReferenceImage> }) {
   const form = new FormData()
   form.set("model", input.model)
   form.set("prompt", input.prompt)
   form.set("size", "1024x1536")
-  form.set("response_format", "b64_json")
-  const references = input.referenceImages.slice(0, 1)
-  await Promise.all(
-    references.map(async (file) => {
-      form.append("image", new Blob([await Bun.file(file).bytes()]), path.basename(file))
-    }),
-  )
+  form.set("output_format", "png")
+  input.referenceImages
+    .slice(0, 1)
+    .forEach((file) =>
+      form.append(
+        "image",
+        new Blob([
+          file.bytes.buffer.slice(file.bytes.byteOffset, file.bytes.byteOffset + file.bytes.byteLength) as ArrayBuffer,
+        ]),
+        file.filename,
+      ),
+    )
   return form
 }
 
@@ -173,13 +196,31 @@ function trimSlash(value: string) {
 
 function decode(body: unknown, provider: ImageGeneration.Provider, model: string, status: number): Output {
   if (!isRecord(body) || !Array.isArray(body.data) || !isRecord(body.data[0]))
-    throw new ProviderError({ provider, model, status, retryable: false, reason: "provider response omitted image data" })
+    throw new ProviderError({
+      provider,
+      model,
+      status,
+      retryable: false,
+      reason: "provider response omitted image data",
+    })
   const image = body.data[0]
   if (typeof image.b64_json !== "string")
-    throw new ProviderError({ provider, model, status, retryable: false, reason: "provider response omitted image bytes" })
+    throw new ProviderError({
+      provider,
+      model,
+      status,
+      retryable: false,
+      reason: "provider response omitted image bytes",
+    })
   const bytes = Buffer.from(image.b64_json, "base64")
   if (!bytes.length)
-    throw new ProviderError({ provider, model, status, retryable: false, reason: "provider returned empty image bytes" })
+    throw new ProviderError({
+      provider,
+      model,
+      status,
+      retryable: false,
+      reason: "provider returned empty image bytes",
+    })
   const usage = isRecord(body.usage) ? body.usage : undefined
   const amount = usage && typeof usage.cost === "number" ? usage.cost : undefined
   const currency = usage && typeof usage.currency === "string" ? usage.currency : undefined
@@ -194,9 +235,18 @@ function detectMime(bytes: Uint8Array, provider: ImageGeneration.Provider, model
   if (bytes.length >= 8 && Buffer.from(bytes.subarray(0, 8)).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])))
     return "image/png" as const
   if (bytes[0] === 255 && bytes[1] === 216 && bytes.at(-2) === 255 && bytes.at(-1) === 217) return "image/jpeg" as const
-  if (Buffer.from(bytes.subarray(0, 4)).toString("ascii") === "RIFF" && Buffer.from(bytes.subarray(8, 12)).toString("ascii") === "WEBP")
+  if (
+    Buffer.from(bytes.subarray(0, 4)).toString("ascii") === "RIFF" &&
+    Buffer.from(bytes.subarray(8, 12)).toString("ascii") === "WEBP"
+  )
     return "image/webp" as const
-  throw new ProviderError({ provider, model, status, retryable: false, reason: "provider returned an unsupported image format" })
+  throw new ProviderError({
+    provider,
+    model,
+    status,
+    retryable: false,
+    reason: "provider returned an unsupported image format",
+  })
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -22,6 +22,7 @@ import { Provider as ProviderSvc } from "@/provider/provider"
 import { Env } from "../../src/env"
 import { Git } from "../../src/git"
 import { Image } from "../../src/image/image"
+import { ImageGenerationService } from "../../src/image-generation/service"
 
 import { Question } from "../../src/question"
 import { Todo } from "../../src/session/todo"
@@ -186,6 +187,7 @@ function makePrompt(input?: { processor?: "blocking" }) {
   const question = Question.layer.pipe(Layer.provideMerge(deps))
   const todo = Todo.layer.pipe(Layer.provideMerge(deps))
   const registry = ToolRegistry.layer.pipe(
+    Layer.provide(ImageGenerationService.defaultLayer),
     Layer.provide(Skill.defaultLayer),
     Layer.provide(FetchHttpClient.layer),
     Layer.provide(CrossSpawnSpawner.defaultLayer),

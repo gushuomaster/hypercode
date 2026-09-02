@@ -6,11 +6,18 @@ import { normalizeOutputPath } from "../../src/image-generation/path"
 
 describe("image generation output paths", () => {
   test("rejects output paths outside the selected project directory", async () => {
-    await expect(normalizeOutputPath("C:\\work\\project", "..\\escape.png")).rejects.toThrow()
+    await using project = await tmpdir()
+    await expect(normalizeOutputPath(project.path, path.join(project.path, "..", "escape.png"))).rejects.toThrow(
+      "selected project directory",
+    )
   })
 
   test("rejects switching Windows drives", async () => {
-    await expect(normalizeOutputPath("C:\\work\\project", "D:\\escape.png")).rejects.toThrow()
+    await using project = await tmpdir()
+    const drive = path.parse(project.path).root.toUpperCase().startsWith("C:") ? "D:" : "C:"
+    await expect(normalizeOutputPath(project.path, `${drive}\\escape.png`)).rejects.toThrow(
+      "selected project directory",
+    )
   })
 
   test("accepts a nested path within the selected project directory", async () => {

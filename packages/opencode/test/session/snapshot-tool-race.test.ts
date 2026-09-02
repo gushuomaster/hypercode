@@ -31,6 +31,7 @@ import { TestLLMServer } from "../lib/llm-server"
 import { NodeFileSystem } from "@effect/platform-node"
 import { Database } from "@opencode-ai/core/database/database"
 import { EventV2Bridge } from "@/event-v2-bridge"
+import { ImageGenerationService } from "../../src/image-generation/service"
 import { Agent as AgentSvc } from "../../src/agent/agent"
 import { BackgroundJob } from "@/background/job"
 import { Git } from "../../src/git"
@@ -131,6 +132,7 @@ function makeHttp() {
   const question = Question.layer.pipe(Layer.provideMerge(deps))
   const todo = Todo.layer.pipe(Layer.provideMerge(deps))
   const registry = ToolRegistry.layer.pipe(
+    Layer.provide(ImageGenerationService.defaultLayer),
     Layer.provide(Skill.defaultLayer),
     Layer.provide(FetchHttpClient.layer),
     Layer.provide(CrossSpawnSpawner.defaultLayer),

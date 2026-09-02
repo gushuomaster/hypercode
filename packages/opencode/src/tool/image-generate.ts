@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import * as Tool from "./tool"
+import { Tool } from "./tool"
 import { ImageGeneration } from "@/image-generation/schema"
 import { ImageGenerationService } from "@/image-generation/service"
 import { pathToFileURL } from "node:url"
@@ -53,7 +53,7 @@ export const ImageGenerateTool = Tool.define(
               },
             ],
           }
-        }).pipe(Effect.orDie),
+        }).pipe(Effect.catch((error) => Effect.die(error))),
     }
   }),
 )
