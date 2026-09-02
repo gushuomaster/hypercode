@@ -57,6 +57,7 @@ import { useTuiConfig } from "../../config"
 import { usePromptWorkspace } from "./workspace"
 import { usePromptMove } from "./move"
 import { readLocalAttachment } from "./local-attachment"
+import { prepareAgentMention } from "../../prompt/agent"
 
 export type PromptProps = {
   sessionID?: string
@@ -91,6 +92,7 @@ export type PromptRef = {
   reset(): void
   blur(): void
   focus(): void
+  insertAgent?(name: string): boolean
   submit(): void
 }
 
@@ -589,6 +591,9 @@ export function Prompt(props: PromptProps) {
     blur() {
       input.blur()
     },
+    insertAgent(name) {
+      return insertAgent(name)
+    },
     set(prompt) {
       input.setText(prompt.input)
       setStore("prompt", prompt)
@@ -607,6 +612,41 @@ export function Prompt(props: PromptProps) {
     submit() {
       void submit()
     },
+  }
+
+  function insertAgent(name: string, range?: { start: number; end: number }) {
+    if (store.mode === "shell") return false
+    const start = range?.start ?? input.cursorOffset
+    const end = range?.end ?? input.cursorOffset
+    const mention = prepareAgentMention(store.prompt.input, name, start, end)
+
+    input.cursorOffset = start
+    const startCursor = input.logicalCursor
+    input.cursorOffset = end
+    const endCursor = input.logicalCursor
+    input.deleteRange(startCursor.row, startCursor.col, endCursor.row, endCursor.col)
+    input.insertText(mention.text)
+
+    const extmarkId = input.extmarks.create({
+      start: mention.source.start,
+      end: mention.source.end,
+      virtual: true,
+      styleId: agentStyleId,
+      typeId: promptPartTypeId,
+    })
+
+    setStore(
+      produce((draft) => {
+        const partIndex = draft.prompt.parts.length
+        draft.prompt.parts.push({
+          type: "agent",
+          name,
+          source: mention.source,
+        })
+        draft.extmarkToPartIndex.set(extmarkId, partIndex)
+      }),
+    )
+    return true
   }
 
   onMount(() => {
@@ -1681,9 +1721,9 @@ export function Prompt(props: PromptProps) {
             return newMap
           })
         }}
+        insertAgent={(name, start, end) => insertAgent(name, { start, end })}
         value={store.prompt.input}
         fileStyleId={fileStyleId}
-        agentStyleId={agentStyleId}
         promptPartTypeId={() => promptPartTypeId}
       />
     </>

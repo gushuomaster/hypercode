@@ -15,6 +15,9 @@ export type ComposerSlashAction =
       type: "openSkillPicker"
     }
   | {
+      type: "openAgentPicker"
+    }
+  | {
       type: "openThemePicker"
     }
   | {
@@ -29,6 +32,9 @@ export type ComposerAutocompleteAction =
     }
   | {
       type: "openSkillPicker"
+    }
+  | {
+      type: "openAgentPicker"
     }
   | {
       type: "undoSession"
@@ -65,6 +71,8 @@ export function resolveComposerAutocompleteAction(item: { id: string; kind: stri
       return { type: "newSessionInPlace" }
     case "slash-skills":
       return { type: "openSkillPicker" }
+    case "slash-agents":
+      return { type: "openAgentPicker" }
     case "slash-undo":
       return { type: "undoSession" }
     case "slash-redo":
@@ -109,6 +117,10 @@ export function resolveComposerSlashAction(
 
   if (command === "skills" && !args) {
     return { type: "openSkillPicker" }
+  }
+
+  if (command === "agents" && !args) {
+    return { type: "openAgentPicker" }
   }
 
   if (command === "theme" && !args) {

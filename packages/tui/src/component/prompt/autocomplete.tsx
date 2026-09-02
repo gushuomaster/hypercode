@@ -76,11 +76,11 @@ export function Autocomplete(props: {
   sessionID?: string
   setPrompt: (input: (prompt: PromptInfo) => void) => void
   setExtmark: (partIndex: number, extmarkId: number) => void
+  insertAgent: (name: string, start: number, end: number) => boolean
   anchor: () => BoxRenderable
   input: () => TextareaRenderable
   ref: (ref: AutocompleteRef) => void
   fileStyleId: number
-  agentStyleId: number
   promptPartTypeId: () => number
 }) {
   const editor = useEditorContext()
@@ -188,13 +188,11 @@ export function Autocomplete(props: {
     const extmarkStart = store.index
     const extmarkEnd = extmarkStart + Bun.stringWidth(virtualText)
 
-    const styleId = part.type === "file" ? props.fileStyleId : part.type === "agent" ? props.agentStyleId : undefined
-
     const extmarkId = input.extmarks.create({
       start: extmarkStart,
       end: extmarkEnd,
       virtual: true,
-      styleId,
+      styleId: part.type === "file" ? props.fileStyleId : undefined,
       typeId: props.promptPartTypeId(),
     })
 
@@ -223,10 +221,6 @@ export function Autocomplete(props: {
         part.source.text.start = extmarkStart
         part.source.text.end = extmarkEnd
         part.source.text.value = virtualText
-      } else if (part.type === "agent" && part.source) {
-        part.source.start = extmarkStart
-        part.source.end = extmarkEnd
-        part.source.value = virtualText
       }
       const partIndex = draft.parts.length
       draft.parts.push(part)
@@ -398,15 +392,7 @@ export function Autocomplete(props: {
         (agent): AutocompleteOption => ({
           display: "@" + agent.id,
           onSelect: () => {
-            insertPart(agent.id, {
-              type: "agent",
-              name: agent.id,
-              source: {
-                start: 0,
-                end: 0,
-                value: "",
-              },
-            })
+            props.insertAgent(agent.id, store.index, props.input().cursorOffset)
           },
         }),
       )

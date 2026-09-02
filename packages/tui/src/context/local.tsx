@@ -102,6 +102,9 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         list() {
           return agents()
         },
+        visible() {
+          return visibleAgents()
+        },
         current() {
           return agents().find((x) => x.name === agentStore.current) ?? agents().at(0)
         },

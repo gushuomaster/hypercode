@@ -5,6 +5,20 @@ import { autocompleteItemView, buildComposerMenuItems } from "./composer-menu"
 import { createInitialState } from "./state"
 
 describe("buildComposerMenuItems", () => {
+  test("includes a local slash action for agents", () => {
+    const state = createInitialState({
+      workspaceId: "file:///workspace",
+      dir: "/workspace",
+      sessionId: "session-1",
+    })
+
+    const item = buildComposerMenuItems(state, []).find((entry) => entry.id === "slash-agents")
+
+    assert.ok(item)
+    assert.equal(item.label, "agents")
+    assert.equal(item.kind, "action")
+  })
+
   test("includes a local slash action for new session", () => {
     const state = createInitialState({
       workspaceId: "file:///workspace",

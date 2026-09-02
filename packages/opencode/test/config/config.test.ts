@@ -382,6 +382,39 @@ it.effect("does not create bundled opencode.json when hypercode.jsonc already ex
   ),
 )
 
+it.effect("loads existing global hypercode.json without modifying it", () =>
+  withProcessEnv(
+    "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",
+    "1",
+    withGlobalConfig(
+      {
+        config: {
+          model: "internal/qwen3.6-27b",
+          provider: {
+            internal: {
+              npm: "@ai-sdk/openai-compatible",
+              options: { apiKey: "unused", baseURL: "http://127.0.0.1:8000/v1" },
+              models: { "qwen3.6-27b": { name: "Qwen 3.6 27B" } },
+            },
+          },
+        },
+        name: "hypercode.json",
+      },
+      ({ dir }) =>
+        Effect.gen(function* () {
+          const file = path.join(dir, "hypercode.json")
+          const before = yield* FSUtil.use.readFileString(file)
+          const config = yield* Config.use.get().pipe(provideInstanceEffect(dir))
+
+          expect(config.model).toBe("internal/qwen3.6-27b")
+          expect(config.provider?.internal?.models?.["qwen3.6-27b"]).toBeDefined()
+          expect(yield* FSUtil.use.readFileString(file)).toBe(before)
+          expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
+        }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+    ),
+  ),
+)
+
 it.effect("does not create bundled opencode.json when config.json already exists", () =>
   withProcessEnv(
     "OPENCODE_FORCE_BUNDLED_GLOBAL_CONFIG_SYNC",

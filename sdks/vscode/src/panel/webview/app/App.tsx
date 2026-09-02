@@ -35,6 +35,7 @@ import { composerRunningState } from "./composer-running-state"
 import { copyImageToClipboard, ImagePreviewOverlay, saveImageFromPreview, type PreviewImage } from "./image-preview"
 import { buildThemePickerItems, ThemePicker, type ThemePickerItem } from "./theme-picker"
 import { resolveTranscriptHistoryMode, shouldAutoLoadEarlierMessages, transcriptHistoryScrollThreshold } from "./transcript-history"
+import { AgentPicker, buildAgentPickerItems, type AgentPickerItem } from "./agent-picker"
 
 declare global {
   interface Window {
@@ -74,6 +75,7 @@ export function App() {
   const [modelPickerOpen, setModelPickerOpen] = React.useState(false)
   const [themePickerOpen, setThemePickerOpen] = React.useState(false)
   const [sessionPickerOpen, setSessionPickerOpen] = React.useState(false)
+  const [agentPickerOpen, setAgentPickerOpen] = React.useState(false)
   const [sidePanelTab, setSidePanelTab] = React.useState<null | "context">(null)
   const [contextPanelClosing, setContextPanelClosing] = React.useState(false)
   const [previewImage, setPreviewImage] = React.useState<PreviewImage | null>(null)
@@ -88,6 +90,7 @@ export function App() {
   const modelPickerRef = React.useRef<HTMLDivElement | null>(null)
   const themePickerRef = React.useRef<HTMLDivElement | null>(null)
   const sessionPickerRef = React.useRef<HTMLDivElement | null>(null)
+  const agentPickerRef = React.useRef<HTMLDivElement | null>(null)
   const composerCursorRef = React.useRef<number | null>(null)
   const searchRef = React.useRef<{ requestID: string; query: string } | null>(null)
   const escTimerRef = React.useRef<number | null>(null)
@@ -199,6 +202,10 @@ export function App() {
     resolvePanelThemeValue(state.snapshot.display.panelTheme),
     resolvePanelColorSchemeValue(state.snapshot.display.panelColorScheme),
   ), [state.snapshot.display.panelColorScheme, state.snapshot.display.panelTheme])
+  const agentPickerItems = React.useMemo(
+    () => buildAgentPickerItems(state.snapshot.agents, currentSelection.agent),
+    [currentSelection.agent, state.snapshot.agents],
+  )
 
   const blocked = state.snapshot.permissions.length > 0 || state.snapshot.questions.length > 0
   const isChildSession = !!state.bootstrap.session?.parentID
@@ -719,7 +726,7 @@ export function App() {
   }, [state.bootstrap.status, state.composerAgentOverride, state.snapshot.messages.length])
 
   React.useEffect(() => {
-    if (!modelPickerOpen && !themePickerOpen && !sessionPickerOpen) {
+    if (!modelPickerOpen && !themePickerOpen && !sessionPickerOpen && !agentPickerOpen) {
       return
     }
 
@@ -734,9 +741,13 @@ export function App() {
       if (target instanceof Node && sessionPickerRef.current?.contains(target)) {
         return
       }
+      if (target instanceof Node && agentPickerRef.current?.contains(target)) {
+        return
+      }
       setModelPickerOpen(false)
       setThemePickerOpen(false)
       setSessionPickerOpen(false)
+      setAgentPickerOpen(false)
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -744,6 +755,7 @@ export function App() {
         setModelPickerOpen(false)
         setThemePickerOpen(false)
         setSessionPickerOpen(false)
+        setAgentPickerOpen(false)
       }
     }
 
@@ -753,7 +765,7 @@ export function App() {
       document.removeEventListener("mousedown", onPointerDown)
       window.removeEventListener("keydown", onKeyDown)
     }
-  }, [modelPickerOpen, sessionPickerOpen, themePickerOpen])
+  }, [agentPickerOpen, modelPickerOpen, sessionPickerOpen, themePickerOpen])
 
   React.useLayoutEffect(() => {
     const input = composerRef.current
@@ -843,6 +855,11 @@ export function App() {
         return
       }
 
+      if (slashAction.type === "openAgentPicker") {
+        openAgentPicker()
+        return
+      }
+
       if (slashAction.type === "openSessionPicker") {
         setState((current) => ({
           ...current,
@@ -911,7 +928,7 @@ export function App() {
       imageAttachments: [],
       error: "",
     }))
-  }, [blocked, composerMode, currentSelection, exitShellMode, openSkillPicker, openThemePicker, state.composerParts, state.imageAttachments, state.snapshot.commands])
+  }, [blocked, composerMode, currentSelection, exitShellMode, openAgentPicker, openSkillPicker, openThemePicker, state.composerParts, state.imageAttachments, state.snapshot.commands])
 
   const composerPlaceholder = composerMode === "shell"
     ? "在此工作区中输入要运行的 shell 命令。"
@@ -949,6 +966,7 @@ export function App() {
     setModelPickerOpen(false)
     setThemePickerOpen(false)
     setSessionPickerOpen(false)
+    setAgentPickerOpen(false)
     setSkillPickerSelectedIndex(0)
     setSkillPickerOpen(true)
     const result = setComposerState(emptyComposerParts(), "")
@@ -1060,6 +1078,7 @@ export function App() {
     setModelPickerOpen(false)
     setThemePickerOpen(false)
     setSkillPickerOpen(false)
+    setAgentPickerOpen(false)
     setSessionPickerOpen(true)
     requestSessionPicker()
     setComposerState(emptyComposerParts(), "")
@@ -1077,13 +1096,47 @@ export function App() {
   const openModelPicker = React.useCallback(() => {
     setSessionPickerOpen(false)
     setThemePickerOpen(false)
+    setAgentPickerOpen(false)
     setModelPickerOpen(true)
   }, [])
 
   function openThemePicker() {
     setSessionPickerOpen(false)
     setModelPickerOpen(false)
+    setAgentPickerOpen(false)
     setThemePickerOpen(true)
+  }
+
+  function openAgentPicker() {
+    autocompleteDismissedRef.current = null
+    composerAutocomplete.close()
+    setSessionPickerOpen(false)
+    setModelPickerOpen(false)
+    setThemePickerOpen(false)
+    setSkillPickerOpen(false)
+    setAgentPickerOpen(true)
+    setComposerState(emptyComposerParts(), "")
+  }
+
+  function selectAgentPickerItem(item: AgentPickerItem) {
+    setAgentPickerOpen(false)
+    if (item.group === "primary") {
+      setState((current) => ({
+        ...current,
+        composerAgentOverride: item.agent.name,
+        error: "",
+      }))
+      restoreComposerCursor(state.draft, state.draft.length)
+      return
+    }
+
+    const next = replaceRangeWithMention(state.composerParts, state.draft.length, state.draft.length, {
+      type: "agent",
+      name: item.agent.name,
+      content: `@${item.agent.name}`,
+    })
+    const result = setComposerState(next.parts, "")
+    restoreComposerCursor(result.draft, next.cursor)
   }
 
   const toggleContextPanel = React.useCallback(() => {
@@ -1095,6 +1148,7 @@ export function App() {
     setSessionPickerOpen(false)
     setModelPickerOpen(false)
     setThemePickerOpen(false)
+    setAgentPickerOpen(false)
     setContextPanelClosing(false)
     setSidePanelTab("context")
   }, [sidePanelTab])
@@ -1133,6 +1187,7 @@ export function App() {
 
   const toggleModelPicker = React.useCallback(() => {
     setThemePickerOpen(false)
+    setAgentPickerOpen(false)
     setModelPickerOpen((current) => !current)
   }, [])
 
@@ -1457,6 +1512,11 @@ export function App() {
         return
       }
 
+      if (autocompleteAction.type === "openAgentPicker") {
+        openAgentPicker()
+        return
+      }
+
       if (autocompleteAction.type === "undoSession") {
         clearComposerDraft()
         postComposerAction("undoSession")
@@ -1557,7 +1617,7 @@ export function App() {
       composerAutocomplete.close()
       restoreComposerCursor(result.draft, next.cursor)
     }
-  }, [clearComposerDraft, composerAutocomplete, composerMode, currentSelection.model, openModelPicker, openSkillPicker, openThemePicker, postComposerAction, restoreComposerCursor, setComposerState, state.composerParts, state.snapshot])
+  }, [clearComposerDraft, composerAutocomplete, composerMode, currentSelection.model, openAgentPicker, openModelPicker, openSkillPicker, openThemePicker, postComposerAction, restoreComposerCursor, setComposerState, state.composerParts, state.snapshot])
 
   const sendQuestionReply = React.useCallback((request: QuestionRequest) => {
     const answers = request.questions.map((_item, index) => {
@@ -2150,11 +2210,21 @@ export function App() {
                         />
                       {!state.draft.trim() && !composerFocused ? <div className="oc-composerPlaceholder" aria-hidden="true">{composerPlaceholder}</div> : null}
                     </div>
-                    <div className="oc-modelPickerLayer" ref={sessionPickerOpen ? sessionPickerRef : themePickerOpen ? themePickerRef : modelPickerRef}>
+                    <div className="oc-modelPickerLayer" ref={agentPickerOpen ? agentPickerRef : sessionPickerOpen ? sessionPickerRef : themePickerOpen ? themePickerRef : modelPickerRef}>
                       <div className="oc-composerInfoWrap">
                         <ComposerInfo state={state} leaderPending={leaderPending} modelPickerOpen={modelPickerOpen} onToggleModelPicker={toggleModelPicker} onCycleVariant={() => cycleComposerVariant()} />
                       </div>
                       <ComposerPrimaryActionButton action={primaryAction} onClick={handleComposerPrimaryAction} />
+                      {agentPickerOpen ? (
+                        <AgentPicker
+                          items={agentPickerItems}
+                          onClose={() => {
+                            setAgentPickerOpen(false)
+                            restoreComposerCursor(state.draft, state.draft.length)
+                          }}
+                          onSelect={selectAgentPickerItem}
+                        />
+                      ) : null}
                       {sessionPickerOpen ? (
                         <SessionPicker
                           payload={state.sessionPicker}

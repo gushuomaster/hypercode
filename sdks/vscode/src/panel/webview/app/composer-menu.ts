@@ -12,6 +12,14 @@ type ComposerMenuState = {
 export function buildComposerMenuItems(state: ComposerMenuState, files: ComposerPathResult[]): ComposerAutocompleteItem[] {
   const slashItems: ComposerAutocompleteItem[] = [
     {
+      id: "slash-agents",
+      label: "agents",
+      detail: "选择或调用智能体。",
+      keywords: ["agent", "primary", "subagent"],
+      trigger: "slash",
+      kind: "action",
+    },
+    {
       id: "slash-new",
       label: "new",
       detail: "在此工作区开启新会话。",
