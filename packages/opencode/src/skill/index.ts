@@ -20,6 +20,7 @@ import { isRecord } from "@/util/record"
 
 const CLAUDE_EXTERNAL_DIR = ".claude"
 const AGENTS_EXTERNAL_DIR = ".agents"
+const CODEX_EXTERNAL_DIR = ".codex"
 const EXTERNAL_SKILL_PATTERN = "skills/**/SKILL.md"
 const OPENCODE_SKILL_PATTERN = "{skill,skills}/**/SKILL.md"
 const SKILL_PATTERN = "**/SKILL.md"
@@ -186,6 +187,7 @@ const discoverSkills = Effect.fnUntraced(function* (
   if (!disableExternalSkills) {
     if (!disableClaudeCodeSkills) externalDirs.push(CLAUDE_EXTERNAL_DIR)
     externalDirs.push(AGENTS_EXTERNAL_DIR)
+    externalDirs.push(CODEX_EXTERNAL_DIR)
 
     for (const dir of externalDirs) {
       const root = path.join(global.home, dir)

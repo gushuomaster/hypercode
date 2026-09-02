@@ -390,6 +390,55 @@ This skill is loaded from the global home directory.
     }),
   )
 
+  it.live("discovers Codex personal skills from ~/.codex/skills", () =>
+    Effect.gen(function* () {
+      const tmp = yield* Effect.acquireRelease(
+        Effect.promise(() => tmpdir({ git: true })),
+        (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+      )
+
+      yield* withHome(
+        tmp.path,
+        Effect.gen(function* () {
+          const skillDir = path.join(tmp.path, ".codex", "skills", "codex-test")
+          yield* Effect.promise(() => fs.mkdir(skillDir, { recursive: true }))
+          yield* Effect.promise(() =>
+            fs.writeFile(path.join(skillDir, "SKILL.md"), "---\nname: codex-test\ndescription: personal\n---\nbody"),
+          )
+          yield* Effect.gen(function* () {
+            const skill = yield* Skill.Service
+            const item = (yield* skill.all()).find((entry) => entry.name === "codex-test")
+            expect(item?.location).toContain(path.join(".codex", "skills", "codex-test", "SKILL.md"))
+          }).pipe(provideInstance(tmp.path))
+        }),
+      )
+    }),
+  )
+
+  itWithoutExternalSkills.live("does not discover Codex skills when external skills are disabled", () =>
+    Effect.gen(function* () {
+      const tmp = yield* Effect.acquireRelease(
+        Effect.promise(() => tmpdir({ git: true })),
+        (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+      )
+
+      yield* withHome(
+        tmp.path,
+        Effect.gen(function* () {
+          const skillDir = path.join(tmp.path, ".codex", "skills", "codex-test")
+          yield* Effect.promise(() => fs.mkdir(skillDir, { recursive: true }))
+          yield* Effect.promise(() =>
+            fs.writeFile(path.join(skillDir, "SKILL.md"), "---\nname: codex-test\ndescription: personal\n---\nbody"),
+          )
+          yield* Effect.gen(function* () {
+            const skill = yield* Skill.Service
+            expect((yield* skill.all()).some((entry) => entry.name === "codex-test")).toBe(false)
+          }).pipe(provideInstance(tmp.path))
+        }),
+      )
+    }),
+  )
+
   it.live("discovers skills from both .claude/skills/ and .agents/skills/", () =>
     provideTmpdirInstance(
       (dir) =>
