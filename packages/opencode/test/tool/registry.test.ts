@@ -66,6 +66,13 @@ afterEach(async () => {
 })
 
 describe("tool.registry", () => {
+  it.instance("registers image_generate", () =>
+    Effect.gen(function* () {
+      const registry = yield* ToolRegistry.Service
+      expect(yield* registry.ids()).toContain("image_generate")
+    }),
+  )
+
   it.instance("does not expose task_status", () =>
     Effect.gen(function* () {
       const registry = yield* ToolRegistry.Service

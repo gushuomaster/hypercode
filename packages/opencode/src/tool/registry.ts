@@ -52,6 +52,8 @@ import { BackgroundJob } from "@/background/job"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
+import { ImageGenerateTool } from "./image-generate"
+import { ImageGenerationService } from "@/image-generation/service"
 
 export function webSearchEnabled(providerID: ProviderV2.ID, flags = { exa: false, parallel: false }) {
   return providerID === ProviderV2.ID.opencode || flags.exa || flags.parallel
@@ -96,6 +98,7 @@ export const layer = Layer.effect(
     const todo = yield* TodoWriteTool
     const lsptool = yield* LspTool
     const plan = yield* PlanExitTool
+    const imageGenerate = yield* ImageGenerateTool
     const webfetch = yield* WebFetchTool
     const websearch = yield* WebSearchTool
     const shell = yield* ShellTool
@@ -212,6 +215,7 @@ export const layer = Layer.effect(
           question: Tool.init(question),
           lsp: Tool.init(lsptool),
           plan: Tool.init(plan),
+          imageGenerate: Tool.init(imageGenerate),
         })
 
         return {
@@ -233,6 +237,7 @@ export const layer = Layer.effect(
             tool.patch,
             ...(flags.experimentalLspTool ? [tool.lsp] : []),
             ...(flags.experimentalPlanMode && flags.client === "cli" ? [tool.plan] : []),
+            tool.imageGenerate,
           ],
           task: tool.task,
           read: tool.read,
@@ -319,6 +324,7 @@ export const defaultLayer = Layer.suspend(() =>
   layer
     .pipe(
       Layer.provide(Config.defaultLayer),
+      Layer.provide(ImageGenerationService.defaultLayer),
       Layer.provide(Plugin.defaultLayer),
       Layer.provide(Question.defaultLayer),
       Layer.provide(Todo.defaultLayer),
@@ -434,6 +440,7 @@ export const node = LayerNode.make(layer.pipe(Layer.provide(Ripgrep.defaultLayer
   Format.node,
   Truncate.node,
   RuntimeFlags.node,
+  ImageGenerationService.node,
   Database.node,
 ])
 
