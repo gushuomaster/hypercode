@@ -12,6 +12,7 @@ import type { InstanceContext } from "@/project/instance-context"
 import { ImageGenerationService } from "@/image-generation/service"
 import { ImageGeneration } from "@/image-generation/schema"
 import { ModelPool } from "./model-pool"
+import { calculateWorkflowMetrics, REQUIRED_METRICS, type WorkflowMetricName } from "./metrics"
 import {
   APPROVAL_PHRASE,
   type Chapter,
@@ -208,6 +209,7 @@ type RecordState = {
   persisting?: Promise<void>
   preparing?: Promise<void>
   generating?: Promise<GenerationSummary>
+  metricDurations: Partial<Record<WorkflowMetricName, number>>
 }
 
 const workflows = new Map<string, RecordState>()
@@ -253,6 +255,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       visualAssetEntryPrepared: false,
       visualAssetMappingPrepared: false,
       chapterManifests: {},
+      metricDurations: {},
     }
     workflows.set(workflowID, record)
     workflowLocations.set(workflowID, input.outputDirectory)
@@ -297,6 +300,9 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       visualAssetEntryPrepared: false,
       visualAssetMappingPrepared: false,
       chapterManifests: {},
+      metricDurations: input.hypercode?.metrics
+        ? Object.fromEntries(REQUIRED_METRICS.map((name) => [name, input.hypercode?.metrics?.[name] ?? 0]))
+        : {},
       ...(index?.skill_fingerprint && { skillFingerprint: index.skill_fingerprint }),
       ...(readVisualAssets(input)?.mode === "follow-source" && { visualAssetSelection: { mode: "follow-source" } as const }),
       ...(readVisualAssets(input)?.mode === "pack" && { visualAssetSelection: { mode: "existing-pack", packID: String(readString(readVisualAssets(input)?.pack_snapshot, ["pack_id", "packId", "id"])), packVersion: Number(readNumber(readVisualAssets(input)?.pack_snapshot, ["version", "pack_version", "packVersion"])) } as const }),
@@ -503,6 +509,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
   const importPlusImage = async (workflowID: string, filePath: string): Promise<PlusImportResult> => {
     const record = requireWorkflow(workflowID)
     await prepare(record, true)
+    const ingestionStarted = performance.now()
     const safePath = await validateMediaFile(filePath, "image")
     const suggestedSegmentID = inferSegmentID(path.basename(safePath), record.segments)
     if (suggestedSegmentID) {
@@ -519,6 +526,8 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       }
       await persist(record)
     }
+    trackMetric(record, "asset_ingestion_seconds", ingestionStarted)
+    await persist(record)
     return { workflowID, filePath: safePath, ...(suggestedSegmentID && { suggestedSegmentID }), requiresConfirmation: true }
   }
 
@@ -630,9 +639,13 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
         modelPool: imagePool(record),
       }
       try {
+        const generationStarted = performance.now()
         const image = await generateImage(input)
+        trackMetric(record, "image_service_wait_seconds", generationStarted)
         if (options.qualityCheck) {
+          const qualityStarted = performance.now()
           const quality = await options.qualityCheck({ ...input, image })
+          trackMetric(record, "qc_prompt_state_dispatch_seconds", qualityStarted)
           if (quality.status === "rejected") throw new Error(quality.reason ?? "quality check failed")
           if (quality.status === "uncertain") throw new Error(quality.reason ?? "quality check is uncertain")
         }
@@ -848,6 +861,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       if (current && current.workflow_id !== record.workflowID)
         throw new StateError("project-state.json belongs to a different workflow", record.workflowID)
       record.hypercode = current ? decodeHypercodeState(current) : createHypercode(record, modelSnapshot)
+      syncMetrics(record)
       const visualState = readVisualAssets(record.state)
       if (!visualState?.frozen_at && record.hypercode.checkpoint.phase !== "approval") {
         record.hypercode = {
@@ -1262,6 +1276,17 @@ function requireWorkflow(workflowID: string) {
 function requireHypercode(record: RecordState) {
   if (!record.hypercode) throw new StateError("hypercode checkpoint is unavailable", record.workflowID)
   return record.hypercode
+}
+
+function syncMetrics(record: RecordState) {
+  if (!record.hypercode) return
+  const input = Object.fromEntries(REQUIRED_METRICS.map((name) => [name, record.metricDurations[name] ?? 0])) as Partial<Record<WorkflowMetricName, number>>
+  record.hypercode = { ...record.hypercode, metrics: calculateWorkflowMetrics(input) }
+}
+
+function trackMetric(record: RecordState, name: WorkflowMetricName, startedAt: number) {
+  record.metricDurations[name] = (record.metricDurations[name] ?? 0) + Math.max(0, (performance.now() - startedAt) / 1000)
+  syncMetrics(record)
 }
 
 function isAccepted(state: HypercodeState, segmentID: string) {
