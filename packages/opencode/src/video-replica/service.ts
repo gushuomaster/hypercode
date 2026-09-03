@@ -433,7 +433,8 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       const image = await findAcceptedArtifact(record.outputDirectory, segmentID)
       if (image?.filePath && isAccepted(state, segmentID)) accepted.set(segmentID, image.filePath)
     }
-    if (accepted.size < segmentIDs.length)
+    const acceptedIDs = new Set(accepted.keys())
+    if (acceptedIDs.size !== segmentIDs.length || segmentIDs.some((segmentID) => !acceptedIDs.has(segmentID)))
       throw new WorkflowError("Delivery requires an accepted first frame for every segment", workflowID)
     const bridge = await resolveBridge(record)
     if (!bridge.compileDelivery) throw new SkillUnavailableError("The skill delivery compiler is unavailable")
@@ -471,6 +472,11 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       approvalOutput: path.join(deliveryDirectory, "approval.md"),
       promptsOutput: path.join(deliveryDirectory, "prompts.md"),
     })
+    const approvalFile = path.join(deliveryDirectory, "approval.md")
+    const promptsFile = path.join(deliveryDirectory, "prompts.md")
+    const [approvalStat, promptsStat] = await Promise.all([fs.lstat(approvalFile).catch(() => undefined), fs.lstat(promptsFile).catch(() => undefined)])
+    if (!approvalStat?.isFile() || approvalStat.isSymbolicLink() || !promptsStat?.isFile() || promptsStat.isSymbolicLink())
+      throw new SkillUnavailableError("Delivery compiler did not produce approval.md and prompts.md")
     record.hypercode = {
       ...state,
       checkpoint: { phase: "delivery", segment_ids: [...segmentIDs], pending_action: null },
