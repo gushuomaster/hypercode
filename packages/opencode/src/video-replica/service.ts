@@ -3,6 +3,7 @@ import os from "node:os"
 import path from "node:path"
 import { Context, Effect, Layer, Option } from "effect"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
+import { ModelsDev } from "@opencode-ai/core/models-dev"
 import { Skill } from "@/skill"
 import { Question } from "@/question"
 import { SessionID } from "@/session/schema"
@@ -1015,6 +1016,7 @@ export const layer = Layer.effect(
     const bridge = yield* SkillBridge.Service
     const image = yield* ImageGenerationService.Service
     const question = yield* Question.Service
+    const modelsDev = yield* Effect.serviceOption(ModelsDev.Service)
     const skillLocation =
       Option.isSome(skill) && instance
         ? yield* skill.value.require("doubao-video-replica").pipe(
@@ -1022,12 +1024,24 @@ export const layer = Layer.effect(
             Effect.catch(() => Effect.succeed(undefined)),
           )
         : undefined
+    const modelPool = Option.isSome(modelsDev)
+      ? yield* Effect.gen(function* () {
+          const catalog = yield* modelsDev.value.get()
+          return yield* Effect.promise(() =>
+            ModelPool.discover(catalog, {
+              providers: Object.keys(catalog),
+              healthProbe: async (candidate) => Boolean(catalog[candidate.providerID]?.models[candidate.modelID]),
+            }),
+          )
+        })
+      : undefined
     return Service.of(
       createVideoReplicaService({
         bridge: skillLocation ? undefined : bridge,
         imageGeneration: image,
         question,
         instance,
+        modelPool,
         skillLocation,
         platform: process.platform,
         outputRoots: [process.cwd()],
@@ -1040,9 +1054,10 @@ export const defaultLayer = layer.pipe(
   Layer.provide(SkillBridge.defaultLayer),
   Layer.provide(ImageGenerationService.defaultLayer),
   Layer.provide(Question.defaultLayer),
+  Layer.provide(ModelsDev.defaultLayer),
 )
 
-export const node = LayerNode.make(layer, [SkillBridge.node, ImageGenerationService.node, Question.node, Skill.node])
+export const node = LayerNode.make(layer, [SkillBridge.node, ImageGenerationService.node, Question.node, Skill.node, ModelsDev.node])
 
 export async function readState(outputDirectory: string) {
   const directory = await ensureOutputDirectory(outputDirectory, { create: false })
