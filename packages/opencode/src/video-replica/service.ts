@@ -220,7 +220,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       : Promise.resolve(
           SkillBridge.createSkillBridge({
             skillLocation:
-              requestedLocation ?? path.join(os.homedir(), ".codex", "skills", "doubao-video-replica", "SKILL.md"),
+              requestedLocation ?? path.join(process.env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex"), "skills", "doubao-video-replica", "SKILL.md"),
             platform: options.platform,
           }),
         )
@@ -570,6 +570,21 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     if (!record.visualAssetSelection) record.visualAssetSelection = { mode: "follow-source" }
     await prepare(record)
     const state = requireHypercode(record)
+    if (state.pending_model_confirmations?.length) {
+      return {
+        questions: [
+          {
+            question: `以下图片模型尚未确认：${state.pending_model_confirmations.join(", ")}。是否允许本次使用？`,
+            header: "确认图片模型",
+            options: [
+              { label: "确认使用", description: "允许本次工作流使用列出的图片模型。" },
+              { label: "取消", description: "保持等待，不调用未确认模型。" },
+            ],
+            custom: false,
+          },
+        ],
+      }
+    }
     if (state.checkpoint.phase !== "approval") {
       return {
         questions: [
@@ -584,21 +599,6 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
                 { label: "待处理分段", value: String(pendingSegmentIDs(record, state).length) },
               ],
             },
-          },
-        ],
-      }
-    }
-    if (state.pending_model_confirmations?.length) {
-      return {
-        questions: [
-          {
-            question: `以下图片模型尚未确认：${state.pending_model_confirmations.join(", ")}。是否允许本次使用？`,
-            header: "确认图片模型",
-            options: [
-              { label: "确认使用", description: "允许本次工作流使用列出的图片模型。" },
-              { label: "取消", description: "保持等待，不调用未确认模型。" },
-            ],
-            custom: false,
           },
         ],
       }
@@ -702,7 +702,8 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       if (!record.chapters.length) record.chapters = duration ? splitChapters(duration) : [{ chapter: 1, startSeconds: 0, endSeconds: 0, durationSeconds: 0 }]
       record.segments = readSegments(record.state)
       if (!record.segments.length) record.segments = readSegments(record.manifest)
-      if (!record.segments.length) record.segments = record.chapters.map((chapter) => ({ segment_id: `chapter-${chapter.chapter}` }))
+      if (!record.segments.length)
+        throw new StateError("Video analysis did not produce semantic segments; refusing to synthesize chapter placeholders", record.workflowID)
       record.segments = record.segments.map((segment) => ({
         source_frame: "",
         action_state: {},
@@ -722,6 +723,18 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       if (current && current.workflow_id !== record.workflowID)
         throw new StateError("project-state.json belongs to a different workflow", record.workflowID)
       record.hypercode = current ? decodeHypercodeState(current) : createHypercode(record, modelSnapshot)
+      const visualState = readVisualAssets(record.state)
+      if (!visualState?.frozen_at && record.hypercode.checkpoint.phase !== "approval") {
+        record.hypercode = {
+          ...record.hypercode,
+          approvals: [],
+          checkpoint: {
+            phase: "approval",
+            segment_ids: record.segments.map((segment) => segment.segment_id),
+            pending_action: APPROVAL_PHRASE,
+          },
+        }
+      }
       if (!record.hypercode.checkpoint.segment_ids.length) {
         record.hypercode = {
           ...record.hypercode,
@@ -908,6 +921,11 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       if (first && typeof value?.manifestPath === "string") reuseManifestPath = value.manifestPath
       const manifest = await loadManifest(value ?? {}, outputDirectory)
       record.chapterManifests[chapter.chapter] = manifest
+      await atomicWriteJson(path.join(outputDirectory, ".hypercode", "chapter-manifests.json"), record.chapterManifests)
+      if (record.hypercode) {
+        record.hypercode = { ...record.hypercode, chapter: chapter.chapter, checkpoint: { ...record.hypercode.checkpoint, phase: "analysis", pending_action: `analyze-chapter-${chapter.chapter}` } }
+        await persist(record)
+      }
       manifests.push(manifest)
       return manifest
     }
@@ -922,17 +940,12 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       if (record.chapterManifests[chapter.chapter]) continue
       await inspectOne(chapter)
     }
-    const merged = manifests.reduce<Record<string, unknown>>(
-      (result, manifest) => ({
-        ...result,
-        ...manifest,
-        ...(Array.isArray(result.segments) || Array.isArray(manifest.segments)
-          ? { segments: [...(Array.isArray(result.segments) ? result.segments : []), ...(Array.isArray(manifest.segments) ? manifest.segments : [])] }
-          : {}),
-        chapters,
-      }),
-      {},
-    )
+    const merged = {
+      chapters,
+      chapter_manifests: record.chapterManifests,
+      segments: manifests.flatMap((manifest) => (Array.isArray(manifest.segments) ? manifest.segments : [])),
+      manifests,
+    }
     await atomicWriteJson(path.join(outputDirectory, ".hypercode", "canonical-manifest.json"), merged)
     await atomicWriteJson(path.join(outputDirectory, ".hypercode", "chapter-manifests.json"), record.chapterManifests)
     return { manifest: merged, chapters }
@@ -1036,7 +1049,10 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
   function createHypercode(record: RecordState, snapshot?: ModelPool.Snapshot): HypercodeState {
     const orchestration = snapshot?.orchestration.map((item) => `${item.providerID}/${item.modelID}`) ?? []
     const image = snapshot?.image.map((item) => `${item.providerID}/${item.modelID}`) ?? []
-    const pending = snapshot?.image.filter((item) => item.requiresConfirmation).map((item) => `${item.providerID}/${item.modelID}`) ?? []
+    const approved = new Set(options.approvedModels ?? [])
+    const pending = snapshot?.image
+      .filter((item) => item.requiresConfirmation && !approved.has(`${item.providerID}/${item.modelID}`) && !approved.has(item.modelID))
+      .map((item) => `${item.providerID}/${item.modelID}`) ?? []
     return {
       schema_version: 1,
       workflow_id: record.workflowID,
