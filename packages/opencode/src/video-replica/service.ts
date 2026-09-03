@@ -647,11 +647,9 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     const state = requireHypercode(record)
     const segmentIDs = allSegmentIDs(record, state)
     const accepted = new Map<string, string>()
-    for (const [segmentID, image] of record.generated) {
-      if (image.filePath && isAccepted(state, segmentID)) accepted.set(segmentID, image.filePath)
-    }
-    for (const [segmentID, image] of record.imported) {
-      if (image.filePath && isAccepted(state, segmentID)) accepted.set(segmentID, image.filePath)
+    for (const segmentID of segmentIDs) {
+      const image = record.generated.get(segmentID) ?? record.imported.get(segmentID)
+      if (image?.filePath && isAccepted(state, segmentID)) accepted.set(segmentID, image.filePath)
     }
     for (const segmentID of segmentIDs) {
       if (accepted.has(segmentID)) continue
@@ -1856,7 +1854,13 @@ async function loadPendingPlusImports(record: RecordState) {
   for (const approval of approvals) {
     if (approval.decision !== "plus-import-proposed") continue
     const image = record.imported.get(approval.segment_id)
-    if (!image?.filePath || [...record.plusImports.values()].some((item) => item.proposal.suggestedSegmentID === approval.segment_id)) continue
+    if (
+      !image?.filePath ||
+      [...record.plusImports.values()].some(
+        (item) => item.proposal.suggestedSegmentID === approval.segment_id || item.proposal.candidates.includes(approval.segment_id),
+      )
+    )
+      continue
     const proposal = matchAndPropose([{ name: path.basename(image.filePath), filePath: image.filePath, segmentID: approval.segment_id }], [approval.segment_id])[0]
     if (proposal) record.plusImports.set(approval.segment_id, { id: crypto.randomUUID(), stagedPath: image.filePath, proposal, at: approval.at })
   }
