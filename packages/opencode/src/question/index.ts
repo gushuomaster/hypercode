@@ -2,7 +2,7 @@ import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { Deferred, Effect, Layer, Schema, Context } from "effect"
 import { InstanceState } from "@/effect/instance-state"
 import { SessionID, MessageID } from "@/session/schema"
-import { QuestionID } from "./schema"
+import { Presentation, QuestionID } from "./schema"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { EventV2 } from "@opencode-ai/core/event"
 
@@ -40,6 +40,9 @@ export const Info = Schema.Struct({
   ...base,
   custom: Schema.optional(Schema.Boolean).annotate({
     description: "Allow typing a custom answer (default: true)",
+  }),
+  presentation: Schema.optional(Presentation).annotate({
+    description: "Optional generic presentation data for desktop clients",
   }),
 }).annotate({ identifier: "QuestionInfo" })
 export type Info = Schema.Schema.Type<typeof Info>

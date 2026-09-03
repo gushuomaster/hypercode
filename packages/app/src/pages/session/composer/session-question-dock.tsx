@@ -12,6 +12,9 @@ import { makeEventListener } from "@solid-primitives/event-listener"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { useServerSDK } from "@/context/server-sdk"
 import { ScopedKey } from "@/utils/server-scope"
+import { ImagePreview } from "@opencode-ai/ui/image-preview"
+import { useDialog } from "@opencode-ai/ui/context/dialog"
+import { toPresentationView } from "./question-presentation"
 
 const cache = new Map<string, { tab: number; answers: QuestionAnswer[]; custom: string[]; customOn: boolean[] }>()
 
@@ -64,6 +67,7 @@ export const SessionQuestionDock: Component<{ request: QuestionRequest; onSubmit
   const sdk = useSDK()
   const serverSDK = useServerSDK()
   const language = useLanguage()
+  const dialog = useDialog()
   const cacheKey = ScopedKey.from(serverSDK.scope, props.request.id)
 
   const questions = createMemo(() => props.request.questions)
@@ -86,6 +90,7 @@ export const SessionQuestionDock: Component<{ request: QuestionRequest; onSubmit
   let focusFrame: number | undefined
 
   const question = createMemo(() => questions()[store.tab])
+  const presentation = createMemo(() => toPresentationView(question()))
   const options = createMemo(() => question()?.options ?? [])
   const input = createMemo(() => store.custom[store.tab] ?? "")
   const on = createMemo(() => store.customOn[store.tab] === true)
@@ -473,6 +478,38 @@ export const SessionQuestionDock: Component<{ request: QuestionRequest; onSubmit
         </>
       }
     >
+      <Show when={presentation().facts.length > 0 || presentation().images.length > 0}>
+        <div data-slot="question-presentation" data-tone={presentation().tone}>
+          <Show when={presentation().facts.length > 0}>
+            <dl data-slot="question-facts">
+              <For each={presentation().facts}>
+                {(fact) => (
+                  <div data-slot="question-fact">
+                    <dt data-slot="question-fact-label">{fact.label}</dt>
+                    <dd data-slot="question-fact-value">{fact.value}</dd>
+                  </div>
+                )}
+              </For>
+            </dl>
+          </Show>
+          <Show when={presentation().images.length > 0}>
+            <div data-slot="question-thumbnails">
+              <For each={presentation().images}>
+                {(image) => (
+                  <button
+                    type="button"
+                    data-slot="question-thumbnail"
+                    onClick={() => dialog.show(() => <ImagePreview src={image.url} alt={image.alt} />)}
+                    aria-label={image.alt}
+                  >
+                    <img src={image.url} alt={image.alt} />
+                  </button>
+                )}
+              </For>
+            </div>
+          </Show>
+        </div>
+      </Show>
       <div data-slot="question-text" class="overflow-auto">
         {question()?.question}
       </div>

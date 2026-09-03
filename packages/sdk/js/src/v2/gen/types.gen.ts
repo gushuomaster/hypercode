@@ -672,6 +672,24 @@ export type QuestionOption = {
   description: string
 }
 
+export type QuestionPresentationImage = {
+  url: string
+  alt: string
+}
+
+export type QuestionPresentationFact = {
+  label: string
+  value: string
+}
+
+export type QuestionPresentationTone = "normal" | "warning" | "payment"
+
+export type QuestionPresentation = {
+  images?: Array<QuestionPresentationImage>
+  facts?: Array<QuestionPresentationFact>
+  tone?: QuestionPresentationTone
+}
+
 export type QuestionInfo = {
   /**
    * Complete question
@@ -687,6 +705,7 @@ export type QuestionInfo = {
   options: Array<QuestionOption>
   multiple?: boolean
   custom?: boolean
+  presentation?: QuestionPresentation
 }
 
 export type QuestionTool = {
@@ -1675,7 +1694,7 @@ export type GlobalEvent = {
 export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR"
 
 /**
- * Server configuration for opencode serve and web commands
+ * Server configuration for hypercode serve and web commands
  */
 export type ServerConfig = {
   port?: number
