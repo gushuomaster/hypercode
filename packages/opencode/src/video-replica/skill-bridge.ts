@@ -141,6 +141,8 @@ export function createSkillBridge(options: CreateSkillBridgeOptions): SkillBridg
     if (!skill?.isDirectory() || skill.isSymbolicLink()) throw new SkillBridgeError(`doubao-video-replica skill directory is unavailable: ${source}`)
     const metadata = await fs.lstat(path.join(source, "SKILL.md")).catch(() => undefined)
     if (!metadata?.isFile() || metadata.isSymbolicLink()) throw new SkillBridgeError(`doubao-video-replica skill metadata is unavailable: ${path.join(source, "SKILL.md")}`)
+    const scripts = await fs.lstat(path.join(source, "scripts")).catch(() => undefined)
+    if (!scripts?.isDirectory() || scripts.isSymbolicLink()) throw new SkillBridgeError(`doubao-video-replica skill scripts directory is unavailable: ${path.join(source, "scripts")}`)
     const content = await fs.readFile(path.join(source, "SKILL.md"), "utf8")
     const frontmatter = content.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n|$)/)
     const name = frontmatter?.[1]?.match(/^name:\s*([^\r\n#]+?)\s*$/m)?.[1]?.trim()
@@ -283,7 +285,8 @@ export const layer = (options?: Partial<CreateSkillBridgeOptions>) =>
     Service,
     Effect.gen(function* () {
       const appProcess = yield* AppProcess.Service
-      const source = options?.skillLocation ?? path.join(os.homedir(), ".codex", "skills", "doubao-video-replica", "SKILL.md")
+      const codexHome = process.env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex")
+      const source = options?.skillLocation ?? path.join(codexHome, "skills", "doubao-video-replica", "SKILL.md")
       const run: CommandRunner = async (command, input) => {
         const result = await Effect.runPromise(
           appProcess.run(

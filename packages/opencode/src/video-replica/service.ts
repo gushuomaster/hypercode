@@ -1152,7 +1152,8 @@ function readVisualAssets(state: ExternalProjectState | undefined) {
 }
 
 function visualAssetRoot() {
-  return path.join(os.homedir(), ".codex", "assets", "doubao-video-replica")
+  const codexHome = process.env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex")
+  return path.join(codexHome, "assets", "doubao-video-replica")
 }
 
 function readString(value: unknown, keys: ReadonlyArray<string>) {
