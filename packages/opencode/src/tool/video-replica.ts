@@ -1,6 +1,6 @@
 import { Effect, Option, Schema } from "effect"
 import { Tool } from "./tool"
-import { VideoReplica, type VisualAssetSelection, type WorkflowInput } from "@/video-replica/service"
+import { VideoReplica, APPROVAL_PHRASE, type VisualAssetSelection, type WorkflowInput } from "@/video-replica/service"
 import { Skill } from "@/skill"
 import { EffectBridge } from "@/effect/bridge"
 import { Question } from "@/question"
@@ -33,7 +33,7 @@ export const Parameters = Schema.Struct({
 
 type Params = Schema.Schema.Type<typeof Parameters>
 
-export const VideoReplicaTool = Tool.define(
+export const VideoReplicaTool = Tool.define<typeof Parameters, { status: string; workflowID: string }, Question.Service>(
   "video_replica",
   Effect.gen(function* () {
     const questionService = yield* Question.Service
@@ -90,9 +90,21 @@ export const VideoReplicaTool = Tool.define(
           if (!params.workflowID) return yield* Effect.fail(new Error(`${params.action} requires workflowID`))
           if (params.action === "resume") {
             const run = yield* Effect.promise(() => service.value.resume(params.workflowID!, skillLocation))
+            const pending = yield* Effect.promise(() => run.nextQuestion())
+            const pendingQuestion = pending.questions[0]
+            if (pendingQuestion && pendingQuestion.header !== "继续工作流") {
+              const answers = yield* questionService.ask({
+                sessionID: ctx.sessionID,
+                questions: pending.questions,
+                ...(ctx.callID && { tool: { messageID: ctx.messageID, callID: ctx.callID } }),
+              })
+              const answer = answers[0]?.[0]
+              if (pendingQuestion.options.some((option) => option.label === APPROVAL_PHRASE) && answer === APPROVAL_PHRASE)
+                yield* Effect.promise(() => run.approveStoryboard(run.segmentIDs, answer))
+            }
             return {
               title: `Resumed video replica workflow ${run.workflowID}`,
-              output: JSON.stringify({ workflowID: run.workflowID, phase: run.providerAttempts.length ? "in-progress" : "pending" }),
+              output: JSON.stringify({ workflowID: run.workflowID, phase: run.providerAttempts.length ? "in-progress" : "pending", question: pending }),
               metadata: { status: "resumed", workflowID: run.workflowID },
             }
           }
