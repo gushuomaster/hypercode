@@ -8,6 +8,20 @@ export type Checkpoint = {
   pending_action: string | null
 }
 
+export type ProviderAttempt = {
+  provider: string
+  model: string
+  status: string
+  at: string
+  segment_id?: string
+  attempts?: number
+  elapsed_ms?: number
+  cost_known?: boolean
+  cost_amount?: number
+  cost_currency?: string
+  error_status?: number
+}
+
 export type HypercodeState = {
   schema_version: 1
   workflow_id: string
@@ -17,7 +31,8 @@ export type HypercodeState = {
   approved_models: ReadonlyArray<string>
   checkpoint: Checkpoint
   approvals: ReadonlyArray<{ segment_id: string; decision: string; at: string }>
-  provider_attempts: ReadonlyArray<{ provider: string; model: string; status: string; at: string }>
+  provider_attempts: ReadonlyArray<ProviderAttempt>
+  quality_checks?: ReadonlyArray<{ segment_id: string; status: "accepted" | "rejected" | "uncertain"; reason?: string; attempt: number; at: string }>
   pending_model_confirmations?: ReadonlyArray<string>
   metrics?: Record<string, number>
 }
@@ -49,7 +64,25 @@ export const HypercodeStateSchema = Schema.Struct({
       model: Schema.String,
       status: Schema.String,
       at: Schema.String,
+      segment_id: Schema.optional(Schema.String),
+      attempts: Schema.optional(Schema.Number),
+      elapsed_ms: Schema.optional(Schema.Number),
+      cost_known: Schema.optional(Schema.Boolean),
+      cost_amount: Schema.optional(Schema.Number),
+      cost_currency: Schema.optional(Schema.String),
+      error_status: Schema.optional(Schema.Number),
     }),
+  ),
+  quality_checks: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        segment_id: Schema.String,
+        status: Schema.Literals(["accepted", "rejected", "uncertain"]),
+        reason: Schema.optional(Schema.String),
+        attempt: Schema.Number,
+        at: Schema.String,
+      }),
+    ),
   ),
   pending_model_confirmations: Schema.optional(Schema.Array(Schema.String)),
   metrics: Schema.optional(Schema.Record(Schema.String, Schema.Number)),
@@ -128,6 +161,7 @@ export function decodeHypercodeState(value: unknown): HypercodeState {
     },
     approvals: value.approvals.map((item) => ({ ...item })),
     provider_attempts: value.provider_attempts.map((item) => ({ ...item })),
+    ...(value.quality_checks && { quality_checks: value.quality_checks.map((item) => ({ ...item })) }),
     ...(value.pending_model_confirmations && { pending_model_confirmations: [...value.pending_model_confirmations] }),
     ...(value.metrics && { metrics: { ...value.metrics } }),
   }

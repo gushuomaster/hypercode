@@ -12,6 +12,7 @@ import type { InstanceContext } from "@/project/instance-context"
 import { ImageGenerationService } from "@/image-generation/service"
 import { ImageGeneration } from "@/image-generation/schema"
 import { ModelPool } from "./model-pool"
+import { matchAndPropose, type PlusImportProposal } from "./plus-import"
 import { calculateWorkflowMetrics, REQUIRED_METRICS, type WorkflowMetricName } from "./metrics"
 import {
   APPROVAL_PHRASE,
@@ -19,6 +20,7 @@ import {
   type ExternalProjectState,
   type HypercodeState,
   type ImageDecision,
+  type ProviderAttempt,
   type Segment,
   type StoryboardQuestion,
   type WorkflowInput,
@@ -48,7 +50,7 @@ import {
 } from "./skill-bridge"
 
 export { APPROVAL_PHRASE }
-export type { Chapter, HypercodeState, ImageDecision, Segment, StoryboardQuestion, WorkflowInput }
+export type { Chapter, HypercodeState, ImageDecision, ProviderAttempt, Segment, StoryboardQuestion, WorkflowInput }
 export type { SkillBridgeLike }
 
 export type GeneratedImage = {
@@ -57,6 +59,9 @@ export type GeneratedImage = {
   provider?: string
   model?: string
   status?: string
+  attempts?: number
+  elapsedMs?: number
+  cost?: { amount?: number; currency?: string; known: boolean }
 }
 
 export type GenerateImageInput = {
@@ -107,8 +112,19 @@ export type PlusImportResult = {
   workflowID: string
   filePath: string
   suggestedSegmentID?: string
+  proposals?: ReadonlyArray<PlusImportProposal>
   requiresConfirmation: true
 }
+
+export type PlusImportConfirmation = {
+  segmentID: string
+  filePath?: string
+  answer?: string
+  decision?: "accepted" | "rejected"
+}
+
+export const PLUS_IMPORT_APPROVAL = "确认映射"
+export const PLUS_IMPORT_CANCEL = "取消"
 
 export type VisualAssetSelection =
   | { mode: "follow-source" }
@@ -130,6 +146,10 @@ export interface WorkflowRun extends StartResult {
   readonly approveStoryboard: (segmentIDs: ReadonlyArray<string>, answer?: string) => Promise<WorkflowRun>
   readonly acceptImage: (segmentID: string, decision: ImageDecision) => Promise<WorkflowRun>
   readonly importPlusImage: (filePath: string) => Promise<PlusImportResult>
+  readonly confirmPlusImage: {
+    (segmentID: string, answer?: string, filePath?: string): Promise<WorkflowRun>
+    (input: PlusImportConfirmation): Promise<WorkflowRun>
+  }
   readonly compileDelivery: () => Promise<DeliveryResult>
   readonly selectVisualAssets: (selection: VisualAssetSelection) => Promise<WorkflowRun>
   readonly confirmModels: (answer: string) => Promise<WorkflowRun>
@@ -147,6 +167,10 @@ export interface Interface {
   ) => Promise<WorkflowRun>
   readonly acceptImage: (workflowID: string, segmentID: string, decision: ImageDecision) => Promise<WorkflowRun>
   readonly importPlusImage: (workflowID: string, filePath: string) => Promise<PlusImportResult>
+  readonly confirmPlusImage: {
+    (workflowID: string, segmentID: string, answer?: string, filePath?: string): Promise<WorkflowRun>
+    (workflowID: string, input: PlusImportConfirmation): Promise<WorkflowRun>
+  }
   readonly compileDelivery: (workflowID: string) => Promise<DeliveryResult>
   readonly selectVisualAssets: (workflowID: string, selection: VisualAssetSelection) => Promise<WorkflowRun>
   readonly confirmModels: (workflowID: string, answer: string) => Promise<WorkflowRun>
@@ -198,6 +222,7 @@ type RecordState = {
   chapters: Chapter[]
   generated: Map<string, GeneratedImage>
   imported: Map<string, GeneratedImage>
+  plusImports: Map<string, PendingPlusImport>
   prepared: boolean
   dependenciesChecked: boolean
   visualAssetEntryPrepared: boolean
@@ -210,6 +235,14 @@ type RecordState = {
   preparing?: Promise<void>
   generating?: Promise<GenerationSummary>
   metricDurations: Partial<Record<WorkflowMetricName, number>>
+  qualityChecks: NonNullable<HypercodeState["quality_checks"]>
+}
+
+type PendingPlusImport = {
+  id: string
+  stagedPath: string
+  proposal: PlusImportProposal
+  at: string
 }
 
 const workflows = new Map<string, RecordState>()
@@ -250,12 +283,14 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       chapters: [],
       generated: new Map(),
       imported: new Map(),
+      plusImports: new Map(),
       prepared: false,
       dependenciesChecked: false,
       visualAssetEntryPrepared: false,
       visualAssetMappingPrepared: false,
       chapterManifests: {},
       metricDurations: {},
+      qualityChecks: [],
     }
     workflows.set(workflowID, record)
     workflowLocations.set(workflowID, input.outputDirectory)
@@ -295,6 +330,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       chapters: [],
       generated: new Map(),
       imported: new Map(),
+      plusImports: new Map(),
       prepared: false,
       dependenciesChecked: false,
       visualAssetEntryPrepared: false,
@@ -303,6 +339,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       metricDurations: input.hypercode?.metrics
         ? Object.fromEntries(REQUIRED_METRICS.map((name) => [name, input.hypercode?.metrics?.[name] ?? 0]))
         : {},
+      qualityChecks: input.hypercode?.quality_checks?.map((item) => ({ ...item })) ?? [],
       ...(index?.skill_fingerprint && { skillFingerprint: index.skill_fingerprint }),
       ...(readVisualAssets(input)?.mode === "follow-source" && { visualAssetSelection: { mode: "follow-source" } as const }),
       ...(readVisualAssets(input)?.mode === "pack" && { visualAssetSelection: { mode: "existing-pack", packID: String(readString(readVisualAssets(input)?.pack_snapshot, ["pack_id", "packId", "id"])), packVersion: Number(readNumber(readVisualAssets(input)?.pack_snapshot, ["version", "pack_version", "packVersion"])) } as const }),
@@ -463,14 +500,24 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     return runView(record)
   }
 
-  const acceptImage = async (workflowID: string, segmentID: string, decision: ImageDecision) => {
+  const acceptImage = async (workflowID: string, segmentID: string, decision: ImageDecision, allowPendingPlus = false, imageOverride?: GeneratedImage) => {
     const record = requireWorkflow(workflowID)
     await prepare(record, true)
     const state = requireHypercode(record)
     const all = allSegmentIDs(record, state)
     if (!all.includes(segmentID)) throw new WorkflowError(`Unknown segment: ${segmentID}`, workflowID)
+    if ((decision === "accepted" || decision === "force-accepted") && !allowPendingPlus && hasPendingPlusMapping(record, segmentID, state))
+      throw new WorkflowError(`Plus image mapping requires explicit confirmation. Reply exactly: ${PLUS_IMPORT_APPROVAL}`, workflowID)
     if (decision === "accepted" || decision === "force-accepted") {
-      const image = record.generated.get(segmentID) ?? record.imported.get(segmentID) ?? (await findAcceptedArtifact(record.outputDirectory, segmentID))
+      const previousDecision = latestDecisionsBySegment(state.approvals).get(segmentID)
+      const previousQuality = [...record.qualityChecks].toReversed().find((item) => item.segment_id === segmentID)
+      const image =
+        imageOverride ??
+        record.generated.get(segmentID) ??
+        record.imported.get(segmentID) ??
+        (previousDecision === "rejected" || (previousQuality && previousQuality.status !== "accepted")
+          ? undefined
+          : await findAcceptedArtifact(record.outputDirectory, segmentID))
       if (!image) throw new WorkflowError("An image must be generated or imported before acceptance", workflowID)
       if (image.filePath) {
         const safePath = normalizeOutputPath(record.outputDirectory, image.filePath)
@@ -511,24 +558,83 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     await prepare(record, true)
     const ingestionStarted = performance.now()
     const safePath = await validateMediaFile(filePath, "image")
-    const suggestedSegmentID = inferSegmentID(path.basename(safePath), record.segments)
-    if (suggestedSegmentID) {
-      const importedPath = await copyImportedImage(record.outputDirectory, safePath, suggestedSegmentID)
-      record.imported.set(suggestedSegmentID, { segmentID: suggestedSegmentID, filePath: importedPath, status: "plus-imported" })
-      await persistGeneratedArtifacts(record)
-      const state = requireHypercode(record)
+    const state = requireHypercode(record)
+    const proposals = matchAndPropose(
+      [{ name: path.basename(safePath), filePath: safePath }],
+      allSegmentIDs(record, state).map((segmentID) => ({ segmentID, pending: !isAccepted(state, segmentID) })),
+    )
+    const proposal = proposals[0]
+    if (!proposal) throw new WorkflowError("Plus image import did not produce a mapping proposal", workflowID)
+    const stagedPath = await copyPendingPlusImage(record.outputDirectory, safePath, proposal.name)
+    const pending: PendingPlusImport = {
+      id: crypto.randomUUID(),
+      stagedPath,
+      proposal: { ...proposal, filePath: safePath },
+      at: now().toISOString(),
+    }
+    record.plusImports.set(pending.id, pending)
+    const proposedSegmentID = proposal.suggestedSegmentID
+    if (proposedSegmentID && !isAccepted(state, proposedSegmentID)) {
+      record.imported.set(proposedSegmentID, { segmentID: proposedSegmentID, filePath: stagedPath, status: "plus-imported" })
       record.hypercode = {
         ...state,
         approvals: [
           ...state.approvals,
-          { segment_id: suggestedSegmentID, decision: "plus-import-proposed", at: now().toISOString() },
+          { segment_id: proposedSegmentID, decision: "plus-import-proposed", at: pending.at },
         ],
       }
-      await persist(record)
     }
+    await persistGeneratedArtifacts(record)
     trackMetric(record, "asset_ingestion_seconds", ingestionStarted)
     await persist(record)
-    return { workflowID, filePath: safePath, ...(suggestedSegmentID && { suggestedSegmentID }), requiresConfirmation: true }
+    return {
+      workflowID,
+      filePath: safePath,
+      ...(proposal.suggestedSegmentID && { suggestedSegmentID: proposal.suggestedSegmentID }),
+      proposals,
+      requiresConfirmation: true,
+    }
+  }
+
+  const confirmPlusImage = async (
+    workflowID: string,
+    segmentOrInput: string | PlusImportConfirmation,
+    answer?: string,
+    filePath?: string,
+  ): Promise<WorkflowRun> => {
+    const record = requireWorkflow(workflowID)
+    await prepare(record, true)
+    const input = typeof segmentOrInput === "string" ? { segmentID: segmentOrInput, answer, filePath } : segmentOrInput
+    const normalizedAnswer = input.answer?.trim()
+    if (normalizedAnswer === PLUS_IMPORT_CANCEL || input.decision === "rejected") return runView(record)
+    if (normalizedAnswer !== PLUS_IMPORT_APPROVAL && input.decision !== "accepted")
+      throw new WorkflowError(`Plus image confirmation requires the exact answer: ${PLUS_IMPORT_APPROVAL}`, workflowID)
+    const state = requireHypercode(record)
+    const segmentID = input.segmentID.trim()
+    const segment = record.segments.find((item) => item.segment_id === segmentID)
+    if (!segment) throw new WorkflowError(`Unknown segment: ${input.segmentID}`, workflowID)
+    const pendingImport = [...record.plusImports.values()]
+      .filter((item) => item.proposal.suggestedSegmentID === segmentID || item.proposal.candidates.includes(segmentID) || !item.proposal.candidates.length)
+      .toSorted((left, right) => right.at.localeCompare(left.at))[0]
+    if (!pendingImport) throw new WorkflowError("No pending Plus image mapping exists for this segment", workflowID)
+    if (pendingImport.proposal.confidence !== "exact" && !input.filePath)
+      throw new WorkflowError("A safe image file path is required before confirming the Plus mapping", workflowID)
+    const sourcePath = input.filePath
+      ? await validateMediaFile(input.filePath, "image")
+      : await validatePendingPlusImage(record, pendingImport.stagedPath)
+    const importedPath = input.filePath ? await copyImportedImage(record.outputDirectory, sourcePath, segmentID) : sourcePath
+    const image: GeneratedImage = { segmentID, filePath: importedPath, status: "plus-imported" }
+    record.imported.set(segmentID, image)
+    if (latestDecisionsBySegment(state.approvals).get(segmentID) !== "plus-import-proposed")
+      record.hypercode = {
+        ...state,
+        approvals: [...state.approvals, { segment_id: segmentID, decision: "plus-import-proposed", at: now().toISOString() }],
+      }
+    const confirmed = await acceptImage(workflowID, segmentID, "accepted", true, image)
+    record.plusImports.delete(pendingImport.id)
+    await persistGeneratedArtifacts(record)
+    await persist(record)
+    return confirmed
   }
 
   const compileDelivery = async (workflowID: string): Promise<DeliveryResult> => {
@@ -638,27 +744,39 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
         outputDirectory: record.outputDirectory,
         modelPool: imagePool(record),
       }
-      try {
-        const generationStarted = performance.now()
-        const image = await generateImage(input)
-        trackMetric(record, "image_service_wait_seconds", generationStarted)
-        if (options.qualityCheck) {
-          const qualityStarted = performance.now()
-          const quality = await options.qualityCheck({ ...input, image })
-          trackMetric(record, "qc_prompt_state_dispatch_seconds", qualityStarted)
-          if (quality.status === "rejected") throw new Error(quality.reason ?? "quality check failed")
-          if (quality.status === "uncertain") throw new Error(quality.reason ?? "quality check is uncertain")
+      let acceptedImage: GeneratedImage | undefined
+      let failureReason = "image generation failed"
+      for (let qualityAttempt = 0; qualityAttempt < 2 && !acceptedImage; qualityAttempt++) {
+        try {
+          const generationStarted = performance.now()
+          const image = await generateImage(input)
+          trackMetric(record, "image_service_wait_seconds", generationStarted)
+          if (options.qualityCheck) {
+            const qualityStarted = performance.now()
+            const quality = await options.qualityCheck({ ...input, image })
+            trackMetric(record, "qc_prompt_state_dispatch_seconds", qualityStarted)
+            await recordQualityCheck(record, segmentID, quality, qualityAttempt)
+            if (quality.status !== "accepted") {
+              failureReason = quality.reason ?? `quality check ${quality.status}`
+              continue
+            }
+          }
+          acceptedImage = image
+        } catch (error) {
+          if (error instanceof WorkflowError || error instanceof DependencyError || error instanceof SkillBridgeError) throw error
+          failureReason = safeReason(error)
+          break
         }
-        record.generated.set(segmentID, image)
-        await persistGeneratedArtifacts(record)
-        generated.push(image)
-        await appendProviderAttempt(record, image, "success")
-      } catch (error) {
-        if (error instanceof WorkflowError || error instanceof DependencyError || error instanceof SkillBridgeError) throw error
-        const reason = safeReason(error)
-        failed.push({ segmentID, reason })
-        await appendProviderAttempt(record, { segmentID, provider: "unknown", model: "unknown" }, "failed")
       }
+      if (!acceptedImage) {
+        failed.push({ segmentID, reason: failureReason })
+        await appendProviderAttempt(record, { segmentID, provider: "unknown", model: "unknown" }, "failed")
+        continue
+      }
+      record.generated.set(segmentID, acceptedImage)
+      await persistGeneratedArtifacts(record)
+      generated.push(acceptedImage)
+      await appendProviderAttempt(record, acceptedImage, "success")
     }
     const latest = requireHypercode(record)
     const allIDs = allSegmentIDs(record, latest)
@@ -770,6 +888,10 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     approveStoryboard: (segmentIDs, answer) => approveStoryboard(record.workflowID, segmentIDs, answer),
     acceptImage: (segmentID, decision) => acceptImage(record.workflowID, segmentID, decision),
     importPlusImage: (filePath) => importPlusImage(record.workflowID, filePath),
+    confirmPlusImage: (input: string | PlusImportConfirmation, answer?: string, filePath?: string) =>
+      typeof input === "string"
+        ? confirmPlusImage(record.workflowID, input, answer, filePath)
+        : confirmPlusImage(record.workflowID, input),
     compileDelivery: () => compileDelivery(record.workflowID),
     selectVisualAssets: (selection) => selectVisualAssets(record.workflowID, selection),
     confirmModels: (answer) => confirmModels(record.workflowID, answer),
@@ -783,6 +905,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     approveStoryboard,
     acceptImage,
     importPlusImage,
+    confirmPlusImage,
     compileDelivery,
     selectVisualAssets,
     confirmModels,
@@ -829,6 +952,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       if (Object.keys(record.manifest).length === 0) record.manifest = await readManifestArtifacts(record.outputDirectory)
       await prepareVisualAssetEntry(record, bridge, stateFile)
       await loadGeneratedArtifacts(record)
+      await loadPendingPlusImports(record)
       await verifyDependencies(record, bridge, outputDirectory)
       if (!resumeOnly || !record.manifest || Object.keys(record.manifest).length === 0) {
         if (!bridge.inspectVideo) throw new SkillUnavailableError("The skill inspect_video.py script is unavailable")
@@ -862,6 +986,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
         throw new StateError("project-state.json belongs to a different workflow", record.workflowID)
       record.hypercode = current ? decodeHypercodeState(current) : createHypercode(record, modelSnapshot)
       syncMetrics(record)
+      record.hypercode = { ...record.hypercode, quality_checks: record.qualityChecks }
       const visualState = readVisualAssets(record.state)
       if (!visualState?.frozen_at && record.hypercode.checkpoint.phase !== "approval") {
         record.hypercode = {
@@ -1131,6 +1256,9 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       provider: result.provider,
       model: result.model,
       status: "generated",
+      attempts: result.attempts,
+      elapsedMs: result.elapsedMs,
+      cost: result.cost,
     } satisfies GeneratedImage
   }
 
@@ -1145,9 +1273,31 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
           model: image.model ?? "unknown",
           status,
           at: now().toISOString(),
+          ...(image.segmentID && { segment_id: image.segmentID }),
+          ...(image.attempts !== undefined && { attempts: image.attempts }),
+          ...(image.elapsedMs !== undefined && { elapsed_ms: image.elapsedMs }),
+          ...(image.cost && {
+            cost_known: image.cost.known,
+            ...(image.cost.amount !== undefined && { cost_amount: image.cost.amount }),
+            ...(image.cost.currency && { cost_currency: image.cost.currency }),
+          }),
         },
       ],
     }
+    await persist(record)
+  }
+
+  async function recordQualityCheck(record: RecordState, segmentID: string, result: QualityResult, attempt: number) {
+    const entry = {
+      segment_id: segmentID,
+      status: result.status,
+      ...(result.reason && { reason: redactSecrets(result.reason).slice(0, 500) }),
+      attempt,
+      at: now().toISOString(),
+    } as const
+    record.qualityChecks = [...record.qualityChecks, entry]
+    const state = requireHypercode(record)
+    record.hypercode = { ...state, quality_checks: record.qualityChecks }
     await persist(record)
   }
 
@@ -1228,15 +1378,13 @@ export const layer = Layer.effect(
           )
         : undefined
     const modelPool = Option.isSome(modelsDev)
-      ? yield* Effect.gen(function* () {
-          const catalog = yield* modelsDev.value.get()
-          return yield* Effect.promise(() =>
-            ModelPool.discover(catalog, {
-              providers: Object.keys(catalog),
-              healthProbe: async (candidate) => Boolean(catalog[candidate.providerID]?.models[candidate.modelID]),
-            }),
-          )
-        })
+      ? async () => {
+          const catalog = await Effect.runPromise(modelsDev.value.get())
+          return ModelPool.discover(catalog, {
+            providers: ["nvidia", "openai"],
+            healthProbe: async (candidate) => Boolean(catalog[candidate.providerID]?.models[candidate.modelID]),
+          })
+        }
       : undefined
     return Service.of(
       createVideoReplicaService({
@@ -1613,6 +1761,16 @@ function inferSegmentID(filename: string, segments: ReadonlyArray<Segment>) {
   return segments.find((segment) => stem.includes(segment.segment_id.toLowerCase()))?.segment_id
 }
 
+async function copyPendingPlusImage(outputDirectory: string, source: string, name: string) {
+  const stem = path.basename(name, path.extname(name)).replace(/[^a-zA-Z0-9_-]+/g, "-") || "plus"
+  return copyImportedImage(outputDirectory, source, stem)
+}
+
+async function validatePendingPlusImage(record: Pick<RecordState, "outputDirectory">, filePath: string) {
+  const safePath = normalizeOutputPath(record.outputDirectory, filePath)
+  return validateMediaFile(safePath, "image")
+}
+
 async function copyImportedImage(outputDirectory: string, source: string, segmentID: string) {
   const destinationDirectory = await ensureOutputDirectory(path.join(outputDirectory, "storyboards"))
   const extension = path.extname(source).toLowerCase() || ".png"
@@ -1657,10 +1815,29 @@ async function loadGeneratedArtifacts(record: RecordState) {
       ...(typeof source.provider === "string" && { provider: source.provider }),
       ...(typeof source.model === "string" && { model: source.model }),
       ...(typeof source.status === "string" && { status: source.status }),
+      ...(typeof source.attempts === "number" && { attempts: source.attempts }),
+      ...(typeof source.elapsedMs === "number" && { elapsedMs: source.elapsedMs }),
+      ...(typeof source.cost === "object" && source.cost !== null && { cost: source.cost as GeneratedImage["cost"] }),
     }
     if (source.status === "plus-imported") record.imported.set(segmentID, image)
     else record.generated.set(segmentID, image)
   }
+}
+
+async function loadPendingPlusImports(record: RecordState) {
+  const approvals = record.hypercode?.approvals ?? []
+  for (const approval of approvals) {
+    if (approval.decision !== "plus-import-proposed") continue
+    const image = record.imported.get(approval.segment_id)
+    if (!image?.filePath || record.plusImports.has(approval.segment_id)) continue
+    const proposal = matchAndPropose([{ name: path.basename(image.filePath), filePath: image.filePath, segmentID: approval.segment_id }], [approval.segment_id])[0]
+    if (proposal) record.plusImports.set(approval.segment_id, { id: crypto.randomUUID(), stagedPath: image.filePath, proposal, at: approval.at })
+  }
+}
+
+function hasPendingPlusMapping(record: RecordState, segmentID: string, state: HypercodeState) {
+  return [...record.plusImports.values()].some((item) => item.proposal.suggestedSegmentID === segmentID || item.proposal.candidates.includes(segmentID)) ||
+    (latestDecisionsBySegment(state.approvals).get(segmentID) === "plus-import-proposed" && record.imported.has(segmentID))
 }
 
 async function persistGeneratedArtifacts(record: RecordState) {
@@ -1672,6 +1849,9 @@ async function persistGeneratedArtifacts(record: RecordState) {
       provider: image.provider,
       model: image.model,
       status: image.status,
+      attempts: image.attempts,
+      elapsedMs: image.elapsedMs,
+      cost: image.cost,
     },
   ])
   await atomicWriteJson(path.join(directory, "generated-images.json"), Object.fromEntries(entries))

@@ -1,6 +1,6 @@
 import { Effect, Option, Schema } from "effect"
 import { Tool } from "./tool"
-import { VideoReplica, APPROVAL_PHRASE, type VisualAssetSelection, type WorkflowInput } from "@/video-replica/service"
+import { VideoReplica, APPROVAL_PHRASE, PLUS_IMPORT_APPROVAL, type VisualAssetSelection, type WorkflowInput } from "@/video-replica/service"
 import { Skill } from "@/skill"
 import { EffectBridge } from "@/effect/bridge"
 import { Question } from "@/question"
@@ -13,6 +13,8 @@ export const Parameters = Schema.Struct({
     "generate",
     "accept_image",
     "import_plus_image",
+    "confirm_plus_image",
+    "confirm_plus_mapping",
     "compile_delivery",
     "select_visual_assets",
     "list_visual_assets",
@@ -239,10 +241,45 @@ export const VideoReplicaTool = Tool.define<typeof Parameters, { status: string;
           if (params.action === "import_plus_image") {
             if (!params.filePath) return yield* Effect.fail(new Error("import_plus_image requires filePath"))
             const result = yield* Effect.promise(() => service.value.importPlusImage(params.workflowID!, params.filePath!))
+            if (result.suggestedSegmentID) {
+              const answers = yield* questionService.ask({
+                sessionID: ctx.sessionID,
+                questions: [
+                  {
+                    question: `检测到 Plus 图片可能对应分段 ${result.suggestedSegmentID}，是否确认映射？`,
+                    header: "确认 Plus 映射",
+                    options: [
+                      { label: PLUS_IMPORT_APPROVAL, description: "确认后将该图片作为此分段首帧。" },
+                      { label: "取消", description: "保留待确认状态，不写入 accepted。" },
+                    ],
+                    custom: false,
+                    presentation: {
+                      images: [{ url: result.filePath, alt: `Plus image for ${result.suggestedSegmentID}` }],
+                      facts: [{ label: "分段", value: result.suggestedSegmentID }],
+                      tone: "payment" as const,
+                    },
+                  },
+                ],
+                ...(ctx.callID && { tool: { messageID: ctx.messageID, callID: ctx.callID } }),
+              })
+              if (answers[0]?.[0] === PLUS_IMPORT_APPROVAL) {
+                yield* Effect.promise(() => service.value.confirmPlusImage!(params.workflowID!, result.suggestedSegmentID!, PLUS_IMPORT_APPROVAL))
+              }
+            }
             return {
               title: "Plus image match proposed",
               output: JSON.stringify(result),
               metadata: { status: "confirmation-required", workflowID: result.workflowID },
+            }
+          }
+
+          if (params.action === "confirm_plus_image" || params.action === "confirm_plus_mapping") {
+            if (!params.segmentID) return yield* Effect.fail(new Error("confirm_plus_image requires segmentID"))
+            const confirmed = yield* Effect.promise(() => service.value.confirmPlusImage(params.workflowID!, params.segmentID!, params.answer, params.filePath))
+            return {
+              title: "Plus image mapping confirmed",
+              output: JSON.stringify({ workflowID: confirmed.workflowID, segmentID: params.segmentID, answer: params.answer }),
+              metadata: { status: "confirmed", workflowID: confirmed.workflowID },
             }
           }
 

@@ -179,6 +179,36 @@ describe("VideoReplica workflow service", () => {
     expect(Object.keys(acceptedPayloads[0]!)).toEqual(["seg-1", "seg-2"])
   })
 
+  it("retries quality once and persists each quality decision", async () => {
+    const project = await makeProject()
+    const outputDirectory = path.join(project.directory, "output")
+    let qualityCalls = 0
+    const service = createVideoReplicaService({
+      platform: "win32",
+      bridge: bridgeFor({ segments: [{ segment_id: "seg-1" }], duration_seconds: 4 }),
+      generateImage: async (input) => {
+        const filePath = path.join(input.outputDirectory, `${input.segmentID}-${crypto.randomUUID()}.png`)
+        await fs.writeFile(filePath, "image")
+        return { segmentID: input.segmentID, filePath, provider: "nvidia", model: "qwen/qwen-image-edit" }
+      },
+      qualityCheck: async () => {
+        qualityCalls++
+        return qualityCalls === 1 ? { status: "uncertain" as const, reason: "logo unclear" } : { status: "accepted" as const }
+      },
+    })
+    const run = service.start({ referenceVideo: project.referenceVideo, productImages: [project.productImage], outputDirectory })
+    await run.nextQuestion()
+    await run.approveStoryboard(["seg-1"], APPROVAL_PHRASE)
+    const result = await run.generate()
+    expect(result.generated).toHaveLength(1)
+    expect(qualityCalls).toBe(2)
+    const state = JSON.parse(await fs.readFile(path.join(outputDirectory, "project-state.json"), "utf8"))
+    expect(state.hypercode.quality_checks).toMatchObject([
+      { segment_id: "seg-1", status: "uncertain", reason: "logo unclear", attempt: 0 },
+      { segment_id: "seg-1", status: "accepted", attempt: 1 },
+    ])
+  })
+
   it("resumes from a persisted workflow index in a fresh service instance", async () => {
     const project = await makeProject()
     const outputRoot = project.directory

@@ -46,6 +46,7 @@ function makeRun(question: StoryboardQuestion, calls: string[]): VideoReplica.Wo
     },
     acceptImage: async () => run,
     importPlusImage: async (filePath) => ({ workflowID: run.workflowID, filePath, requiresConfirmation: true }),
+    confirmPlusImage: async () => run,
     compileDelivery: async () => ({ workflowID: run.workflowID, outputDirectory: run.outputDirectory }),
     selectVisualAssets: async (selection) => {
       calls.push(`assets:${selection.mode}`)
@@ -68,6 +69,7 @@ function executeResume(run: VideoReplica.WorkflowRun, answer: string) {
     approveStoryboard: async () => run,
     acceptImage: async () => run,
     importPlusImage: async (workflowID, filePath) => ({ workflowID, filePath, requiresConfirmation: true }),
+    confirmPlusImage: async () => run,
     compileDelivery: async (workflowID) => ({ workflowID, outputDirectory: run.outputDirectory }),
     selectVisualAssets: async () => run,
     confirmModels: async () => run,
