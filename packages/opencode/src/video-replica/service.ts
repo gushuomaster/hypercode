@@ -672,6 +672,17 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       record.segments = readSegments(record.state)
       if (!record.segments.length) record.segments = readSegments(record.manifest)
       if (!record.segments.length) record.segments = record.chapters.map((chapter) => ({ segment_id: `chapter-${chapter.chapter}` }))
+      record.segments = record.segments.map((segment) => ({
+        source_frame: "",
+        action_state: {},
+        visible_hands: [],
+        scene: {},
+        product_required: true,
+        props: [],
+        look_required: false,
+        camera: {},
+        ...segment,
+      }))
       await prepareVisualAssetMapping(record, bridge, stateFile)
       const modelSnapshot = await readModelSnapshot()
       const current = record.state.hypercode
@@ -851,6 +862,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     const knownDuration = getDuration(record.manifest, record.state ?? {})
     const initialChapter = knownDuration ? splitChapters(knownDuration)[0] : undefined
     const manifests: Record<string, unknown>[] = []
+    let reuseManifestPath: string | undefined
     const inspectOne = async (chapter: Chapter, first = false) => {
       const analysisDirectory = path.join(analysisRoot, `chapter-${chapter.chapter}-${crypto.randomUUID()}`)
       const input: InspectVideoInput = {
@@ -859,8 +871,10 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
         ...(first && !initialChapter
           ? {}
           : { exactWindows: [`${chapter.startSeconds}:${chapter.endSeconds}`] }),
+        ...(!first && reuseManifestPath ? { reuseManifest: reuseManifestPath } : {}),
       }
       const value = await bridge.inspectVideo!(input)
+      if (first && typeof value?.manifestPath === "string") reuseManifestPath = value.manifestPath
       const manifest = await loadManifest(value ?? {}, outputDirectory)
       record.chapterManifests[chapter.chapter] = manifest
       manifests.push(manifest)
