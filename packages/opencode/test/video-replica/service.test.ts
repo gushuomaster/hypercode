@@ -58,6 +58,36 @@ describe("VideoReplica workflow service", () => {
     await expect(run.nextQuestion()).rejects.toThrow("duplicate semantic segment")
   })
 
+  it("derives semantic segments from visual evidence through the configured segmenter", async () => {
+    const project = await makeProject()
+    let receivedManifest: Record<string, unknown> | undefined
+    const service = createVideoReplicaService({
+      platform: "win32",
+      bridge: bridgeFor({ duration_seconds: 4, artifacts: { scene_candidates: [{ timestamp_seconds: 1.25 }] } }),
+      semanticSegmenter: async (input) => {
+        receivedManifest = input.manifest
+        return [{ segment_id: "seg-derived", source_start_seconds: 0, source_end_seconds: 2 }]
+      },
+    })
+    const run = service.start({ referenceVideo: project.referenceVideo, productImages: [project.productImage], outputDirectory: path.join(project.directory, "output") })
+    const question = await run.nextQuestion()
+    expect(question.questions[0]?.presentation?.facts).toEqual(expect.arrayContaining([{ label: "分段数", value: "1" }]))
+    expect(receivedManifest).toMatchObject({ manifests: [{ artifacts: { scene_candidates: [{ timestamp_seconds: 1.25 }] } }] })
+    expect(run.segmentIDs).toEqual(["seg-derived"])
+    const state = JSON.parse(await fs.readFile(path.join(run.outputDirectory, "project-state.json"), "utf8"))
+    expect(state.segments).toMatchObject([{ segment_id: "seg-derived" }])
+  })
+
+  it("blocks when inspection has no semantic segments and no segmenter is configured", async () => {
+    const project = await makeProject()
+    const service = createVideoReplicaService({
+      platform: "win32",
+      bridge: bridgeFor({ duration_seconds: 4, artifacts: { scene_candidates: [{ timestamp_seconds: 1.25 }] } }),
+    })
+    const run = service.start({ referenceVideo: project.referenceVideo, productImages: [project.productImage], outputDirectory: path.join(project.directory, "output") })
+    await expect(run.nextQuestion()).rejects.toThrow("configure a semantic segmenter")
+  })
+
   it("requires an explicit exact storyboard approval answer", async () => {
     const project = await makeProject()
     const service = createVideoReplicaService({

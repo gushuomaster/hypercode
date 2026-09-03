@@ -77,6 +77,13 @@ export type GenerateImageInput = {
 export type QualityInput = GenerateImageInput & { image: GeneratedImage }
 export type QualityResult = { status: "accepted" | "rejected" | "uncertain"; reason?: string }
 
+export type SemanticSegmentationInput = {
+  workflowID: string
+  referenceVideo: string
+  manifest: Readonly<Record<string, unknown>>
+  chapters: ReadonlyArray<Chapter>
+}
+
 export type VideoReplicaOptions = {
   readonly bridge?: SkillBridgeLike
   readonly bridgeFactory?: () => Promise<SkillBridgeLike>
@@ -88,6 +95,7 @@ export type VideoReplicaOptions = {
   readonly dependencyConfirmation?: (missing: DependencyReport) => Promise<boolean>
   readonly generateImage?: (input: GenerateImageInput) => Promise<GeneratedImage>
   readonly qualityCheck?: (input: QualityInput) => Promise<QualityResult>
+  readonly semanticSegmenter?: (input: SemanticSegmentationInput) => Promise<ReadonlyArray<Segment>>
   readonly generationConcurrency?: number
   readonly imageGeneration?: ImageGenerationService.Interface
   readonly question?: Pick<Question.Interface, "ask">
@@ -973,8 +981,23 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       if (!record.chapters.length) record.chapters = duration ? splitChapters(duration) : [{ chapter: 1, startSeconds: 0, endSeconds: 0, durationSeconds: 0 }]
       record.segments = readSegments(record.state)
       if (!record.segments.length) record.segments = readSegments(record.manifest)
+      if (!record.segments.length && options.semanticSegmenter) {
+        const started = performance.now()
+        const proposed = await options.semanticSegmenter({
+          workflowID: record.workflowID,
+          referenceVideo,
+          manifest: record.manifest,
+          chapters: record.chapters,
+        })
+        trackMetric(record, "other_agent_compute_seconds", started)
+        record.segments = readSegments({ segments: proposed })
+        if (record.segments.length) record.state = { ...record.state, segments: record.segments }
+      }
       if (!record.segments.length)
-        throw new StateError("Video analysis did not produce semantic segments; refusing to synthesize chapter placeholders", record.workflowID)
+        throw new StateError(
+          "Video analysis produced visual evidence but no semantic segments; configure a semantic segmenter before continuing",
+          record.workflowID,
+        )
       record.segments = record.segments.map((segment) => ({
         source_frame: "",
         action_state: {},
@@ -988,6 +1011,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       }))
       validateSemanticSegments(record.segments, record.workflowID)
       await prepareVisualAssetMapping(record, bridge, stateFile)
+      if (record.segments.length) record.state = { ...record.state, segments: record.segments }
       const modelSnapshot = await readModelSnapshot()
       const current = record.state.hypercode
       if (current !== undefined && !isHypercodeLike(current))
