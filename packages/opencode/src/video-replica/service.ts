@@ -195,6 +195,7 @@ type RecordState = {
   visualAssetSelection?: VisualAssetSelection
   persisting?: Promise<void>
   preparing?: Promise<void>
+  generating?: Promise<GenerationSummary>
 }
 
 const workflows = new Map<string, RecordState>()
@@ -465,6 +466,17 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
   }
 
   const generate = async (record: RecordState): Promise<GenerationSummary> => {
+    if (record.generating) return record.generating
+    const current = generateOnce(record)
+    record.generating = current
+    try {
+      return await current
+    } finally {
+      if (record.generating === current) record.generating = undefined
+    }
+  }
+
+  const generateOnce = async (record: RecordState): Promise<GenerationSummary> => {
     await prepare(record, true)
     const state = requireHypercode(record)
     if (state.checkpoint.phase !== "generation" && state.checkpoint.phase !== "qc")
