@@ -15,6 +15,7 @@ export const Parameters = Schema.Struct({
     "import_plus_image",
     "compile_delivery",
     "select_visual_assets",
+    "confirm_models",
   ]),
   workflowID: Schema.optional(Schema.String),
   referenceVideo: Schema.optional(Schema.String),
@@ -132,6 +133,16 @@ export const VideoReplicaTool = Tool.define<typeof Parameters, { status: string;
               title: "Visual assets selected",
               output: JSON.stringify({ workflowID: run.workflowID, question }),
               metadata: { status: "awaiting-approval", workflowID: run.workflowID },
+            }
+          }
+
+          if (params.action === "confirm_models") {
+            const run = yield* Effect.promise(() => service.value.confirmModels(params.workflowID!, params.answer ?? ""))
+            const question = yield* Effect.promise(() => run.nextQuestion())
+            return {
+              title: "Image models confirmed",
+              output: JSON.stringify({ workflowID: run.workflowID, question }),
+              metadata: { status: "confirmed", workflowID: run.workflowID },
             }
           }
 

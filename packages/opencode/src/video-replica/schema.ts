@@ -18,6 +18,7 @@ export type HypercodeState = {
   checkpoint: Checkpoint
   approvals: ReadonlyArray<{ segment_id: string; decision: string; at: string }>
   provider_attempts: ReadonlyArray<{ provider: string; model: string; status: string; at: string }>
+  pending_model_confirmations?: ReadonlyArray<string>
 }
 
 export const CheckpointSchema = Schema.Struct({
@@ -49,6 +50,7 @@ export const HypercodeStateSchema = Schema.Struct({
       at: Schema.String,
     }),
   ),
+  pending_model_confirmations: Schema.optional(Schema.Array(Schema.String)),
 })
 
 export type Segment = {
@@ -124,6 +126,7 @@ export function decodeHypercodeState(value: unknown): HypercodeState {
     },
     approvals: value.approvals.map((item) => ({ ...item })),
     provider_attempts: value.provider_attempts.map((item) => ({ ...item })),
+    ...(value.pending_model_confirmations && { pending_model_confirmations: [...value.pending_model_confirmations] }),
   }
 }
 

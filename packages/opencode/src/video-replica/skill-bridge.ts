@@ -151,8 +151,14 @@ export function createSkillBridge(options: CreateSkillBridgeOptions): SkillBridg
 
   const fingerprint = async () => {
     await validateSkill()
-    const metadata = await fs.readFile(path.join(source, "SKILL.md"))
-    return createHash("sha256").update(metadata).digest("hex")
+    const hash = createHash("sha256")
+    for (const file of ["SKILL.md", "requirements-visual-assets.txt", ...ALLOWED_SCRIPTS]) {
+      const filePath = file.includes("/") ? path.join(source, file) : file === "SKILL.md" || file.startsWith("requirements") ? path.join(source, file) : path.join(source, "scripts", file)
+      const stat = await fs.lstat(filePath).catch(() => undefined)
+      if (!stat?.isFile() || stat.isSymbolicLink()) throw new SkillBridgeError(`Skill fingerprint input is unavailable: ${file}`)
+      hash.update(file).update(await fs.readFile(filePath))
+    }
+    return hash.digest("hex")
   }
 
   const runScript = async (script: string, args: ReadonlyArray<string>, cwd?: string) => {

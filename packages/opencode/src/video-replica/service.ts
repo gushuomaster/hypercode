@@ -127,6 +127,7 @@ export interface WorkflowRun extends StartResult {
   readonly importPlusImage: (filePath: string) => Promise<PlusImportResult>
   readonly compileDelivery: () => Promise<DeliveryResult>
   readonly selectVisualAssets: (selection: VisualAssetSelection) => Promise<WorkflowRun>
+  readonly confirmModels: (answer: string) => Promise<WorkflowRun>
 }
 
 export interface Interface {
@@ -141,6 +142,7 @@ export interface Interface {
   readonly importPlusImage: (workflowID: string, filePath: string) => Promise<PlusImportResult>
   readonly compileDelivery: (workflowID: string) => Promise<DeliveryResult>
   readonly selectVisualAssets: (workflowID: string, selection: VisualAssetSelection) => Promise<WorkflowRun>
+  readonly confirmModels: (workflowID: string, answer: string) => Promise<WorkflowRun>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/VideoReplica") {}
@@ -338,6 +340,15 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     return runView(record)
   }
 
+  const confirmModels = async (workflowID: string, answer: string) => {
+    const record = requireWorkflow(workflowID)
+    const state = requireHypercode(record)
+    if (answer !== "确认使用") throw new ApprovalRequiredError(workflowID)
+    record.hypercode = { ...state, approved_models: [...new Set([...state.approved_models, ...(state.pending_model_confirmations ?? [])])], pending_model_confirmations: [] }
+    await persist(record)
+    return runView(record)
+  }
+
   const acceptImage = async (workflowID: string, segmentID: string, decision: ImageDecision) => {
     const record = requireWorkflow(workflowID)
     await prepare(record, true)
@@ -480,6 +491,8 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
   const generateOnce = async (record: RecordState): Promise<GenerationSummary> => {
     await prepare(record, true)
     const state = requireHypercode(record)
+    if (state.pending_model_confirmations?.length && imagePool(record).length === 0)
+      throw new WorkflowError(`首次使用以下图片模型需要用户确认：${state.pending_model_confirmations.join(", ")}`, record.workflowID)
     if (state.checkpoint.phase !== "generation" && state.checkpoint.phase !== "qc")
       throw new ApprovalRequiredError(record.workflowID)
     const all = allSegmentIDs(record, state)
@@ -573,6 +586,21 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
         ],
       }
     }
+    if (state.pending_model_confirmations?.length) {
+      return {
+        questions: [
+          {
+            question: `以下图片模型尚未确认：${state.pending_model_confirmations.join(", ")}。是否允许本次使用？`,
+            header: "确认图片模型",
+            options: [
+              { label: "确认使用", description: "允许本次工作流使用列出的图片模型。" },
+              { label: "取消", description: "保持等待，不调用未确认模型。" },
+            ],
+            custom: false,
+          },
+        ],
+      }
+    }
     return {
       questions: [
         {
@@ -617,9 +645,10 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     importPlusImage: (filePath) => importPlusImage(record.workflowID, filePath),
     compileDelivery: () => compileDelivery(record.workflowID),
     selectVisualAssets: (selection) => selectVisualAssets(record.workflowID, selection),
+    confirmModels: (answer) => confirmModels(record.workflowID, answer),
   })
 
-  return { start, resume, approveStoryboard, acceptImage, importPlusImage, compileDelivery, selectVisualAssets }
+  return { start, resume, approveStoryboard, acceptImage, importPlusImage, compileDelivery, selectVisualAssets, confirmModels }
 
   async function prepare(record: RecordState, resumeOnly = false) {
     if (record.prepared) return
@@ -993,17 +1022,19 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
 
   function imagePool(record: RecordState) {
     const ids = record.hypercode?.image_pool ?? []
+    const pending = new Set(record.hypercode?.pending_model_confirmations ?? [])
     return ids.map((id) => {
       const slash = id.indexOf("/")
       const provider = slash > 0 ? id.slice(0, slash) : id
       const model = slash > 0 ? id.slice(slash + 1) : id
       return { provider, model }
-    })
+    }).filter((candidate) => !pending.has(`${candidate.provider}/${candidate.model}`))
   }
 
   function createHypercode(record: RecordState, snapshot?: ModelPool.Snapshot): HypercodeState {
     const orchestration = snapshot?.orchestration.map((item) => `${item.providerID}/${item.modelID}`) ?? []
     const image = snapshot?.image.map((item) => `${item.providerID}/${item.modelID}`) ?? []
+    const pending = snapshot?.image.filter((item) => item.requiresConfirmation).map((item) => `${item.providerID}/${item.modelID}`) ?? []
     return {
       schema_version: 1,
       workflow_id: record.workflowID,
@@ -1018,6 +1049,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       },
       approvals: [],
       provider_attempts: [],
+      pending_model_confirmations: pending,
     }
   }
 }
