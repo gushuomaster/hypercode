@@ -54,6 +54,8 @@ import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { ImageGenerateTool } from "./image-generate"
 import { ImageGenerationService } from "@/image-generation/service"
+import { VideoReplicaTool } from "./video-replica"
+import { VideoReplica } from "@/video-replica/service"
 
 export function webSearchEnabled(providerID: ProviderV2.ID, flags = { exa: false, parallel: false }) {
   return providerID === ProviderV2.ID.opencode || flags.exa || flags.parallel
@@ -99,6 +101,7 @@ export const layer = Layer.effect(
     const lsptool = yield* LspTool
     const plan = yield* PlanExitTool
     const imageGenerate = yield* ImageGenerateTool
+    const videoReplica = yield* VideoReplicaTool
     const webfetch = yield* WebFetchTool
     const websearch = yield* WebSearchTool
     const shell = yield* ShellTool
@@ -216,6 +219,7 @@ export const layer = Layer.effect(
           lsp: Tool.init(lsptool),
           plan: Tool.init(plan),
           imageGenerate: Tool.init(imageGenerate),
+          videoReplica: Tool.init(videoReplica),
         })
 
         return {
@@ -238,6 +242,7 @@ export const layer = Layer.effect(
             ...(flags.experimentalLspTool ? [tool.lsp] : []),
             ...(flags.experimentalPlanMode && flags.client === "cli" ? [tool.plan] : []),
             tool.imageGenerate,
+            tool.videoReplica,
           ],
           task: tool.task,
           read: tool.read,
@@ -341,6 +346,7 @@ export const defaultLayer = Layer.suspend(() =>
       Layer.provide(Format.defaultLayer),
       Layer.provide(CrossSpawnSpawner.defaultLayer),
       Layer.provide(Truncate.defaultLayer),
+      Layer.provide(VideoReplica.defaultLayer),
     )
     .pipe(Layer.provide(Database.defaultLayer), Layer.provide(RuntimeFlags.defaultLayer)),
 )
@@ -441,6 +447,7 @@ export const node = LayerNode.make(layer.pipe(Layer.provide(Ripgrep.defaultLayer
   Truncate.node,
   RuntimeFlags.node,
   ImageGenerationService.node,
+  VideoReplica.node,
   Database.node,
 ])
 
