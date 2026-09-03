@@ -48,6 +48,16 @@ describe("VideoReplica workflow service", () => {
     await expect(run.generate()).rejects.toThrow(APPROVAL_PHRASE)
   })
 
+  it("rejects duplicate semantic segment IDs from analysis", async () => {
+    const project = await makeProject()
+    const service = createVideoReplicaService({
+      platform: "win32",
+      bridge: bridgeFor({ segments: [{ segment_id: "seg-1" }, { segment_id: "seg-1" }], duration_seconds: 4 }),
+    })
+    const run = service.start({ referenceVideo: project.referenceVideo, productImages: [project.productImage], outputDirectory: path.join(project.directory, "output") })
+    await expect(run.nextQuestion()).rejects.toThrow("duplicate semantic segment")
+  })
+
   it("requires an explicit exact storyboard approval answer", async () => {
     const project = await makeProject()
     const service = createVideoReplicaService({

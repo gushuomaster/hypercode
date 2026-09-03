@@ -986,6 +986,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
         camera: {},
         ...segment,
       }))
+      validateSemanticSegments(record.segments, record.workflowID)
       await prepareVisualAssetMapping(record, bridge, stateFile)
       const modelSnapshot = await readModelSnapshot()
       const current = record.state.hypercode
@@ -1500,6 +1501,18 @@ function readSegments(value: ExternalProjectState | Record<string, unknown> | un
       const segmentID = typeof item.segment_id === "string" ? item.segment_id : typeof item.id === "string" ? item.id : undefined
       return segmentID ? [{ ...item, segment_id: segmentID }] : []
     })
+}
+
+function validateSemanticSegments(segments: ReadonlyArray<Segment>, workflowID: string) {
+  const seen = new Set<string>()
+  for (const segment of segments) {
+    if (seen.has(segment.segment_id)) throw new StateError(`Video analysis returned a duplicate semantic segment ID: ${segment.segment_id}`, workflowID)
+    seen.add(segment.segment_id)
+    const start = segment.source_start_seconds
+    const end = segment.source_end_seconds
+    if (start !== undefined && end !== undefined && (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start))
+      throw new StateError(`Video analysis returned invalid timing for semantic segment: ${segment.segment_id}`, workflowID)
+  }
 }
 
 function inferInput(state: ExternalProjectState, outputDirectory: string): WorkflowInput {
