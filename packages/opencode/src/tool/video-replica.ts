@@ -137,12 +137,13 @@ export const VideoReplicaTool = Tool.define<typeof Parameters, { status: string;
           }
 
           if (params.action === "confirm_models") {
-            const run = yield* Effect.promise(() => service.value.confirmModels(params.workflowID!, params.answer ?? ""))
-            const question = yield* Effect.promise(() => run.nextQuestion())
+            const run = yield* Effect.promise(() => service.value.resume(params.workflowID!, skillLocation))
+            const confirmed = yield* Effect.promise(() => service.value.confirmModels(run.workflowID, params.answer ?? ""))
+            const question = yield* Effect.promise(() => confirmed.nextQuestion())
             return {
               title: "Image models confirmed",
-              output: JSON.stringify({ workflowID: run.workflowID, question }),
-              metadata: { status: "confirmed", workflowID: run.workflowID },
+              output: JSON.stringify({ workflowID: confirmed.workflowID, question }),
+              metadata: { status: "confirmed", workflowID: confirmed.workflowID },
             }
           }
 

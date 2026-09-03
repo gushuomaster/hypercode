@@ -305,6 +305,8 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     await prepare(record)
     if (answer !== APPROVAL_PHRASE) throw new ApprovalRequiredError(workflowID)
     const state = requireHypercode(record)
+    if (state.pending_model_confirmations?.length)
+      throw new ApprovalRequiredError(workflowID)
     const expected = new Set(allSegmentIDs(record, state))
     if (state.checkpoint.phase !== "approval" && state.checkpoint.phase !== "analysis") {
       if (state.checkpoint.phase !== "generation" || segmentIDs.length !== expected.size || new Set(segmentIDs).size !== expected.size)
@@ -491,7 +493,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
   const generateOnce = async (record: RecordState): Promise<GenerationSummary> => {
     await prepare(record, true)
     const state = requireHypercode(record)
-    if (state.pending_model_confirmations?.length && imagePool(record).length === 0)
+    if (state.pending_model_confirmations?.length)
       throw new WorkflowError(`首次使用以下图片模型需要用户确认：${state.pending_model_confirmations.join(", ")}`, record.workflowID)
     if (state.checkpoint.phase !== "generation" && state.checkpoint.phase !== "qc")
       throw new ApprovalRequiredError(record.workflowID)
