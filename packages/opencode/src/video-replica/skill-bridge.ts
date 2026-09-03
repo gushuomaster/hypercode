@@ -1,6 +1,7 @@
 import os from "node:os"
 import path from "node:path"
 import fs from "node:fs/promises"
+import { createHash } from "node:crypto"
 import { Effect, Context, Layer } from "effect"
 import { AppProcess } from "@opencode-ai/core/process"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
@@ -82,6 +83,7 @@ export class DependencyError extends SkillBridgeError {
 export interface SkillBridgeLike {
   readonly source?: string
   readonly validateSkill?: () => Promise<void>
+  readonly fingerprint?: () => Promise<string>
   readonly runScript?: (script: string, args: ReadonlyArray<string>, cwd?: string) => Promise<CommandResult>
   readonly checkDependencies?: (options?: { checkPythonPackages?: boolean }) => Promise<DependencyReport | void>
   readonly ensureDependencies?: (input: {
@@ -139,16 +141,24 @@ export function createSkillBridge(options: CreateSkillBridgeOptions): SkillBridg
     if (!skill?.isDirectory() || skill.isSymbolicLink()) throw new SkillBridgeError(`doubao-video-replica skill directory is unavailable: ${source}`)
     const metadata = await fs.lstat(path.join(source, "SKILL.md")).catch(() => undefined)
     if (!metadata?.isFile() || metadata.isSymbolicLink()) throw new SkillBridgeError(`doubao-video-replica skill metadata is unavailable: ${path.join(source, "SKILL.md")}`)
+    const content = await fs.readFile(path.join(source, "SKILL.md"), "utf8")
+    const frontmatter = content.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n|$)/)
+    const name = frontmatter?.[1]?.match(/^name:\s*([^\r\n#]+?)\s*$/m)?.[1]?.trim()
+    if (name !== "doubao-video-replica") throw new SkillBridgeError("skill metadata name must be doubao-video-replica")
+  }
+
+  const fingerprint = async () => {
+    await validateSkill()
+    const metadata = await fs.readFile(path.join(source, "SKILL.md"))
+    return createHash("sha256").update(metadata).digest("hex")
   }
 
   const runScript = async (script: string, args: ReadonlyArray<string>, cwd?: string) => {
     if (platform !== "win32") throw new SkillBridgeError("VideoReplica workflow requires Windows")
     const executable = scriptPath(script)
-    if (options.run === undefined) {
-      await validateSkill()
-      const scriptStat = await fs.stat(executable).catch(() => undefined)
-      if (!scriptStat?.isFile()) throw new SkillBridgeError(`Skill script is unavailable: ${script}`, { script })
-    }
+    await validateSkill()
+    const scriptStat = await fs.lstat(executable).catch(() => undefined)
+    if (!scriptStat?.isFile() || scriptStat.isSymbolicLink()) throw new SkillBridgeError(`Skill script is unavailable: ${script}`, { script })
     const command = [activePython, executable, ...args]
     const result = await run(command, { cwd: cwd ?? source })
     const normalized = normalizeResult(result, command)
@@ -255,6 +265,7 @@ export function createSkillBridge(options: CreateSkillBridgeOptions): SkillBridg
   return {
     source,
     validateSkill,
+    fingerprint,
     runScript,
     checkDependencies,
     ensureDependencies,

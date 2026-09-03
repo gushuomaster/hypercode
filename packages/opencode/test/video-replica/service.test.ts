@@ -16,6 +16,7 @@ async function makeProject() {
 function bridgeFor(manifest: Record<string, unknown>): SkillBridgeLike {
   return {
     checkDependencies: async () => ({ missing: [], checked: [] }),
+    runVisualAsset: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
     initProject: async (input) => {
       await fs.mkdir(input.outputDirectory, { recursive: true })
       await fs.writeFile(
@@ -47,6 +48,54 @@ describe("VideoReplica workflow service", () => {
     await expect(run.generate()).rejects.toThrow(APPROVAL_PHRASE)
   })
 
+  it("requires an explicit exact storyboard approval answer", async () => {
+    const project = await makeProject()
+    const service = createVideoReplicaService({
+      platform: "win32",
+      bridge: bridgeFor({ segments: [{ segment_id: "seg-1" }], duration_seconds: 4 }),
+    })
+    const run = service.start({
+      referenceVideo: project.referenceVideo,
+      productImages: [project.productImage],
+      outputDirectory: path.join(project.directory, "output"),
+    })
+
+    await run.nextQuestion()
+    await expect(run.approveStoryboard(["seg-1"], undefined)).rejects.toThrow(APPROVAL_PHRASE)
+    await expect(run.approveStoryboard(["seg-1"], "批准分镜，开始生成首帧图片")).rejects.toThrow(APPROVAL_PHRASE)
+    await expect(run.approveStoryboard(["seg-1"], "好的")).rejects.toThrow(APPROVAL_PHRASE)
+    expect((await run.nextQuestion()).questions[0]?.header).toBe("批准分镜")
+  })
+
+  it("runs the visual-asset entry, inspection, mapping, and freeze phases through public scripts", async () => {
+    const project = await makeProject()
+    const calls: string[] = []
+    const bridge: SkillBridgeLike = {
+      ...bridgeFor({ segments: [{ segment_id: "seg-1" }], duration_seconds: 4 }),
+      runVisualAsset: async (script, args) => {
+        calls.push(`${script}:${args.join("|")}`)
+        return { exitCode: 0, stdout: "", stderr: "" }
+      },
+    }
+    const service = createVideoReplicaService({ platform: "win32", bridge })
+    const run = service.start({
+      referenceVideo: project.referenceVideo,
+      productImages: [project.productImage],
+      outputDirectory: path.join(project.directory, "output"),
+    })
+
+    await run.nextQuestion()
+    await run.approveStoryboard(["seg-1"], APPROVAL_PHRASE)
+    expect(calls.map((item) => item.split(":", 1)[0])).toEqual([
+      "configure_visual_assets.py",
+      "configure_visual_assets.py",
+      "configure_visual_assets.py",
+    ])
+    expect(calls[0]).toContain("follow-source")
+    expect(calls[1]).toContain("apply-mapping")
+    expect(calls[2]).toContain("freeze")
+  })
+
   it("persists only the hypercode namespace and resumes without repeat attempts", async () => {
     const project = await makeProject()
     const outputDirectory = path.join(project.directory, "output")
@@ -61,7 +110,7 @@ describe("VideoReplica workflow service", () => {
       productName: "Widget",
     })
     await run.nextQuestion()
-    await service.approveStoryboard(run.workflowID, ["seg-1"])
+    await service.approveStoryboard(run.workflowID, ["seg-1"], APPROVAL_PHRASE)
     const state = JSON.parse(await fs.readFile(path.join(outputDirectory, "project-state.json"), "utf8"))
     expect(Object.keys(state)).toEqual(["schema_version", "segments", "hypercode"])
     expect(state.hypercode.checkpoint.phase).toBe("generation")
@@ -118,7 +167,7 @@ describe("VideoReplica workflow service", () => {
     })
 
     await run.nextQuestion()
-    await run.approveStoryboard(["seg-1", "seg-2"])
+    await run.approveStoryboard(["seg-1", "seg-2"], APPROVAL_PHRASE)
     await run.generate()
     const afterFirst = await service.acceptImage(run.workflowID, "seg-1", "accepted")
     expect(afterFirst.segmentIDs).toEqual(["seg-1", "seg-2"])
@@ -128,5 +177,43 @@ describe("VideoReplica workflow service", () => {
 
     expect(acceptedPayloads).toHaveLength(1)
     expect(Object.keys(acceptedPayloads[0]!)).toEqual(["seg-1", "seg-2"])
+  })
+
+  it("resumes from a persisted workflow index in a fresh service instance", async () => {
+    const project = await makeProject()
+    const outputRoot = project.directory
+    const outputDirectory = path.join(outputRoot, "output")
+    const bridge = bridgeFor({ segments: [{ segment_id: "seg-1" }], duration_seconds: 4 })
+    const firstService = createVideoReplicaService({ platform: "win32", bridge, outputRoots: [outputRoot] })
+    const firstRun = firstService.start({
+      referenceVideo: project.referenceVideo,
+      productImages: [project.productImage],
+      outputDirectory,
+    })
+    await firstRun.nextQuestion()
+    expect(await fs.stat(path.join(outputDirectory, ".hypercode", "workflow-index.json"))).toBeTruthy()
+
+    const secondService = createVideoReplicaService({ platform: "win32", bridge, outputRoots: [outputRoot] })
+    const resumed = await secondService.resume(firstRun.workflowID)
+    expect(resumed.workflowID).toBe(firstRun.workflowID)
+    expect(resumed.outputDirectory).toBe(outputDirectory)
+  })
+
+  it("revalidates platform and media before resuming a persisted workflow", async () => {
+    const project = await makeProject()
+    const outputRoot = project.directory
+    const outputDirectory = path.join(outputRoot, "output")
+    const bridge = bridgeFor({ segments: [{ segment_id: "seg-1" }], duration_seconds: 4 })
+    const firstService = createVideoReplicaService({ platform: "win32", bridge, outputRoots: [outputRoot] })
+    const firstRun = firstService.start({
+      referenceVideo: project.referenceVideo,
+      productImages: [project.productImage],
+      outputDirectory,
+    })
+    await firstRun.nextQuestion()
+    await fs.rm(project.referenceVideo)
+
+    const secondService = createVideoReplicaService({ platform: "linux", bridge, outputRoots: [outputRoot] })
+    await expect(secondService.resume(firstRun.workflowID)).rejects.toThrow("Windows")
   })
 })

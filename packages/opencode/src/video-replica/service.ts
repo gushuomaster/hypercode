@@ -7,6 +7,7 @@ import { Skill } from "@/skill"
 import { Question } from "@/question"
 import { SessionID } from "@/session/schema"
 import { InstanceRef } from "@/effect/instance-ref"
+import type { InstanceContext } from "@/project/instance-context"
 import { ImageGenerationService } from "@/image-generation/service"
 import { ImageGeneration } from "@/image-generation/schema"
 import { ModelPool } from "./model-pool"
@@ -32,6 +33,7 @@ import {
 } from "./paths"
 import {
   DependencyError,
+  SkillBridgeError,
   SkillBridge,
   type CommandResult,
   type DependencyReport,
@@ -79,6 +81,7 @@ export type VideoReplicaOptions = {
   readonly qualityCheck?: (input: QualityInput) => Promise<QualityResult>
   readonly imageGeneration?: ImageGenerationService.Interface
   readonly question?: Pick<Question.Interface, "ask">
+  readonly instance?: InstanceContext
   readonly now?: () => Date
 }
 
@@ -178,11 +181,16 @@ type RecordState = {
   imported: Map<string, GeneratedImage>
   prepared: boolean
   dependenciesChecked: boolean
+  visualAssetEntryPrepared: boolean
+  visualAssetMappingPrepared: boolean
+  chapterManifests: Record<number, Record<string, unknown>>
+  skillFingerprint?: string
   persisting?: Promise<void>
   preparing?: Promise<void>
 }
 
 const workflows = new Map<string, RecordState>()
+const workflowLocations = new Map<string, string>()
 
 export function createVideoReplicaService(options: VideoReplicaOptions = {}): Interface {
   const now = options.now ?? (() => new Date())
@@ -221,8 +229,12 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       imported: new Map(),
       prepared: false,
       dependenciesChecked: false,
+      visualAssetEntryPrepared: false,
+      visualAssetMappingPrepared: false,
+      chapterManifests: {},
     }
     workflows.set(workflowID, record)
+    workflowLocations.set(workflowID, input.outputDirectory)
     return runView(record)
   }
 
@@ -230,18 +242,25 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     const existing = workflows.get(workflowID)
     if (existing) {
       if (skillLocation) existing.input = { ...existing.input, skillLocation }
+      existing.prepared = false
+      existing.dependenciesChecked = false
       await prepare(existing, true)
       return runView(existing)
     }
-    const directory = await findWorkflowDirectory(workflowID, options.outputRoots ?? [process.cwd()])
+    const indexedDirectory = workflowLocations.get(workflowID)
+    const directory = indexedDirectory
+      ? await verifyIndexedDirectory(indexedDirectory, workflowID).catch(() => undefined)
+      : await findWorkflowDirectory(workflowID, options.outputRoots?.length ? options.outputRoots : [process.cwd()])
     if (!directory) throw new WorkflowError(`Workflow not found: ${workflowID}`, workflowID)
     const input = await readExternalState(statePath(directory))
     if (!input?.hypercode || input.hypercode.workflow_id !== workflowID)
       throw new StateError("project-state.json does not contain the requested workflow", workflowID)
+    const index = await readWorkflowIndex(directory)
+    const indexedInput = index?.workflow_id === workflowID ? inputFromIndex(index, directory) : inferInput(input, directory)
     const resumedSegments = readSegments(input)
     const record: RecordState = {
       workflowID,
-      input: inferInput(input, directory),
+      input: { ...indexedInput, ...(skillLocation && { skillLocation }) },
       outputDirectory: directory,
       state: input,
       hypercode: decodeHypercodeState(input.hypercode),
@@ -252,17 +271,22 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       chapters: [],
       generated: new Map(),
       imported: new Map(),
-      prepared: true,
-      dependenciesChecked: true,
+      prepared: false,
+      dependenciesChecked: false,
+      visualAssetEntryPrepared: false,
+      visualAssetMappingPrepared: false,
+      chapterManifests: {},
+      ...(index?.skill_fingerprint && { skillFingerprint: index.skill_fingerprint }),
     }
-    const duration = await readDurationFromArtifacts(directory)
-    record.chapters = duration ? splitChapters(duration) : [{ chapter: 1, startSeconds: 0, endSeconds: 0, durationSeconds: 0 }]
-    await loadGeneratedArtifacts(record)
+    const duration = getDuration(record.manifest, input)
+    record.chapters = duration ? splitChapters(duration) : []
     workflows.set(workflowID, record)
+    workflowLocations.set(workflowID, directory)
+    await prepare(record, true)
     return runView(record)
   }
 
-  const approveStoryboard = async (workflowID: string, segmentIDs: ReadonlyArray<string>, answer = APPROVAL_PHRASE) => {
+  const approveStoryboard = async (workflowID: string, segmentIDs: ReadonlyArray<string>, answer?: string) => {
     const record = requireWorkflow(workflowID)
     await prepare(record)
     if (answer !== APPROVAL_PHRASE) throw new ApprovalRequiredError(workflowID)
@@ -275,6 +299,8 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     }
     if (segmentIDs.length !== expected.size || new Set(segmentIDs).size !== expected.size || segmentIDs.some((id) => !expected.has(id)))
       throw new WorkflowError("Storyboard approval must include every analyzed segment exactly once", workflowID)
+    const bridge = await resolveBridge(record)
+    await freezeVisualAssets(record, bridge)
     const at = now().toISOString()
     const approvals = [
       ...state.approvals,
@@ -436,6 +462,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
         generated.push(image)
         await appendProviderAttempt(record, image, "success")
       } catch (error) {
+        if (error instanceof WorkflowError || error instanceof DependencyError || error instanceof SkillBridgeError) throw error
         const reason = safeReason(error)
         failed.push({ segmentID, reason })
         await appendProviderAttempt(record, { segmentID, provider: "unknown", model: "unknown" }, "failed")
@@ -538,6 +565,10 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       record.state = await readExternalState(stateFile)
       const bridge = await resolveBridge(record)
       if (bridge.validateSkill) await bridge.validateSkill()
+      const fingerprint = bridge.fingerprint ? await bridge.fingerprint() : undefined
+      if (record.skillFingerprint && fingerprint && record.skillFingerprint !== fingerprint)
+        throw new StateError("The installed video-replica skill changed since this workflow was created", record.workflowID)
+      record.skillFingerprint = fingerprint ?? record.skillFingerprint
       if (!record.state && bridge.ensureDependencies && bridge.checkDependencies)
         await verifyToolDependencies(bridge)
       if (!record.state) {
@@ -556,23 +587,22 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       }
       if (record.state) record.outputDirectory = await ensureOutputDirectory(outputDirectory)
       if (!record.state) record.state = {}
+      if (Object.keys(record.manifest).length === 0) record.manifest = await readManifestArtifacts(record.outputDirectory)
+      await prepareVisualAssetEntry(record, bridge, stateFile)
       await loadGeneratedArtifacts(record)
       await verifyDependencies(record, bridge, outputDirectory)
       if (!resumeOnly || !record.manifest || Object.keys(record.manifest).length === 0) {
         if (!bridge.inspectVideo) throw new SkillUnavailableError("The skill inspect_video.py script is unavailable")
-        const analysisRoot = await ensureOutputDirectory(path.join(outputDirectory, "analysis"))
-        const analysisDirectory = path.join(analysisRoot, `chapter-${crypto.randomUUID()}`)
-        const manifest = await bridge.inspectVideo({
-          referenceVideo,
-          outputDirectory: analysisDirectory,
-        } satisfies InspectVideoInput)
-        record.manifest = await loadManifest(manifest ?? {}, outputDirectory)
+        const analysis = await inspectChapters(record, bridge, referenceVideo, outputDirectory)
+        record.manifest = analysis.manifest
+        record.chapters = analysis.chapters
       }
       const duration = getDuration(record.manifest, record.state)
-      record.chapters = duration ? splitChapters(duration) : [{ chapter: 1, startSeconds: 0, endSeconds: 0, durationSeconds: 0 }]
+      if (!record.chapters.length) record.chapters = duration ? splitChapters(duration) : [{ chapter: 1, startSeconds: 0, endSeconds: 0, durationSeconds: 0 }]
       record.segments = readSegments(record.state)
       if (!record.segments.length) record.segments = readSegments(record.manifest)
       if (!record.segments.length) record.segments = record.chapters.map((chapter) => ({ segment_id: `chapter-${chapter.chapter}` }))
+      await prepareVisualAssetMapping(record, bridge, stateFile)
       const modelSnapshot = await readModelSnapshot()
       const current = record.state.hypercode
       if (current !== undefined && !isHypercodeLike(current))
@@ -624,11 +654,167 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     if (report?.missing.length) throw new DependencyError(report.missing)
   }
 
+  async function runVisualAssetPhase(
+    bridge: SkillBridgeLike,
+    script: Parameters<NonNullable<SkillBridgeLike["runVisualAsset"]>>[0],
+    args: ReadonlyArray<string>,
+    cwd: string,
+  ) {
+    if (!bridge.runVisualAsset)
+      throw new SkillUnavailableError(`The skill does not expose the visual-asset compatibility script: ${script}`)
+    const result = await bridge.runVisualAsset(script, args, cwd)
+    if (result.exitCode !== 0) throw new SkillUnavailableError(`The visual-asset script failed: ${script}`)
+    return result
+  }
+
+  async function prepareVisualAssetEntry(record: RecordState, bridge: SkillBridgeLike, stateFile: string) {
+    if (record.visualAssetEntryPrepared) return
+    const visual = readVisualAssets(record.state)
+    const assetRoot = visualAssetRoot()
+    if (visual) {
+      await runVisualAssetPhase(bridge, "manage_visual_assets.py", ["--root", assetRoot, "list-packs"], path.dirname(stateFile))
+    } else {
+      await runVisualAssetPhase(bridge, "configure_visual_assets.py", ["follow-source", "--project-state", stateFile], path.dirname(stateFile))
+      record.state = (await readExternalState(stateFile)) ?? record.state
+    }
+    record.visualAssetEntryPrepared = true
+  }
+
+  async function prepareVisualAssetMapping(record: RecordState, bridge: SkillBridgeLike, stateFile: string) {
+    if (record.visualAssetMappingPrepared) return
+    const hypercodeDirectory = await ensureOutputDirectory(path.join(record.outputDirectory, ".hypercode"))
+    const demandsPath = path.join(hypercodeDirectory, "visual-demands.json")
+    const mappingPath = path.join(hypercodeDirectory, "visual-mapping.json")
+    const overridesPath = path.join(hypercodeDirectory, "visual-overrides.json")
+    const visual = readVisualAssets(record.state)
+    if (visual?.frozen_at) {
+      record.visualAssetMappingPrepared = true
+      return
+    }
+    await atomicWriteJson(demandsPath, record.segments)
+    await atomicWriteJson(overridesPath, visual?.segment_assignments ?? {})
+    if (visual?.mode === "pack") {
+      const snapshot = visual.pack_snapshot
+      const packID = readString(snapshot, ["pack_id", "packId", "id"])
+      const packVersion = readNumber(snapshot, ["version", "pack_version", "packVersion"])
+      if (!packID || packVersion === undefined)
+        throw new SkillUnavailableError("The selected visual-asset pack cannot be mapped by the installed skill")
+      await runVisualAssetPhase(
+        bridge,
+        "match_visual_assets.py",
+        [
+          "--demands",
+          demandsPath,
+          "--pack-id",
+          packID,
+          "--pack-version",
+          String(packVersion),
+          "--asset-root",
+          visualAssetRoot(),
+          "--overrides",
+          overridesPath,
+          "--output",
+          mappingPath,
+        ],
+        path.dirname(stateFile),
+      )
+    } else {
+      await atomicWriteJson(
+        mappingPath,
+        {
+          mappings: record.segments.map((segment) => ({
+            segment_id: segment.segment_id,
+            coverage: {},
+            hand_refs: [],
+            resolved_operations: [],
+            blocked: false,
+            generation_references: [],
+            source_action_state: {},
+            source_hand_roles: [],
+            product_required: true,
+          })),
+        },
+      )
+    }
+    await runVisualAssetPhase(
+      bridge,
+      "configure_visual_assets.py",
+      ["apply-mapping", "--project-state", stateFile, "--mapping", mappingPath],
+      path.dirname(stateFile),
+    )
+    record.state = (await readExternalState(stateFile)) ?? record.state
+    record.visualAssetMappingPrepared = true
+  }
+
+  async function freezeVisualAssets(record: RecordState, bridge: SkillBridgeLike) {
+    const stateFile = statePath(record.outputDirectory)
+    const visual = readVisualAssets(record.state)
+    if (visual?.frozen_at) return
+    await runVisualAssetPhase(
+      bridge,
+      "configure_visual_assets.py",
+      ["freeze", "--project-state", stateFile, "--asset-root", visualAssetRoot(), "--approval-phrase", APPROVAL_PHRASE],
+      path.dirname(stateFile),
+    )
+    record.state = (await readExternalState(stateFile)) ?? record.state
+  }
+
+  async function inspectChapters(
+    record: RecordState,
+    bridge: SkillBridgeLike,
+    referenceVideo: string,
+    outputDirectory: string,
+  ) {
+    const analysisRoot = await ensureOutputDirectory(path.join(outputDirectory, "analysis"))
+    const knownDuration = getDuration(record.manifest, record.state ?? {})
+    const initialChapter = knownDuration ? splitChapters(knownDuration)[0] : undefined
+    const manifests: Record<string, unknown>[] = []
+    const inspectOne = async (chapter: Chapter, first = false) => {
+      const analysisDirectory = path.join(analysisRoot, `chapter-${chapter.chapter}-${crypto.randomUUID()}`)
+      const input: InspectVideoInput = {
+        referenceVideo,
+        outputDirectory: analysisDirectory,
+        ...(first && !initialChapter
+          ? {}
+          : { exactWindows: [`${chapter.startSeconds}:${chapter.endSeconds}`] }),
+      }
+      const value = await bridge.inspectVideo!(input)
+      const manifest = await loadManifest(value ?? {}, outputDirectory)
+      record.chapterManifests[chapter.chapter] = manifest
+      manifests.push(manifest)
+      return manifest
+    }
+
+    const firstManifest = await inspectOne(initialChapter ?? { chapter: 1, startSeconds: 0, endSeconds: 0, durationSeconds: 0 }, true)
+    const duration = getDuration(firstManifest, record.state ?? {})
+    const chapters = duration ? splitChapters(duration) : [{ chapter: 1, startSeconds: 0, endSeconds: 0, durationSeconds: 0 }]
+    if (chapters.length > 1 && !record.chapterManifests[chapters[0]!.chapter]) {
+      await inspectOne(chapters[0]!)
+    }
+    for (const chapter of chapters.slice(1)) {
+      if (record.chapterManifests[chapter.chapter]) continue
+      await inspectOne(chapter)
+    }
+    const merged = manifests.reduce<Record<string, unknown>>(
+      (result, manifest) => ({
+        ...result,
+        ...manifest,
+        ...(Array.isArray(result.segments) || Array.isArray(manifest.segments)
+          ? { segments: [...(Array.isArray(result.segments) ? result.segments : []), ...(Array.isArray(manifest.segments) ? manifest.segments : [])] }
+          : {}),
+        chapters,
+      }),
+      {},
+    )
+    await atomicWriteJson(path.join(outputDirectory, ".hypercode", "canonical-manifest.json"), merged)
+    await atomicWriteJson(path.join(outputDirectory, ".hypercode", "chapter-manifests.json"), record.chapterManifests)
+    return { manifest: merged, chapters }
+  }
+
   async function confirmDependencyInstallation(record: RecordState, missing: DependencyReport) {
     if (options.dependencyConfirmation) return options.dependencyConfirmation(missing)
     if (!options.question || !record.input.sessionID) return false
-    const answers = await Effect.runPromise(
-      options.question.ask({
+    const dependencyQuestion = options.question.ask({
         sessionID: SessionID.make(record.input.sessionID),
         questions: [
           {
@@ -641,8 +827,8 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
             custom: false,
           },
         ],
-      }),
-    )
+      })
+    const answers = await Effect.runPromise(options.instance ? dependencyQuestion.pipe(Effect.provideService(InstanceRef, options.instance)) : dependencyQuestion)
     return answers.some((answer) => answer.includes("Install"))
   }
 
@@ -650,8 +836,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     if (options.generateImage) return options.generateImage(input)
     if (!options.imageGeneration) throw new WorkflowError("Image generation is delegated to the image-generation service", input.workflowID)
     const candidates = input.modelPool.filter((item): item is { provider: "nvidia" | "openai"; model: string } => item.provider === "nvidia" || item.provider === "openai")
-    const result = await Effect.runPromise(
-      options.imageGeneration.generate({
+    const generation = options.imageGeneration.generate({
         segmentID: input.segmentID,
         prompt: promptFor(input.segment),
         referenceImages: input.productImages,
@@ -659,8 +844,8 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
         modelPool: candidates,
         width: 9,
         height: 16,
-      } satisfies ImageGeneration.Request),
-    )
+      } satisfies ImageGeneration.Request)
+    const result = await Effect.runPromise(options.instance ? generation.pipe(Effect.provideService(InstanceRef, options.instance)) : generation)
     return {
       segmentID: result.segmentID,
       filePath: result.filePath,
@@ -693,6 +878,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       if (!record.hypercode) throw new StateError("hypercode checkpoint is unavailable", record.workflowID)
       record.state = { ...record.state, hypercode: record.hypercode }
       await atomicWriteJson(statePath(record.outputDirectory), record.state)
+      await persistWorkflowIndex(record)
     }
     const current = (record.persisting ?? Promise.resolve()).then(write, write)
     record.persisting = current
@@ -760,9 +946,10 @@ export const layer = Layer.effect(
         bridge: skillLocation ? undefined : bridge,
         imageGeneration: image,
         question,
+        instance,
         skillLocation,
         platform: process.platform,
-        outputRoots: [],
+        outputRoots: [process.cwd()],
       }),
     )
   }),
@@ -863,6 +1050,34 @@ function inferInput(state: ExternalProjectState, outputDirectory: string): Workf
   }
 }
 
+function readVisualAssets(state: ExternalProjectState | undefined) {
+  const value = state?.visual_assets
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined
+}
+
+function visualAssetRoot() {
+  return path.join(os.homedir(), ".codex", "assets", "doubao-video-replica")
+}
+
+function readString(value: unknown, keys: ReadonlyArray<string>) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined
+  for (const key of keys) {
+    const item = (value as Record<string, unknown>)[key]
+    if (typeof item === "string" && item.trim()) return item
+  }
+  return undefined
+}
+
+function readNumber(value: unknown, keys: ReadonlyArray<string>) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined
+  for (const key of keys) {
+    const item = (value as Record<string, unknown>)[key]
+    const number = typeof item === "number" ? item : typeof item === "string" && item.trim() ? Number(item) : Number.NaN
+    if (Number.isInteger(number) && number > 0) return number
+  }
+  return undefined
+}
+
 function isHypercodeLike(value: unknown): value is HypercodeState {
   try {
     decodeHypercodeState(value)
@@ -886,6 +1101,102 @@ async function readExternalState(filePath: string): Promise<ExternalProjectState
   }
   if (typeof value !== "object" || value === null || Array.isArray(value)) throw new StateError("project-state.json must contain an object")
   return value as ExternalProjectState
+}
+
+type WorkflowIndex = {
+  schema_version: 1
+  workflow_id: string
+  output_directory: string
+  reference_video: string
+  product_images: ReadonlyArray<string>
+  product_name?: string
+  market?: string
+  skill_location?: string
+  skill_fingerprint?: string
+}
+
+async function readWorkflowIndex(directory: string): Promise<WorkflowIndex | undefined> {
+  const filePath = path.join(directory, ".hypercode", "workflow-index.json")
+  const content = await fs.readFile(filePath, "utf8").catch((error: unknown) => {
+    if (isNotFound(error)) return undefined
+    throw new StateError("workflow index cannot be read")
+  })
+  if (content === undefined) return undefined
+  let value: unknown
+  try {
+    value = JSON.parse(content)
+  } catch {
+    throw new StateError("workflow index is not valid JSON")
+  }
+  if (!isWorkflowIndex(value)) throw new StateError("workflow index has an invalid schema")
+  return value
+}
+
+function isWorkflowIndex(value: unknown): value is WorkflowIndex {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false
+  const source = value as Record<string, unknown>
+  return (
+    source.schema_version === 1 &&
+    typeof source.workflow_id === "string" &&
+    typeof source.output_directory === "string" &&
+    typeof source.reference_video === "string" &&
+    Array.isArray(source.product_images) &&
+    source.product_images.every((item) => typeof item === "string") &&
+    (source.product_name === undefined || typeof source.product_name === "string") &&
+    (source.market === undefined || typeof source.market === "string") &&
+    (source.skill_location === undefined || typeof source.skill_location === "string") &&
+    (source.skill_fingerprint === undefined || typeof source.skill_fingerprint === "string")
+  )
+}
+
+function inputFromIndex(index: WorkflowIndex, directory: string): WorkflowInput {
+  return {
+    referenceVideo: index.reference_video,
+    productImages: [...index.product_images],
+    outputDirectory: directory,
+    ...(index.product_name && { productName: index.product_name }),
+    ...(index.market && { market: index.market }),
+    ...(index.skill_location && { skillLocation: index.skill_location }),
+  }
+}
+
+async function verifyIndexedDirectory(candidate: string, workflowID: string) {
+  const directory = await ensureOutputDirectory(candidate, { create: false })
+  const index = await readWorkflowIndex(directory)
+  if (!index || index.workflow_id !== workflowID) throw new StateError("workflow index does not match the requested workflow", workflowID)
+  if (normalizePath(index.output_directory) !== normalizePath(directory))
+    throw new StateError("workflow index output directory does not match its location", workflowID)
+  return directory
+}
+
+async function persistWorkflowIndex(record: RecordState) {
+  const directory = await ensureOutputDirectory(path.join(record.outputDirectory, ".hypercode"))
+  const index: WorkflowIndex = {
+    schema_version: 1,
+    workflow_id: record.workflowID,
+    output_directory: record.outputDirectory,
+    reference_video: record.input.referenceVideo,
+    product_images: [...record.input.productImages],
+    ...(record.input.productName && { product_name: record.input.productName }),
+    ...(record.input.market && { market: record.input.market }),
+    ...(record.input.skillLocation && { skill_location: record.input.skillLocation }),
+    ...(record.skillFingerprint && { skill_fingerprint: record.skillFingerprint }),
+  }
+  await atomicWriteJson(path.join(directory, "workflow-index.json"), index)
+}
+
+async function readManifestArtifacts(directory: string): Promise<Record<string, unknown>> {
+  const manifestPath = path.join(directory, ".hypercode", "canonical-manifest.json")
+  const stat = await fs.lstat(manifestPath).catch(() => undefined)
+  if (!stat?.isFile() || stat.isSymbolicLink()) return {}
+  const content = await fs.readFile(manifestPath, "utf8").catch(() => undefined)
+  if (!content) return {}
+  try {
+    const value: unknown = JSON.parse(content)
+    return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
 }
 
 async function loadManifest(value: Record<string, unknown>, outputDirectory?: string) {
@@ -950,6 +1261,11 @@ async function findWorkflowInDirectory(directory: string, workflowID: string, de
   for (const entry of entries) {
     if (entry.isSymbolicLink()) continue
     const full = path.join(directory, entry.name)
+    if (entry.isFile() && entry.name === "workflow-index.json" && path.basename(path.dirname(full)) === ".hypercode") {
+      const index = await readWorkflowIndex(path.dirname(path.dirname(full))).catch(() => undefined)
+      if (index?.workflow_id === workflowID && normalizePath(index.output_directory) === normalizePath(path.dirname(path.dirname(full))))
+        return path.dirname(path.dirname(full))
+    }
     if (entry.isFile() && entry.name === "project-state.json") {
       const state = await readExternalState(full).catch(() => undefined)
       if (state?.hypercode?.workflow_id === workflowID) return path.dirname(full)
