@@ -15,6 +15,8 @@ export const Parameters = Schema.Struct({
     "import_plus_image",
     "compile_delivery",
     "select_visual_assets",
+    "list_visual_assets",
+    "list_packs",
     "confirm_models",
   ]),
   workflowID: Schema.optional(Schema.String),
@@ -30,6 +32,13 @@ export const Parameters = Schema.Struct({
   visualAssetMode: Schema.optional(Schema.Literals(["follow-source", "existing-pack", "create-pack"])),
   packID: Schema.optional(Schema.String),
   packVersion: Schema.optional(Schema.Number),
+  assetRoot: Schema.optional(Schema.String),
+  name: Schema.optional(Schema.String),
+  layersPath: Schema.optional(Schema.String),
+  propsPath: Schema.optional(Schema.String),
+  globalOperationsPath: Schema.optional(Schema.String),
+  negativeRulesPath: Schema.optional(Schema.String),
+  followSourceLayers: Schema.optional(Schema.Array(Schema.String)),
 })
 
 type Params = Schema.Schema.Type<typeof Parameters>
@@ -100,8 +109,45 @@ export const VideoReplicaTool = Tool.define<typeof Parameters, { status: string;
                 ...(ctx.callID && { tool: { messageID: ctx.messageID, callID: ctx.callID } }),
               })
               const answer = answers[0]?.[0]
-              if (pendingQuestion.options.some((option) => option.label === APPROVAL_PHRASE) && answer === APPROVAL_PHRASE)
-                yield* Effect.promise(() => run.approveStoryboard(run.segmentIDs, answer))
+              if (pendingQuestion.header === "视觉资产") {
+                if (answer === "跟随参考视频") {
+                  const selected = yield* Effect.promise(() => run.selectVisualAssets({ mode: "follow-source" }))
+                  const question = yield* Effect.promise(() => selected.nextQuestion())
+                  return {
+                    title: `Resumed video replica workflow ${selected.workflowID}`,
+                    output: JSON.stringify({ workflowID: selected.workflowID, question }),
+                    metadata: { status: "awaiting-approval", workflowID: selected.workflowID },
+                  }
+                }
+                return {
+                  title: `Resumed video replica workflow ${run.workflowID}`,
+                  output: JSON.stringify({
+                    workflowID: run.workflowID,
+                    selection: answer,
+                    nextAction: "select_visual_assets",
+                    question: pending,
+                  }),
+                  metadata: { status: "selection-required", workflowID: run.workflowID },
+                }
+              }
+              if (pendingQuestion.header === "确认图片模型" && answer === "确认使用") {
+                const confirmed = yield* Effect.promise(() => run.confirmModels(answer))
+                const question = yield* Effect.promise(() => confirmed.nextQuestion())
+                return {
+                  title: `Resumed video replica workflow ${confirmed.workflowID}`,
+                  output: JSON.stringify({ workflowID: confirmed.workflowID, question }),
+                  metadata: { status: "resumed", workflowID: confirmed.workflowID },
+                }
+              }
+              if (pendingQuestion.options.some((option) => option.label === APPROVAL_PHRASE) && answer === APPROVAL_PHRASE) {
+                const approved = yield* Effect.promise(() => run.approveStoryboard(run.segmentIDs, answer))
+                const question = yield* Effect.promise(() => approved.nextQuestion())
+                return {
+                  title: `Resumed video replica workflow ${approved.workflowID}`,
+                  output: JSON.stringify({ workflowID: approved.workflowID, question }),
+                  metadata: { status: "resumed", workflowID: approved.workflowID },
+                }
+              }
             }
             return {
               title: `Resumed video replica workflow ${run.workflowID}`,
@@ -126,13 +172,33 @@ export const VideoReplicaTool = Tool.define<typeof Parameters, { status: string;
             const selection: VisualAssetSelection =
               params.visualAssetMode === "existing-pack"
                 ? { mode: "existing-pack", packID: params.packID ?? "", packVersion: params.packVersion ?? 0 }
-                : { mode: params.visualAssetMode }
+                : {
+                    mode: params.visualAssetMode,
+                    ...(params.assetRoot && { assetRoot: params.assetRoot }),
+                    ...(params.packID && { packID: params.packID }),
+                    ...(params.name && { name: params.name }),
+                    ...(params.layersPath && { layersPath: params.layersPath }),
+                    ...(params.propsPath && { propsPath: params.propsPath }),
+                    ...(params.globalOperationsPath && { globalOperationsPath: params.globalOperationsPath }),
+                    ...(params.negativeRulesPath && { negativeRulesPath: params.negativeRulesPath }),
+                    ...(params.followSourceLayers && { followSourceLayers: params.followSourceLayers }),
+                  }
             const run = yield* Effect.promise(() => service.value.selectVisualAssets(params.workflowID!, selection))
             const question = yield* Effect.promise(() => run.nextQuestion())
             return {
               title: "Visual assets selected",
               output: JSON.stringify({ workflowID: run.workflowID, question }),
               metadata: { status: "awaiting-approval", workflowID: run.workflowID },
+            }
+          }
+
+          if (params.action === "list_visual_assets" || params.action === "list_packs") {
+            const run = yield* Effect.promise(() => service.value.resume(params.workflowID!, skillLocation))
+            const packs = yield* Effect.promise(() => run.listVisualAssetPacks())
+            return {
+              title: "Available visual asset packs",
+              output: JSON.stringify({ workflowID: run.workflowID, packs }),
+              metadata: { status: "packs-listed", workflowID: run.workflowID },
             }
           }
 

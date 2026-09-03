@@ -216,4 +216,50 @@ describe("VideoReplica workflow service", () => {
     const secondService = createVideoReplicaService({ platform: "linux", bridge, outputRoots: [outputRoot] })
     await expect(secondService.resume(firstRun.workflowID)).rejects.toThrow("Windows")
   })
+
+  it("creates a style pack through the manager and applies the registered version", async () => {
+    const project = await makeProject()
+    const calls: Array<{ script: string; args: ReadonlyArray<string> }> = []
+    const bridge: SkillBridgeLike = {
+      ...bridgeFor({ segments: [{ segment_id: "seg-1" }], duration_seconds: 4 }),
+      createVisualAssetPack: async (input) => {
+        calls.push({ script: "manage_visual_assets.py", args: ["create-pack", input.packID] })
+        return { pack_id: input.packID, version: 3, name: input.name }
+      },
+      listVisualAssetPacks: async () => [{ pack_id: "new-pack", version: 3, name: "New pack" }],
+      runVisualAsset: async (script, args) => {
+        calls.push({ script, args })
+        if (script === "configure_visual_assets.py" && args.includes("select-pack")) {
+          const statePath = args[args.indexOf("--project-state") + 1]!
+          const state = JSON.parse(await fs.readFile(statePath, "utf8"))
+          state.visual_assets = { mode: "pack", pack_snapshot: { pack_id: "new-pack", version: 3 } }
+          await fs.writeFile(statePath, JSON.stringify(state))
+        }
+        return { exitCode: 0, stdout: "", stderr: "" }
+      },
+    }
+    const service = createVideoReplicaService({ platform: "win32", bridge })
+    const run = service.start({
+      referenceVideo: project.referenceVideo,
+      productImages: [project.productImage],
+      outputDirectory: path.join(project.directory, "output"),
+    })
+
+    await run.nextQuestion()
+    await run.selectVisualAssets({
+      mode: "create-pack",
+      packID: "new-pack",
+      name: "New pack",
+      layersPath: path.join(project.directory, "layers.json"),
+      propsPath: path.join(project.directory, "props.json"),
+      globalOperationsPath: path.join(project.directory, "operations.json"),
+      negativeRulesPath: path.join(project.directory, "negative.json"),
+    })
+
+    expect(calls.some((call) => call.script === "manage_visual_assets.py")).toBe(true)
+    expect(calls.some((call) => call.script === "configure_visual_assets.py" && call.args.includes("select-pack"))).toBe(true)
+    const state = JSON.parse(await fs.readFile(path.join(project.directory, "output", "project-state.json"), "utf8"))
+    expect(state.visual_assets.mode).toBe("pack")
+    expect(state.visual_assets.pack_snapshot.version).toBe(3)
+  })
 })

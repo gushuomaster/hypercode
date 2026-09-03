@@ -11,6 +11,7 @@ async function makeSkillRoot() {
   await fs.mkdir(path.join(root, "scripts"), { recursive: true })
   await fs.writeFile(path.join(root, "SKILL.md"), "---\nname: doubao-video-replica\n---\n")
   await fs.writeFile(path.join(root, "scripts", "init_project.py"), "print('ok')")
+  await fs.writeFile(path.join(root, "scripts", "manage_visual_assets.py"), "print('ok')")
   return root
 }
 
@@ -93,5 +94,84 @@ describe("VideoReplica skill bridge", () => {
 
     await expect(bridge.runScript!("init_project.py", [])).rejects.toThrow("skill directory is unavailable")
     expect(calls).toHaveLength(0)
+  })
+
+  it("lists visual packs through the documented manager script", async () => {
+    const calls: string[][] = []
+    const root = await makeSkillRoot()
+    const bridge = createSkillBridge({
+      skillLocation: path.join(root, "SKILL.md"),
+      run: runner(calls, { stdout: JSON.stringify([{ pack_id: "demo", version: 1 }]) }),
+      platform: "win32",
+    })
+
+    await expect(bridge.listVisualAssetPacks!("C:\\assets\\replica")).resolves.toEqual([{ pack_id: "demo", version: 1 }])
+    expect(calls[0]).toEqual([
+      "python",
+      path.join(root, "scripts", "manage_visual_assets.py"),
+      "--root",
+      "C:\\assets\\replica",
+      "list-packs",
+    ])
+  })
+
+  it("creates a visual pack through the documented manager script", async () => {
+    const calls: string[][] = []
+    const root = await makeSkillRoot()
+    const bridge = createSkillBridge({
+      skillLocation: path.join(root, "SKILL.md"),
+      run: runner(calls, { stdout: JSON.stringify({ pack_id: "demo", version: 1 }) }),
+      platform: "win32",
+    })
+
+    await expect(
+      bridge.createVisualAssetPack!({
+        assetRoot: "C:\\assets\\replica",
+        packID: "demo",
+        name: "Demo",
+        layersPath: "C:\\tmp\\layers.json",
+        propsPath: "C:\\tmp\\props.json",
+        globalOperationsPath: "C:\\tmp\\operations.json",
+        negativeRulesPath: "C:\\tmp\\negative.json",
+        followSourceLayers: ["hands"],
+      }),
+    ).resolves.toEqual({ pack_id: "demo", version: 1 })
+    expect(calls[0]).toEqual([
+      "python",
+      path.join(root, "scripts", "manage_visual_assets.py"),
+      "--root",
+      "C:\\assets\\replica",
+      "create-pack",
+      "--pack-id",
+      "demo",
+      "--name",
+      "Demo",
+      "--layers-json",
+      "C:\\tmp\\layers.json",
+      "--props-json",
+      "C:\\tmp\\props.json",
+      "--global-operations-json",
+      "C:\\tmp\\operations.json",
+      "--negative-rules-json",
+      "C:\\tmp\\negative.json",
+      "--follow-source-layer",
+      "hands",
+    ])
+  })
+
+  it("does not run skill scripts from a caller-controlled working directory", async () => {
+    const roots: Array<string | undefined> = []
+    const root = await makeSkillRoot()
+    const bridge = createSkillBridge({
+      skillLocation: path.join(root, "SKILL.md"),
+      run: async (_command, options) => {
+        roots.push(options?.cwd)
+        return { exitCode: 0, stdout: "", stderr: "" }
+      },
+      platform: "win32",
+    })
+
+    await bridge.runScript!("init_project.py", [], "C:\\untrusted\\working-directory")
+    expect(roots).toEqual([root])
   })
 })

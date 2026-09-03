@@ -53,6 +53,19 @@ export type DeliveryInput = {
   promptsOutput?: string
 }
 
+export type CreateVisualAssetPackInput = {
+  assetRoot: string
+  packID: string
+  name: string
+  layersPath: string
+  propsPath: string
+  globalOperationsPath: string
+  negativeRulesPath: string
+  followSourceLayers?: ReadonlyArray<string>
+}
+
+export type VisualAssetPack = Record<string, unknown>
+
 export type DependencyReport = {
   missing: ReadonlyArray<"python" | "ffmpeg" | "ffprobe" | "python-packages">
   checked: ReadonlyArray<string>
@@ -93,6 +106,8 @@ export interface SkillBridgeLike {
   readonly initProject?: (input: InitProjectInput) => Promise<CommandResult | void>
   readonly inspectVideo?: (input: InspectVideoInput) => Promise<Record<string, unknown> | void>
   readonly runVisualAsset?: (script: VisualAssetScript, args: ReadonlyArray<string>, cwd?: string) => Promise<CommandResult>
+  readonly listVisualAssetPacks?: (assetRoot: string) => Promise<ReadonlyArray<VisualAssetPack>>
+  readonly createVisualAssetPack?: (input: CreateVisualAssetPackInput) => Promise<VisualAssetPack>
   readonly compileDelivery?: (input: DeliveryInput) => Promise<CommandResult | void>
 }
 
@@ -168,7 +183,9 @@ export function createSkillBridge(options: CreateSkillBridgeOptions): SkillBridg
     const scriptStat = await fs.lstat(executable).catch(() => undefined)
     if (!scriptStat?.isFile() || scriptStat.isSymbolicLink()) throw new SkillBridgeError(`Skill script is unavailable: ${script}`, { script })
     const command = [activePython, executable, ...args]
-    const result = await run(command, { cwd: cwd ?? source })
+    const requestedCwd = cwd ? normalizePath(cwd) : source
+    const executionCwd = isWithinDirectory(source, requestedCwd) ? requestedCwd : source
+    const result = await run(command, { cwd: executionCwd })
     const normalized = normalizeResult(result, command)
     if (normalized.exitCode !== 0) {
       throw new SkillBridgeError(`Skill script failed: ${script}`, { script, command })
@@ -260,6 +277,42 @@ export function createSkillBridge(options: CreateSkillBridgeOptions): SkillBridg
   const runVisualAsset = (script: VisualAssetScript, args: ReadonlyArray<string>, cwd?: string) =>
     runScript(script, args, cwd)
 
+  const listVisualAssetPacks = async (assetRoot: string) => {
+    const result = await runScript("manage_visual_assets.py", ["--root", normalizePath(assetRoot), "list-packs"])
+    const value = parseStructuredOutput(result.stdout)
+    if (!Array.isArray(value) || value.some((item) => typeof item !== "object" || item === null || Array.isArray(item)))
+      throw new SkillBridgeError("Visual-asset manager returned an invalid pack list", { script: "manage_visual_assets.py", command: result.command })
+    return value as ReadonlyArray<VisualAssetPack>
+  }
+
+  const createVisualAssetPack = async (input: CreateVisualAssetPackInput) => {
+    if (!input.packID.trim()) throw new SkillBridgeError("Visual-asset pack ID must not be empty", { script: "manage_visual_assets.py" })
+    if (!input.name.trim()) throw new SkillBridgeError("Visual-asset pack name must not be empty", { script: "manage_visual_assets.py" })
+    const args = [
+      "--root",
+      normalizePath(input.assetRoot),
+      "create-pack",
+      "--pack-id",
+      input.packID,
+      "--name",
+      input.name,
+      "--layers-json",
+      normalizePath(input.layersPath),
+      "--props-json",
+      normalizePath(input.propsPath),
+      "--global-operations-json",
+      normalizePath(input.globalOperationsPath),
+      "--negative-rules-json",
+      normalizePath(input.negativeRulesPath),
+    ]
+    for (const layer of input.followSourceLayers ?? []) args.push("--follow-source-layer", layer)
+    const result = await runScript("manage_visual_assets.py", args)
+    const value = parseStructuredOutput(result.stdout)
+    if (typeof value !== "object" || value === null || Array.isArray(value))
+      throw new SkillBridgeError("Visual-asset manager returned an invalid pack", { script: "manage_visual_assets.py", command: result.command })
+    return value as VisualAssetPack
+  }
+
   const compileDelivery = (input: DeliveryInput) => {
     const args = ["--segments", input.segments]
     if (input.mappings) args.push("--mappings", input.mappings)
@@ -280,6 +333,8 @@ export function createSkillBridge(options: CreateSkillBridgeOptions): SkillBridg
     initProject,
     inspectVideo,
     runVisualAsset,
+    listVisualAssetPacks,
+    createVisualAssetPack,
     compileDelivery,
   }
 }
@@ -366,6 +421,25 @@ function parseScriptDocument(stdout: string) {
   const last = lines.at(-1)
   if (last && last.toLowerCase().endsWith(".json")) return { manifestPath: last }
   return { output: text }
+}
+
+function parseStructuredOutput(stdout: string): unknown {
+  const text = stdout.trim()
+  if (!text) return undefined
+  try {
+    return JSON.parse(text) as unknown
+  } catch {
+    const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+    for (let start = 0; start < lines.length; start++) {
+      const candidate = lines.slice(start).join("\n")
+      try {
+        return JSON.parse(candidate) as unknown
+      } catch {
+        continue
+      }
+    }
+  }
+  return undefined
 }
 
 async function defaultRunner(command: ReadonlyArray<string>, options?: { cwd?: string }): Promise<CommandResult> {

@@ -39,6 +39,8 @@ import {
   type CommandResult,
   type DependencyReport,
   type DeliveryInput,
+  type CreateVisualAssetPackInput,
+  type VisualAssetPack,
   type InitProjectInput,
   type InspectVideoInput,
   type SkillBridgeLike,
@@ -110,7 +112,9 @@ export type PlusImportResult = {
 export type VisualAssetSelection =
   | { mode: "follow-source" }
   | { mode: "existing-pack"; packID: string; packVersion: number }
-  | { mode: "create-pack" }
+  | ({ mode: "create-pack" } & Partial<Omit<CreateVisualAssetPackInput, "assetRoot">> & { assetRoot?: string })
+
+export type { VisualAssetPack }
 
 export type DeliveryResult = {
   workflowID: string
@@ -128,6 +132,8 @@ export interface WorkflowRun extends StartResult {
   readonly compileDelivery: () => Promise<DeliveryResult>
   readonly selectVisualAssets: (selection: VisualAssetSelection) => Promise<WorkflowRun>
   readonly confirmModels: (answer: string) => Promise<WorkflowRun>
+  readonly listVisualAssetPacks: () => Promise<ReadonlyArray<VisualAssetPack>>
+  readonly createVisualAssetPack: (input: VisualAssetSelection & { mode: "create-pack" }) => Promise<WorkflowRun>
 }
 
 export interface Interface {
@@ -143,6 +149,8 @@ export interface Interface {
   readonly compileDelivery: (workflowID: string) => Promise<DeliveryResult>
   readonly selectVisualAssets: (workflowID: string, selection: VisualAssetSelection) => Promise<WorkflowRun>
   readonly confirmModels: (workflowID: string, answer: string) => Promise<WorkflowRun>
+  readonly listVisualAssetPacks: (workflowID: string) => Promise<ReadonlyArray<VisualAssetPack>>
+  readonly createVisualAssetPack: (workflowID: string, input: VisualAssetSelection & { mode: "create-pack" }) => Promise<WorkflowRun>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/VideoReplica") {}
@@ -196,6 +204,7 @@ type RecordState = {
   chapterManifests: Record<number, Record<string, unknown>>
   skillFingerprint?: string
   visualAssetSelection?: VisualAssetSelection
+  visualAssetPacks?: ReadonlyArray<VisualAssetPack>
   persisting?: Promise<void>
   preparing?: Promise<void>
   generating?: Promise<GenerationSummary>
@@ -335,11 +344,108 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     const record = requireWorkflow(workflowID)
     if (selection.mode === "existing-pack" && (!selection.packID.trim() || !Number.isInteger(selection.packVersion) || selection.packVersion < 1))
       throw new WorkflowError("An existing style pack requires a pack ID and positive version", workflowID)
-    if (selection.mode === "create-pack")
-      throw new WorkflowError("Create the style pack with the visual asset manager, then select its fixed ID and version", workflowID)
+    if (selection.mode === "create-pack") {
+      const created = await createVisualAssetPackWithBridge(record, selection)
+      const packID = readString(created, ["pack_id", "packId", "id"])
+      const packVersion = readNumber(created, ["version", "pack_version", "packVersion"])
+      if (!packID || packVersion === undefined)
+        throw new SkillUnavailableError("The visual-asset manager did not return a registered pack ID and version")
+      selection = { mode: "existing-pack", packID, packVersion }
+    }
     record.visualAssetSelection = selection
+    record.visualAssetEntryPrepared = false
+    record.visualAssetMappingPrepared = false
     await prepare(record)
+    if (record.prepared) {
+      const bridge = await resolveBridge(record)
+      const stateFile = statePath(record.outputDirectory)
+      await prepareVisualAssetEntry(record, bridge, stateFile)
+      await prepareVisualAssetMapping(record, bridge, stateFile)
+      await persist(record)
+    }
     return runView(record)
+  }
+
+  const listVisualAssetPacks = async (workflowID: string) => {
+    const record = requireWorkflow(workflowID)
+    const bridge = await resolveBridge(record)
+    const assetRoot = visualAssetRoot()
+    if (!bridge.listVisualAssetPacks && !bridge.runVisualAsset)
+      throw new SkillUnavailableError("The skill does not expose the visual-asset manager")
+    const packs = bridge.listVisualAssetPacks
+      ? await bridge.listVisualAssetPacks(assetRoot)
+      : await runVisualAssetManager(bridge, ["--root", assetRoot, "list-packs"], record.outputDirectory)
+    if (!Array.isArray(packs) || packs.some((item) => typeof item !== "object" || item === null || Array.isArray(item)))
+      throw new SkillUnavailableError("The visual-asset manager returned an invalid pack list")
+    record.visualAssetPacks = packs as ReadonlyArray<VisualAssetPack>
+    return record.visualAssetPacks
+  }
+
+  const createVisualAssetPack = async (workflowID: string, selection: VisualAssetSelection & { mode: "create-pack" }) => {
+    const record = requireWorkflow(workflowID)
+    const created = await createVisualAssetPackWithBridge(record, selection)
+    const packID = readString(created, ["pack_id", "packId", "id"])
+    const packVersion = readNumber(created, ["version", "pack_version", "packVersion"])
+    if (!packID || packVersion === undefined) throw new SkillUnavailableError("The visual-asset manager did not return a registered pack ID and version")
+    return selectVisualAssets(workflowID, { mode: "existing-pack", packID, packVersion })
+  }
+
+  async function createVisualAssetPackWithBridge(record: RecordState, selection: VisualAssetSelection & { mode: "create-pack" }) {
+    const packID = selection.packID?.trim()
+    const name = selection.name?.trim()
+    const missing = [
+      !packID && "packID",
+      !name && "name",
+      !selection.layersPath && "layersPath",
+      !selection.propsPath && "propsPath",
+      !selection.globalOperationsPath && "globalOperationsPath",
+      !selection.negativeRulesPath && "negativeRulesPath",
+    ].filter((item): item is string => Boolean(item))
+    if (missing.length)
+      throw new WorkflowError(`create-pack requires ${missing.join(", ")}; list available packs before retrying`, record.workflowID)
+    if (!packID || !name || !selection.layersPath || !selection.propsPath || !selection.globalOperationsPath || !selection.negativeRulesPath)
+      throw new WorkflowError("create-pack input is incomplete", record.workflowID)
+    const bridge = await resolveBridge(record)
+    const requiredPackID = packID
+    const requiredName = name
+    const requiredLayersPath = selection.layersPath
+    const requiredPropsPath = selection.propsPath
+    const requiredGlobalOperationsPath = selection.globalOperationsPath
+    const requiredNegativeRulesPath = selection.negativeRulesPath
+    const input: CreateVisualAssetPackInput = {
+      assetRoot: selection.assetRoot?.trim() || visualAssetRoot(),
+      packID: requiredPackID,
+      name: requiredName,
+      layersPath: requiredLayersPath,
+      propsPath: requiredPropsPath,
+      globalOperationsPath: requiredGlobalOperationsPath,
+      negativeRulesPath: requiredNegativeRulesPath,
+      ...(selection.followSourceLayers && { followSourceLayers: selection.followSourceLayers }),
+    }
+    if (bridge.createVisualAssetPack) return bridge.createVisualAssetPack(input)
+    if (!bridge.runVisualAsset) throw new SkillUnavailableError("The skill does not expose the visual-asset manager")
+    return (await runVisualAssetManager(
+      bridge,
+      [
+        "--root",
+        input.assetRoot,
+        "create-pack",
+        "--pack-id",
+        input.packID,
+        "--name",
+        input.name,
+        "--layers-json",
+        input.layersPath,
+        "--props-json",
+        input.propsPath,
+        "--global-operations-json",
+        input.globalOperationsPath,
+        "--negative-rules-json",
+        input.negativeRulesPath,
+        ...(input.followSourceLayers ?? []).flatMap((layer) => ["--follow-source-layer", layer]),
+      ],
+      path.dirname(record.outputDirectory),
+    )) as VisualAssetPack
   }
 
   const confirmModels = async (workflowID: string, answer: string) => {
@@ -654,9 +760,22 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     compileDelivery: () => compileDelivery(record.workflowID),
     selectVisualAssets: (selection) => selectVisualAssets(record.workflowID, selection),
     confirmModels: (answer) => confirmModels(record.workflowID, answer),
+    listVisualAssetPacks: () => listVisualAssetPacks(record.workflowID),
+    createVisualAssetPack: (selection) => createVisualAssetPack(record.workflowID, selection),
   })
 
-  return { start, resume, approveStoryboard, acceptImage, importPlusImage, compileDelivery, selectVisualAssets, confirmModels }
+  return {
+    start,
+    resume,
+    approveStoryboard,
+    acceptImage,
+    importPlusImage,
+    compileDelivery,
+    selectVisualAssets,
+    confirmModels,
+    listVisualAssetPacks,
+    createVisualAssetPack,
+  }
 
   async function prepare(record: RecordState, resumeOnly = false) {
     if (record.prepared) return
@@ -1531,6 +1650,33 @@ async function persistGeneratedArtifacts(record: RecordState) {
     },
   ])
   await atomicWriteJson(path.join(directory, "generated-images.json"), Object.fromEntries(entries))
+}
+
+async function runVisualAssetManager(bridge: SkillBridgeLike, args: ReadonlyArray<string>, cwd: string) {
+  if (!bridge.runVisualAsset) throw new SkillUnavailableError("The skill does not expose the visual-asset manager")
+  const result = await bridge.runVisualAsset("manage_visual_assets.py", args, cwd)
+  if (result.exitCode !== 0) throw new SkillUnavailableError("The visual-asset manager failed")
+  const value = parseStructuredJSON(result.stdout)
+  if (value === undefined) throw new SkillUnavailableError("The visual-asset manager returned invalid JSON")
+  return value
+}
+
+function parseStructuredJSON(stdout: string): unknown {
+  const text = stdout.trim()
+  if (!text) return undefined
+  try {
+    return JSON.parse(text) as unknown
+  } catch {
+    const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+    for (let start = 0; start < lines.length; start++) {
+      try {
+        return JSON.parse(lines.slice(start).join("\n")) as unknown
+      } catch {
+        continue
+      }
+    }
+  }
+  return undefined
 }
 
 async function findAcceptedArtifact(outputDirectory: string, segmentID: string): Promise<GeneratedImage | undefined> {
