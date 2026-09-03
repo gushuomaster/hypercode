@@ -88,6 +88,7 @@ export type VideoReplicaOptions = {
   readonly dependencyConfirmation?: (missing: DependencyReport) => Promise<boolean>
   readonly generateImage?: (input: GenerateImageInput) => Promise<GeneratedImage>
   readonly qualityCheck?: (input: QualityInput) => Promise<QualityResult>
+  readonly generationConcurrency?: number
   readonly imageGeneration?: ImageGenerationService.Interface
   readonly question?: Pick<Question.Interface, "ask">
   readonly instance?: InstanceContext
@@ -236,6 +237,7 @@ type RecordState = {
   generating?: Promise<GenerationSummary>
   metricDurations: Partial<Record<WorkflowMetricName, number>>
   qualityChecks: NonNullable<HypercodeState["quality_checks"]>
+  artifactPersisting?: Promise<void>
 }
 
 type PendingPlusImport = {
@@ -585,6 +587,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       }
     }
     await persistGeneratedArtifacts(record)
+    await persistPendingPlusImports(record)
     trackMetric(record, "asset_ingestion_seconds", ingestionStarted)
     await persist(record)
     return {
@@ -633,6 +636,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     const confirmed = await acceptImage(workflowID, segmentID, "accepted", true, image)
     record.plusImports.delete(pendingImport.id)
     await persistGeneratedArtifacts(record)
+    await persistPendingPlusImports(record)
     await persist(record)
     return confirmed
   }
@@ -729,11 +733,11 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     const skipped = all.filter((segmentID) => !pending.includes(segmentID))
     const generated: GeneratedImage[] = []
     const failed: Array<{ segmentID: string; reason: string }> = []
-    for (const segmentID of pending) {
+    const processSegment = async (segmentID: string) => {
       const segment = record.segments.find((item) => item.segment_id === segmentID)
       if (!segment) {
         failed.push({ segmentID, reason: "segment is missing from the analyzed project" })
-        continue
+        return
       }
       const input: GenerateImageInput = {
         workflowID: record.workflowID,
@@ -771,12 +775,16 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       if (!acceptedImage) {
         failed.push({ segmentID, reason: failureReason })
         await appendProviderAttempt(record, { segmentID, provider: "unknown", model: "unknown" }, "failed")
-        continue
+        return
       }
       record.generated.set(segmentID, acceptedImage)
       await persistGeneratedArtifacts(record)
       generated.push(acceptedImage)
       await appendProviderAttempt(record, acceptedImage, "success")
+    }
+    const concurrency = Math.max(1, Math.min(4, Math.floor(options.generationConcurrency ?? 4)))
+    for (let index = 0; index < pending.length; index += concurrency) {
+      await Promise.all(pending.slice(index, index + concurrency).map(processSegment))
     }
     const latest = requireHypercode(record)
     const allIDs = allSegmentIDs(record, latest)
@@ -1825,14 +1833,45 @@ async function loadGeneratedArtifacts(record: RecordState) {
 }
 
 async function loadPendingPlusImports(record: RecordState) {
+  const sidecar = await fs.readFile(path.join(record.outputDirectory, ".hypercode", "plus-imports.json"), "utf8").catch(() => undefined)
+  if (sidecar) {
+    try {
+      const value = JSON.parse(sidecar) as unknown
+      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        for (const [id, item] of Object.entries(value)) {
+          if (typeof item !== "object" || item === null || Array.isArray(item)) continue
+          const source = item as Record<string, unknown>
+          if (typeof source.stagedPath !== "string" || typeof source.at !== "string") continue
+          const proposal = source.proposal
+          if (!isPlusProposal(proposal)) continue
+          const stagedPath = await validatePendingPlusImage(record, source.stagedPath).catch(() => undefined)
+          if (stagedPath) record.plusImports.set(id, { id, stagedPath, proposal, at: source.at })
+        }
+      }
+    } catch {
+      return
+    }
+  }
   const approvals = record.hypercode?.approvals ?? []
   for (const approval of approvals) {
     if (approval.decision !== "plus-import-proposed") continue
     const image = record.imported.get(approval.segment_id)
-    if (!image?.filePath || record.plusImports.has(approval.segment_id)) continue
+    if (!image?.filePath || [...record.plusImports.values()].some((item) => item.proposal.suggestedSegmentID === approval.segment_id)) continue
     const proposal = matchAndPropose([{ name: path.basename(image.filePath), filePath: image.filePath, segmentID: approval.segment_id }], [approval.segment_id])[0]
     if (proposal) record.plusImports.set(approval.segment_id, { id: crypto.randomUUID(), stagedPath: image.filePath, proposal, at: approval.at })
   }
+}
+
+function isPlusProposal(value: unknown): value is PlusImportProposal {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false
+  const source = value as Record<string, unknown>
+  return typeof source.name === "string" && Array.isArray(source.candidates) && source.candidates.every((item) => typeof item === "string") &&
+    (source.confidence === "exact" || source.confidence === "candidate" || source.confidence === "none") && source.requiresConfirmation === true && source.accepted === false
+}
+
+async function persistPendingPlusImports(record: RecordState) {
+  const directory = await ensureOutputDirectory(path.join(record.outputDirectory, ".hypercode"))
+  await atomicWriteJson(path.join(directory, "plus-imports.json"), Object.fromEntries(record.plusImports))
 }
 
 function hasPendingPlusMapping(record: RecordState, segmentID: string, state: HypercodeState) {
@@ -1841,20 +1880,29 @@ function hasPendingPlusMapping(record: RecordState, segmentID: string, state: Hy
 }
 
 async function persistGeneratedArtifacts(record: RecordState) {
-  const directory = await ensureOutputDirectory(path.join(record.outputDirectory, ".hypercode"))
-  const entries = [...record.generated, ...record.imported].map(([segmentID, image]) => [
-    segmentID,
-    {
-      filePath: image.filePath,
-      provider: image.provider,
-      model: image.model,
-      status: image.status,
-      attempts: image.attempts,
-      elapsedMs: image.elapsedMs,
-      cost: image.cost,
-    },
-  ])
-  await atomicWriteJson(path.join(directory, "generated-images.json"), Object.fromEntries(entries))
+  const write = async () => {
+    const directory = await ensureOutputDirectory(path.join(record.outputDirectory, ".hypercode"))
+    const entries = [...record.generated, ...record.imported].map(([segmentID, image]) => [
+      segmentID,
+      {
+        filePath: image.filePath,
+        provider: image.provider,
+        model: image.model,
+        status: image.status,
+        attempts: image.attempts,
+        elapsedMs: image.elapsedMs,
+        cost: image.cost,
+      },
+    ])
+    await atomicWriteJson(path.join(directory, "generated-images.json"), Object.fromEntries(entries))
+  }
+  const current = (record.artifactPersisting ?? Promise.resolve()).then(write, write)
+  record.artifactPersisting = current
+  try {
+    await current
+  } finally {
+    if (record.artifactPersisting === current) record.artifactPersisting = undefined
+  }
 }
 
 async function runVisualAssetManager(bridge: SkillBridgeLike, args: ReadonlyArray<string>, cwd: string) {
