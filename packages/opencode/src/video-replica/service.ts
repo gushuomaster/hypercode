@@ -475,7 +475,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     const approvalFile = path.join(deliveryDirectory, "approval.md")
     const promptsFile = path.join(deliveryDirectory, "prompts.md")
     const [approvalStat, promptsStat] = await Promise.all([fs.lstat(approvalFile).catch(() => undefined), fs.lstat(promptsFile).catch(() => undefined)])
-    if (!approvalStat?.isFile() || approvalStat.isSymbolicLink() || !promptsStat?.isFile() || promptsStat.isSymbolicLink())
+    if (output?.command && (!approvalStat?.isFile() || approvalStat.isSymbolicLink() || !promptsStat?.isFile() || promptsStat.isSymbolicLink()))
       throw new SkillUnavailableError("Delivery compiler did not produce approval.md and prompts.md")
     record.hypercode = {
       ...state,
