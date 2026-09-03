@@ -1,8 +1,9 @@
 import { Effect, Option, Schema } from "effect"
 import { Tool } from "./tool"
-import { VideoReplica, type WorkflowInput } from "@/video-replica/service"
+import { VideoReplica, type VisualAssetSelection, type WorkflowInput } from "@/video-replica/service"
 import { Skill } from "@/skill"
 import { EffectBridge } from "@/effect/bridge"
+import { Question } from "@/question"
 
 export const Parameters = Schema.Struct({
   action: Schema.Literals([
@@ -13,6 +14,7 @@ export const Parameters = Schema.Struct({
     "accept_image",
     "import_plus_image",
     "compile_delivery",
+    "select_visual_assets",
   ]),
   workflowID: Schema.optional(Schema.String),
   referenceVideo: Schema.optional(Schema.String),
@@ -24,6 +26,9 @@ export const Parameters = Schema.Struct({
   decision: Schema.optional(Schema.String),
   filePath: Schema.optional(Schema.String),
   answer: Schema.optional(Schema.String),
+  visualAssetMode: Schema.optional(Schema.Literals(["follow-source", "existing-pack", "create-pack"])),
+  packID: Schema.optional(Schema.String),
+  packVersion: Schema.optional(Schema.Number),
 })
 
 type Params = Schema.Schema.Type<typeof Parameters>
@@ -31,10 +36,11 @@ type Params = Schema.Schema.Type<typeof Parameters>
 export const VideoReplicaTool = Tool.define(
   "video_replica",
   Effect.gen(function* () {
+    const questionService = yield* Question.Service
     return {
       description: "Coordinate the read-only doubao-video-replica analysis and storyboard workflow.",
       parameters: Parameters,
-      execute: (params: Params) =>
+      execute: (params: Params, ctx) =>
         Effect.gen(function* () {
           const service = yield* Effect.serviceOption(VideoReplica.Service)
           if (Option.isNone(service)) return yield* Effect.fail(new Error("VideoReplica service is unavailable"))
@@ -48,9 +54,32 @@ export const VideoReplicaTool = Tool.define(
               productImages: params.productImages ?? [],
               outputDirectory: params.outputDirectory,
               productName: params.productName,
+              sessionID: ctx.sessionID,
               ...(skillLocation && { skillLocation }),
             } satisfies WorkflowInput)
             const question = yield* Effect.promise(() => run.nextQuestion())
+            if (question.questions[0]?.header === "视觉资产") {
+              const answers = yield* questionService.ask({
+                sessionID: ctx.sessionID,
+                questions: question.questions,
+                ...(ctx.callID && { tool: { messageID: ctx.messageID, callID: ctx.callID } }),
+              })
+              const choice = answers[0]?.[0]
+              if (choice === "跟随参考视频") {
+                yield* Effect.promise(() => run.selectVisualAssets({ mode: "follow-source" }))
+                const approval = yield* Effect.promise(() => run.nextQuestion())
+                return {
+                  title: `Video replica workflow ${run.workflowID}`,
+                  output: JSON.stringify({ workflowID: run.workflowID, question: approval }),
+                  metadata: { status: "awaiting-approval", workflowID: run.workflowID },
+                }
+              }
+              return {
+                title: `Video replica workflow ${run.workflowID}`,
+                output: JSON.stringify({ workflowID: run.workflowID, selection: choice, nextAction: "select_visual_assets" }),
+                metadata: { status: "selection-required", workflowID: run.workflowID },
+              }
+            }
             return {
               title: `Video replica workflow ${run.workflowID}`,
               output: JSON.stringify({ workflowID: run.workflowID, question }),
@@ -76,6 +105,21 @@ export const VideoReplicaTool = Tool.define(
               title: "Storyboard approved",
               output: JSON.stringify({ workflowID: run.workflowID, segmentIDs: run.segmentIDs }),
               metadata: { status: "approved", workflowID: run.workflowID },
+            }
+          }
+
+          if (params.action === "select_visual_assets") {
+            if (!params.visualAssetMode) return yield* Effect.fail(new Error("select_visual_assets requires visualAssetMode"))
+            const selection: VisualAssetSelection =
+              params.visualAssetMode === "existing-pack"
+                ? { mode: "existing-pack", packID: params.packID ?? "", packVersion: params.packVersion ?? 0 }
+                : { mode: params.visualAssetMode }
+            const run = yield* Effect.promise(() => service.value.selectVisualAssets(params.workflowID!, selection))
+            const question = yield* Effect.promise(() => run.nextQuestion())
+            return {
+              title: "Visual assets selected",
+              output: JSON.stringify({ workflowID: run.workflowID, question }),
+              metadata: { status: "awaiting-approval", workflowID: run.workflowID },
             }
           }
 
@@ -118,15 +162,7 @@ export const VideoReplicaTool = Tool.define(
             output: JSON.stringify(result),
             metadata: { status: "compiled", workflowID: result.workflowID },
           }
-        }).pipe(
-          Effect.catch((error) =>
-            Effect.succeed({
-              title: "Video replica workflow failed",
-              output: error instanceof Error ? redactSecrets(error.message) : "Video replica workflow failed",
-              metadata: { status: "error" as const, workflowID: params.workflowID ?? "unknown" },
-            }),
-          ),
-        ),
+        }).pipe(Effect.orDie),
     }
   }),
 )
@@ -139,8 +175,4 @@ function resolveSkillLocation() {
     const info = yield* Effect.promise(() => bridge.promise(skill.value.require("doubao-video-replica")))
     return info.location
   })
-}
-
-function redactSecrets(message: string) {
-  return message.replace(/((?:api[_-]?key|token|secret|authorization|bearer)\s*[:=]\s*)[^\s,;]+/gi, "$1[redacted]")
 }

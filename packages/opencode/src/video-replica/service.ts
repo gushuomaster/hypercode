@@ -106,6 +106,11 @@ export type PlusImportResult = {
   requiresConfirmation: true
 }
 
+export type VisualAssetSelection =
+  | { mode: "follow-source" }
+  | { mode: "existing-pack"; packID: string; packVersion: number }
+  | { mode: "create-pack" }
+
 export type DeliveryResult = {
   workflowID: string
   outputDirectory: string
@@ -120,6 +125,7 @@ export interface WorkflowRun extends StartResult {
   readonly acceptImage: (segmentID: string, decision: ImageDecision) => Promise<WorkflowRun>
   readonly importPlusImage: (filePath: string) => Promise<PlusImportResult>
   readonly compileDelivery: () => Promise<DeliveryResult>
+  readonly selectVisualAssets: (selection: VisualAssetSelection) => Promise<WorkflowRun>
 }
 
 export interface Interface {
@@ -133,6 +139,7 @@ export interface Interface {
   readonly acceptImage: (workflowID: string, segmentID: string, decision: ImageDecision) => Promise<WorkflowRun>
   readonly importPlusImage: (workflowID: string, filePath: string) => Promise<PlusImportResult>
   readonly compileDelivery: (workflowID: string) => Promise<DeliveryResult>
+  readonly selectVisualAssets: (workflowID: string, selection: VisualAssetSelection) => Promise<WorkflowRun>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/VideoReplica") {}
@@ -185,6 +192,7 @@ type RecordState = {
   visualAssetMappingPrepared: boolean
   chapterManifests: Record<number, Record<string, unknown>>
   skillFingerprint?: string
+  visualAssetSelection?: VisualAssetSelection
   persisting?: Promise<void>
   preparing?: Promise<void>
 }
@@ -277,6 +285,8 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       visualAssetMappingPrepared: false,
       chapterManifests: {},
       ...(index?.skill_fingerprint && { skillFingerprint: index.skill_fingerprint }),
+      ...(readVisualAssets(input)?.mode === "follow-source" && { visualAssetSelection: { mode: "follow-source" } as const }),
+      ...(readVisualAssets(input)?.mode === "pack" && { visualAssetSelection: { mode: "existing-pack", packID: String(readString(readVisualAssets(input)?.pack_snapshot, ["pack_id", "packId", "id"])), packVersion: Number(readNumber(readVisualAssets(input)?.pack_snapshot, ["version", "pack_version", "packVersion"])) } as const }),
     }
     const duration = getDuration(record.manifest, input)
     record.chapters = duration ? splitChapters(duration) : []
@@ -315,6 +325,17 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     return runView(record)
   }
 
+  const selectVisualAssets = async (workflowID: string, selection: VisualAssetSelection) => {
+    const record = requireWorkflow(workflowID)
+    if (selection.mode === "existing-pack" && (!selection.packID.trim() || !Number.isInteger(selection.packVersion) || selection.packVersion < 1))
+      throw new WorkflowError("An existing style pack requires a pack ID and positive version", workflowID)
+    if (selection.mode === "create-pack")
+      throw new WorkflowError("Create the style pack with the visual asset manager, then select its fixed ID and version", workflowID)
+    record.visualAssetSelection = selection
+    await prepare(record)
+    return runView(record)
+  }
+
   const acceptImage = async (workflowID: string, segmentID: string, decision: ImageDecision) => {
     const record = requireWorkflow(workflowID)
     await prepare(record, true)
@@ -324,6 +345,12 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     if (decision === "accepted" || decision === "force-accepted") {
       const image = record.generated.get(segmentID) ?? record.imported.get(segmentID) ?? (await findAcceptedArtifact(record.outputDirectory, segmentID))
       if (!image) throw new WorkflowError("An image must be generated or imported before acceptance", workflowID)
+      if (image.filePath) {
+        const safePath = normalizeOutputPath(record.outputDirectory, image.filePath)
+        const stat = await fs.lstat(safePath).catch(() => undefined)
+        if (!stat?.isFile() || stat.isSymbolicLink()) throw new WorkflowError("The generated image path is unsafe or unavailable", workflowID)
+        image.filePath = safePath
+      }
       if (!record.generated.has(segmentID) && image.filePath) record.imported.set(segmentID, image)
     }
     const at = now().toISOString()
@@ -496,6 +523,23 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
   }
 
   const nextQuestion = async (record: RecordState) => {
+    if (record.input.sessionID && !record.visualAssetSelection) {
+      return {
+        questions: [
+          {
+            question: "在分析参考视频前，请选择视觉资产来源。",
+            header: "视觉资产",
+            options: [
+              { label: "跟随参考视频", description: "场景、手部、视觉和镜头语言跟随对应参考片段。" },
+              { label: "选择已有风格包", description: "使用已入库风格包的固定 ID 和版本。" },
+              { label: "创建新风格包", description: "先通过视觉资产管理器创建，再返回选择固定版本。" },
+            ],
+            custom: false,
+          },
+        ],
+      }
+    }
+    if (!record.visualAssetSelection) record.visualAssetSelection = { mode: "follow-source" }
     await prepare(record)
     const state = requireHypercode(record)
     if (state.checkpoint.phase !== "approval") {
@@ -559,9 +603,10 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     acceptImage: (segmentID, decision) => acceptImage(record.workflowID, segmentID, decision),
     importPlusImage: (filePath) => importPlusImage(record.workflowID, filePath),
     compileDelivery: () => compileDelivery(record.workflowID),
+    selectVisualAssets: (selection) => selectVisualAssets(record.workflowID, selection),
   })
 
-  return { start, resume, approveStoryboard, acceptImage, importPlusImage, compileDelivery }
+  return { start, resume, approveStoryboard, acceptImage, importPlusImage, compileDelivery, selectVisualAssets }
 
   async function prepare(record: RecordState, resumeOnly = false) {
     if (record.prepared) return
@@ -683,9 +728,15 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     if (record.visualAssetEntryPrepared) return
     const visual = readVisualAssets(record.state)
     const assetRoot = visualAssetRoot()
-    if (visual) {
-      await runVisualAssetPhase(bridge, "manage_visual_assets.py", ["--root", assetRoot, "list-packs"], path.dirname(stateFile))
-    } else {
+    if (record.visualAssetSelection?.mode === "existing-pack") {
+      await runVisualAssetPhase(
+        bridge,
+        "configure_visual_assets.py",
+        ["select-pack", "--project-state", stateFile, "--asset-root", assetRoot, "--pack-id", record.visualAssetSelection.packID, "--pack-version", String(record.visualAssetSelection.packVersion)],
+        path.dirname(stateFile),
+      )
+      record.state = (await readExternalState(stateFile)) ?? record.state
+    } else if (!visual || record.visualAssetSelection?.mode === "follow-source") {
       await runVisualAssetPhase(bridge, "configure_visual_assets.py", ["follow-source", "--project-state", stateFile], path.dirname(stateFile))
       record.state = (await readExternalState(stateFile)) ?? record.state
     }
@@ -1131,6 +1182,7 @@ type WorkflowIndex = {
   market?: string
   skill_location?: string
   skill_fingerprint?: string
+  session_id?: string
 }
 
 async function readWorkflowIndex(directory: string): Promise<WorkflowIndex | undefined> {
@@ -1164,6 +1216,7 @@ function isWorkflowIndex(value: unknown): value is WorkflowIndex {
     (source.market === undefined || typeof source.market === "string") &&
     (source.skill_location === undefined || typeof source.skill_location === "string") &&
     (source.skill_fingerprint === undefined || typeof source.skill_fingerprint === "string")
+    && (source.session_id === undefined || typeof source.session_id === "string")
   )
 }
 
@@ -1174,6 +1227,7 @@ function inputFromIndex(index: WorkflowIndex, directory: string): WorkflowInput 
     outputDirectory: directory,
     ...(index.product_name && { productName: index.product_name }),
     ...(index.market && { market: index.market }),
+    ...(index.session_id && { sessionID: index.session_id }),
     ...(index.skill_location && { skillLocation: index.skill_location }),
   }
 }
@@ -1197,6 +1251,7 @@ async function persistWorkflowIndex(record: RecordState) {
     product_images: [...record.input.productImages],
     ...(record.input.productName && { product_name: record.input.productName }),
     ...(record.input.market && { market: record.input.market }),
+    ...(record.input.sessionID && { session_id: record.input.sessionID }),
     ...(record.input.skillLocation && { skill_location: record.input.skillLocation }),
     ...(record.skillFingerprint && { skill_fingerprint: record.skillFingerprint }),
   }
