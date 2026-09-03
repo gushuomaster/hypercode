@@ -405,7 +405,19 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       atomicWriteJson(acceptedPath, Object.fromEntries(accepted)),
       atomicWriteJson(
         mappingsPath,
-        { mappings: record.segments.map((segment) => ({ segment_id: segment.segment_id, blocked: false, coverage: {} })) },
+        {
+          mappings: record.segments.map((segment) => ({
+            segment_id: segment.segment_id,
+            blocked: false,
+            coverage: {
+              scene: { status: "follow-source", asset_refs: [], reason: "场景跟随参考视频" },
+              hands: { status: "follow-source", asset_refs: [], reason: "手部跟随参考视频" },
+              look: { status: "follow-source", asset_refs: [], reason: "视觉风格跟随参考视频" },
+              camera: { status: "follow-source", asset_refs: [], reason: "镜头跟随参考视频" },
+              props: { status: "follow-source", asset_refs: [], reason: "道具跟随参考视频" },
+            },
+          })),
+        },
       ),
       atomicWriteJson(factsPath, {}),
     ])
@@ -724,7 +736,13 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
         {
           mappings: record.segments.map((segment) => ({
             segment_id: segment.segment_id,
-            coverage: {},
+            coverage: {
+              scene: { status: "follow-source", asset_refs: [], reason: "场景跟随参考视频" },
+              hands: { status: "follow-source", asset_refs: [], reason: "手部跟随参考视频" },
+              look: { status: "follow-source", asset_refs: [], reason: "视觉风格跟随参考视频" },
+              camera: { status: "follow-source", asset_refs: [], reason: "镜头跟随参考视频" },
+              props: { status: "follow-source", asset_refs: [], reason: "道具跟随参考视频" },
+            },
             hand_refs: [],
             resolved_operations: [],
             blocked: false,
