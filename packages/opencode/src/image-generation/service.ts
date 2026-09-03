@@ -96,14 +96,10 @@ export const layer = (options: Options = {}) =>
               }),
           }),
         )
+        const stem = options.stem?.(request) ?? `${sanitize(request.segmentID)}-${Date.now()}-${crypto.randomUUID()}`
         const reserved = yield* Effect.tryPromise({
           try: () =>
-            reserveOutput(
-              instance.directory,
-              projectRoot,
-              outputDirectory,
-              options.stem?.(request) ?? `${sanitize(request.segmentID)}-${Date.now()}-${crypto.randomUUID()}`,
-            ),
+            reserveOutput(instance.directory, projectRoot, outputDirectory, stem),
           catch: (error) =>
             new GenerationError({
               segmentID: request.segmentID,
@@ -132,27 +128,20 @@ export const layer = (options: Options = {}) =>
               : attempts.output.mimeType === "image/jpeg"
                 ? "jpg"
                 : "webp"
-          const destination = reserved.files.find((file) => path.extname(file.filePath) === `.${extension}`)
-          if (!destination)
-            return yield* new GenerationError({
-              segmentID: request.segmentID,
-              reason: "generated image format has no reserved destination",
-            })
+          const destination = yield* Effect.tryPromise({
+            try: () => normalizeOutputPath(projectRoot, path.join(outputDirectory, `${stem}.${extension}`)),
+            catch: () =>
+              new GenerationError({ segmentID: request.segmentID, reason: "generated file path is invalid" }),
+          })
           yield* Effect.tryPromise({
-            try: async () => {
-              await verifyOutput(reserved, destination)
-              await destination.handle.writeFile(attempts.output.bytes)
-              await destination.handle.sync()
-              await verifyOutput(reserved, destination)
-              destination.keep = true
-            },
+            try: () => persistOutput(reserved, destination, attempts.output.bytes),
             catch: () =>
               new GenerationError({ segmentID: request.segmentID, reason: "generated image could not be persisted" }),
           })
 
           return {
             segmentID: request.segmentID,
-            filePath: destination.filePath,
+            filePath: destination,
             mimeType: attempts.output.mimeType,
             provider: attempts.provider,
             model: attempts.model,
@@ -233,21 +222,44 @@ async function reserveOutput(projectDirectory: string, projectRoot: string, outp
   try {
     for (const extension of ["png", "jpg", "webp"]) {
       const filePath = await normalizeOutputPath(projectRoot, path.join(outputDirectory, `${stem}.${extension}`))
-      const handle = await fs.open(filePath, "wx")
-      const opened = await handle.stat()
-      const current = await fs.lstat(filePath)
-      if (!opened.isFile() || !sameIdentity(identity(opened), identity(current))) {
-        await handle.close()
-        throw new Error("reserved file changed")
-      }
-      reserved.files.push({ filePath, handle, identity: identity(opened), keep: false })
+      const existing = await fs.lstat(filePath).catch((error) => {
+        if (isNotFound(error)) return undefined
+        throw error
+      })
+      if (existing) throw Object.assign(new Error("destination already exists"), { code: "EEXIST" })
     }
+    const temporaryPath = await normalizeOutputPath(
+      projectRoot,
+      path.join(outputDirectory, `.${sanitize(stem)}.${crypto.randomUUID()}.tmp`),
+    )
+    const handle = await fs.open(temporaryPath, "wx")
+    const opened = await handle.stat()
+    const current = await fs.lstat(temporaryPath)
+    if (!opened.isFile() || !sameIdentity(identity(opened), identity(current))) {
+      await handle.close()
+      throw new Error("reserved file changed")
+    }
+    reserved.files.push({ filePath: temporaryPath, handle, identity: identity(opened), keep: false })
     await verifyOutput(reserved)
     return reserved
   } catch (error) {
     await releaseOutput(reserved)
     throw error
   }
+}
+
+async function persistOutput(reserved: ReservedOutput, destination: string, bytes: Uint8Array) {
+  const temporary = reserved.files[0]
+  if (!temporary) throw new Error("temporary output reservation is unavailable")
+  await verifyOutput(reserved, temporary)
+  await temporary.handle.writeFile(bytes)
+  await temporary.handle.sync()
+  await verifyOutput(reserved, temporary)
+  await fs.link(temporary.filePath, destination)
+  const published = await fs.lstat(destination)
+  if (!published.isFile() || !sameIdentity(identity(published), temporary.identity))
+    throw new Error("published output changed")
+  await fs.rm(temporary.filePath, { force: true })
 }
 
 async function verifyOutput(reserved: ReservedOutput, selected?: ReservedFile) {
@@ -275,12 +287,12 @@ async function verifyOutput(reserved: ReservedOutput, selected?: ReservedFile) {
 }
 
 async function releaseOutput(reserved: ReservedOutput) {
-  await Promise.allSettled(reserved.files.map((file) => file.handle.close()))
   for (const file of reserved.files) {
-    if (file.keep) continue
-    const safe = await verifyCleanupPath(reserved, file)
-    if (!safe) continue
-    await fs.rm(file.filePath, { force: true }).catch(() => undefined)
+    if (!file.keep) {
+      const safe = await verifyCleanupPath(reserved, file)
+      if (safe) await fs.rm(file.filePath, { force: true }).catch(() => undefined)
+    }
+    await file.handle.close().catch(() => undefined)
   }
 }
 
@@ -309,6 +321,10 @@ function samePath(left: string, right: string) {
 
 function isAlreadyExists(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error && error.code === "EEXIST"
+}
+
+function isNotFound(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT"
 }
 
 export * as ImageGenerationService from "./service"

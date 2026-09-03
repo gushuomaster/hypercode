@@ -9,6 +9,11 @@ import { ImageGenerationService } from "../../src/image-generation/service"
 import { InstanceRef } from "../../src/effect/instance-ref"
 import { tmpdir } from "../fixture/fixture"
 
+type Fetch = (
+  input: Parameters<typeof globalThis.fetch>[0],
+  init?: Parameters<typeof globalThis.fetch>[1],
+) => ReturnType<typeof globalThis.fetch>
+
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
   "base64",
@@ -249,6 +254,164 @@ describe("image generation service", () => {
     }
   })
 
+  test("rejects an arbitrary HTTPS Qwen NIM endpoint before sending the NVIDIA key", async () => {
+    await using project = await tmpdir()
+    const reference = path.join(project.path, "reference.png")
+    await Bun.write(reference, png)
+    let calls = 0
+    const transport: Fetch = async () => {
+      calls++
+      return Response.json({ created: 1, data: [{ b64_json: png.toString("base64") }] })
+    }
+
+    await expect(
+      run(
+        project.path,
+        "http://127.0.0.1:1/v1",
+        {
+          ...request("generated"),
+          referenceImages: [reference],
+          modelPool: [{ provider: "nvidia", model: "qwen/qwen-image-edit" }],
+        },
+        { nvidia: "stored-secret" },
+        {},
+        { nvidiaQwenBaseURL: "https://untrusted.example/v1", fetch: transport },
+      ),
+    ).rejects.toThrow("Qwen NIM endpoint is not configured")
+    expect(calls).toBe(0)
+  })
+
+  test("allows a Qwen NIM host only when it is explicitly allowlisted", async () => {
+    await using project = await tmpdir()
+    const reference = path.join(project.path, "reference.png")
+    await Bun.write(reference, png)
+    let requested = ""
+    const transport: Fetch = async (input) => {
+      requested = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+      return Response.json({ created: 1, data: [{ b64_json: png.toString("base64") }] })
+    }
+
+    const result = await run(
+      project.path,
+      "http://127.0.0.1:1/v1",
+      {
+        ...request("generated"),
+        referenceImages: [reference],
+        modelPool: [{ provider: "nvidia", model: "qwen/qwen-image-edit" }],
+      },
+      { nvidia: new Auth.Api({ type: "api", key: "stored-secret", metadata: { nimBaseURL: "https://nim.internal.test/v1" } }) },
+      {},
+      { nvidiaAllowedHosts: ["nim.internal.test"], fetch: transport },
+    )
+
+    expect(new URL(requested).origin).toBe("https://nim.internal.test")
+    expect(result.model).toBe("qwen/qwen-image-edit")
+  })
+
+  test("allows the IPv6 loopback Qwen NIM endpoint", async () => {
+    await using project = await tmpdir()
+    const reference = path.join(project.path, "reference.png")
+    await Bun.write(reference, png)
+    let requested = ""
+    const transport: Fetch = async (input) => {
+      requested = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+      return Response.json({ created: 1, data: [{ b64_json: png.toString("base64") }] })
+    }
+
+    await run(
+      project.path,
+      "http://127.0.0.1:1/v1",
+      {
+        ...request("generated"),
+        referenceImages: [reference],
+        modelPool: [{ provider: "nvidia", model: "qwen/qwen-image-edit" }],
+      },
+      { nvidia: "stored-secret" },
+      {},
+      { nvidiaQwenBaseURL: "http://[::1]:8000/v1", fetch: transport },
+    )
+
+    expect(requested).toBe("http://[::1]:8000/v1/images/edits")
+  })
+
+  test("uses the fixed official NVIDIA host for hosted FLUX", async () => {
+    await using project = await tmpdir()
+    const reference = path.join(project.path, "reference.png")
+    await Bun.write(reference, png)
+    let requested = ""
+    const transport: Fetch = async (input) => {
+      requested = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+      return Response.json({ artifacts: [{ base64: png.toString("base64"), finishReason: "SUCCESS", seed: 1 }] })
+    }
+
+    await run(
+      project.path,
+      "http://127.0.0.1:1/v1",
+      {
+        ...request("generated"),
+        referenceImages: [reference],
+        modelPool: [{ provider: "nvidia", model: "black-forest-labs/flux_1-kontext-dev" }],
+      },
+      { nvidia: "stored-secret" },
+      {},
+      { nvidiaBaseURL: "https://untrusted.example/v1", fetch: transport },
+    )
+    expect(requested).toBe("https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-kontext-dev")
+  })
+
+  test("maps the dotted NVIDIA FLUX slug to the same official endpoint", async () => {
+    await using project = await tmpdir()
+    const reference = path.join(project.path, "reference.png")
+    await Bun.write(reference, png)
+    let requested = ""
+    const transport: Fetch = async (input) => {
+      requested = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+      return Response.json({ artifacts: [{ base64: png.toString("base64"), finishReason: "SUCCESS", seed: 1 }] })
+    }
+
+    const result = await run(
+      project.path,
+      "http://127.0.0.1:1/v1",
+      {
+        ...request("generated"),
+        referenceImages: [reference],
+        modelPool: [{ provider: "nvidia", model: "black-forest-labs/flux.1-kontext-dev" }],
+      },
+      { nvidia: "stored-secret" },
+      {},
+      { nvidiaBaseURL: "https://untrusted.example/v1", fetch: transport },
+    )
+    expect(requested).toBe("https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-kontext-dev")
+    expect(result.model).toBe("black-forest-labs/flux.1-kontext-dev")
+  })
+
+  test("rejects a Qwen response missing the required created timestamp", async () => {
+    await using project = await tmpdir()
+    const reference = path.join(project.path, "reference.png")
+    await Bun.write(reference, png)
+    const server = Bun.serve({
+      port: 0,
+      fetch: () => Response.json({ data: [{ b64_json: png.toString("base64") }] }),
+    })
+
+    try {
+      await expect(
+        run(
+          project.path,
+          "http://127.0.0.1:1/v1",
+          {
+            ...request("generated"),
+            referenceImages: [reference],
+            modelPool: [{ provider: "nvidia", model: "qwen/qwen-image-edit" }],
+          },
+          { nvidia: new Auth.Api({ type: "api", key: "stored-secret", metadata: { nimBaseURL: server.url.toString() } }) },
+        ),
+      ).rejects.toThrow("created")
+    } finally {
+      server.stop(true)
+    }
+  })
+
   test("uses the NVIDIA FLUX hosted model endpoint and native request contract", async () => {
     await using project = await tmpdir()
     const reference = path.join(project.path, "reference.png")
@@ -276,6 +439,13 @@ describe("image generation service", () => {
           modelPool: [{ provider: "nvidia", model: "black-forest-labs/flux_1-kontext-dev" }],
         },
         { nvidia: "stored-secret" },
+        {},
+        {
+          fetch: async (input, init) => {
+            requested = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+            return globalThis.fetch(new URL("/v1/genai/black-forest-labs/flux.1-kontext-dev", server.url), init)
+          },
+        },
       )
       expect(new URL(requested).pathname).toBe("/v1/genai/black-forest-labs/flux.1-kontext-dev")
       expect(body).toEqual({
@@ -427,6 +597,54 @@ describe("image generation service", () => {
     }
   })
 
+  test("does not expose the destination before provider output is ready", async () => {
+    await using project = await tmpdir()
+    const outputDirectory = path.join(project.path, "generated")
+    const destination = path.join(outputDirectory, "seg-1-fixed.png")
+    let destinationExists = false
+    const server = Bun.serve({
+      port: 0,
+      fetch: async () => {
+        destinationExists = await Bun.file(destination).exists()
+        return Response.json({ data: [{ b64_json: png.toString("base64") }] })
+      },
+    })
+
+    try {
+      await run(project.path, server.url.toString(), request(outputDirectory), undefined, {
+        stem: () => "seg-1-fixed",
+      })
+      expect(destinationExists).toBe(false)
+      expect(await Bun.file(destination).exists()).toBe(true)
+    } finally {
+      server.stop(true)
+    }
+  })
+
+  test("does not overwrite a destination created during provider execution", async () => {
+    await using project = await tmpdir()
+    const outputDirectory = path.join(project.path, "generated")
+    const destination = path.join(outputDirectory, "seg-1-fixed.png")
+    const server = Bun.serve({
+      port: 0,
+      fetch: async () => {
+        await Bun.write(destination, "replacement-marker")
+        return Response.json({ data: [{ b64_json: png.toString("base64") }] })
+      },
+    })
+
+    try {
+      await expect(
+        run(project.path, server.url.toString(), request(outputDirectory), undefined, {
+          stem: () => "seg-1-fixed",
+        }),
+      ).rejects.toThrow("could not be persisted")
+      expect(await Bun.file(destination).text()).toBe("replacement-marker")
+    } finally {
+      server.stop(true)
+    }
+  })
+
   test("rejects an output directory exchanged during the provider request", async () => {
     await using project = await tmpdir()
     await using outside = await tmpdir()
@@ -441,8 +659,8 @@ describe("image generation service", () => {
       fetch: async () => {
         reservedBeforeRequest = await fs
           .stat(destination)
-          .then((stat) => stat.size === 0)
-          .catch(() => false)
+          .then(() => false)
+          .catch((error) => error.code === "ENOENT")
         if (!reservedBeforeRequest) return Response.json({ data: [{ b64_json: png.toString("base64") }] })
         const exchanged = await fs
           .rename(outputDirectory, movedDirectory)
@@ -476,7 +694,7 @@ describe("image generation service", () => {
       expect(outcome).toHaveProperty("error")
       if ("error" in outcome) expect(String(outcome.error)).toContain("could not be persisted")
       expect(await Bun.file(outsideFile).text()).toBe("outside-marker")
-      expect(await Bun.file(path.join(movedDirectory, "seg-1-fixed.png")).exists()).toBe(true)
+      expect(await Bun.file(path.join(movedDirectory, "seg-1-fixed.png")).exists()).toBe(false)
     } finally {
       server.stop(true)
     }
@@ -486,23 +704,9 @@ describe("image generation service", () => {
     await using project = await tmpdir()
     const outputDirectory = path.join(project.path, "generated")
     const destination = path.join(outputDirectory, "seg-1-fixed.png")
-    const moved = path.join(outputDirectory, "seg-1-original.png")
     const server = Bun.serve({
       port: 0,
       fetch: async () => {
-        const reserved = await fs
-          .lstat(destination)
-          .then(() => true)
-          .catch((error) => {
-            if (error.code === "ENOENT") return false
-            throw error
-          })
-        if (!reserved) return Response.json({ data: [{ b64_json: png.toString("base64") }] })
-        const exchanged = await fs
-          .rename(destination, moved)
-          .then(() => true)
-          .catch(() => false)
-        if (!exchanged) return Response.json({ data: [{ b64_json: png.toString("base64") }] })
         await Bun.write(destination, "replacement-marker")
         return Response.json({ data: [{ b64_json: png.toString("base64") }] })
       },
@@ -518,7 +722,6 @@ describe("image generation service", () => {
       expect(outcome).toHaveProperty("error")
       if ("error" in outcome) expect(String(outcome.error)).toContain("could not be persisted")
       expect(await Bun.file(destination).text()).toBe("replacement-marker")
-      expect((await fs.stat(moved)).size).toBe(0)
     } finally {
       server.stop(true)
     }
@@ -534,8 +737,8 @@ describe("image generation service", () => {
       fetch: async () => {
         reservedBeforeRequest = await fs
           .stat(destination)
-          .then((stat) => stat.size === 0)
-          .catch(() => false)
+          .then(() => false)
+          .catch((error) => error.code === "ENOENT")
         return Response.json({ data: [{ b64_json: Buffer.from("not-an-image").toString("base64") }] })
       },
     })

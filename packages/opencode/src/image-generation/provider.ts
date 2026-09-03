@@ -4,7 +4,12 @@ import { Context, Effect, Layer, Schema } from "effect"
 import { ImageGeneration } from "./schema"
 
 const OPENAI_BASE_URL = "https://api.openai.com/v1"
-const NVIDIA_BASE_URL = "https://ai.api.nvidia.com/v1"
+const NVIDIA_HOSTED_BASE_URL = "https://ai.api.nvidia.com/v1"
+const NVIDIA_FLUX_MODEL_SLUG = "black-forest-labs/flux.1-kontext-dev"
+const NVIDIA_MODEL_SLUGS: Record<string, string> = {
+  "black-forest-labs/flux_1-kontext-dev": NVIDIA_FLUX_MODEL_SLUG,
+  [NVIDIA_FLUX_MODEL_SLUG]: NVIDIA_FLUX_MODEL_SLUG,
+}
 
 export type ReferenceImage = {
   filename: string
@@ -35,6 +40,11 @@ type HttpRequest = {
   body: BodyInit
 }
 
+type Fetch = (
+  input: Parameters<typeof globalThis.fetch>[0],
+  init?: Parameters<typeof globalThis.fetch>[1],
+) => ReturnType<typeof globalThis.fetch>
+
 export interface Interface {
   readonly generate: (input: {
     provider: ImageGeneration.Provider
@@ -48,7 +58,15 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/ImageGenerationProvider") {}
 
-export const layer = (options: { openaiBaseURL?: string; nvidiaBaseURL?: string; nvidiaQwenBaseURL?: string } = {}) =>
+type LayerOptions = {
+  openaiBaseURL?: string
+  nvidiaBaseURL?: string
+  nvidiaQwenBaseURL?: string
+  nvidiaAllowedHosts?: ReadonlyArray<string>
+  fetch?: Fetch
+}
+
+export const layer = (options: LayerOptions = {}) =>
   Layer.effect(
     Service,
     Effect.gen(function* () {
@@ -91,7 +109,7 @@ export const layer = (options: { openaiBaseURL?: string; nvidiaBaseURL?: string;
           : Effect.succeed(openaiRequest(input, options))
         const response = yield* Effect.tryPromise({
           try: () =>
-            fetch(request.url, {
+            (options.fetch ?? globalThis.fetch)(request.url, {
               method: "POST",
               headers: { authorization: `Bearer ${key}`, ...request.headers },
               body: request.body,
@@ -207,7 +225,7 @@ function nvidiaRequest(
     prompt: string
     referenceImages: ReadonlyArray<ReferenceImage>
   },
-  options: { nvidiaBaseURL?: string; nvidiaQwenBaseURL?: string },
+  options: { nvidiaBaseURL?: string; nvidiaQwenBaseURL?: string; nvidiaAllowedHosts?: ReadonlyArray<string> },
 ): Effect.Effect<HttpRequest, ProviderError> {
   const reference = input.referenceImages[0]
   if (!reference)
@@ -240,7 +258,7 @@ function nvidiaRequest(
           reason: "NVIDIA Qwen NIM endpoint is not configured",
         }),
       )
-    const baseURL = trustedNvidiaBaseURL(options.nvidiaQwenBaseURL)
+    const baseURL = trustedNvidiaBaseURL(options.nvidiaQwenBaseURL, options.nvidiaAllowedHosts)
     if (!baseURL)
       return Effect.fail(
         new ProviderError({
@@ -263,19 +281,10 @@ function nvidiaRequest(
       }),
     })
   }
-  if (input.model === "black-forest-labs/flux_1-kontext-dev") {
-    const baseURL = trustedNvidiaBaseURL(options.nvidiaBaseURL ?? NVIDIA_BASE_URL)
-    if (!baseURL)
-      return Effect.fail(
-        new ProviderError({
-          provider: input.provider,
-          model: input.model,
-          retryable: false,
-          reason: "NVIDIA hosted endpoint is not configured",
-        }),
-      )
+  const modelSlug = NVIDIA_MODEL_SLUGS[input.model]
+  if (modelSlug === NVIDIA_FLUX_MODEL_SLUG) {
     return Effect.succeed({
-      url: `${baseURL}/genai/black-forest-labs/flux.1-kontext-dev`,
+      url: `${NVIDIA_HOSTED_BASE_URL}/genai/${modelSlug}`,
       headers: { "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify({
         prompt: input.prompt,
@@ -307,11 +316,18 @@ function trimSlash(value: string) {
   return value.replace(/\/+$/, "")
 }
 
-function trustedNvidiaBaseURL(value: string) {
+function trustedNvidiaBaseURL(value: string, allowedHosts: ReadonlyArray<string> = []) {
   try {
     const parsed = new URL(value)
-    const local = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "::1"
+    const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "")
+    const local = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
+    const allowlisted = allowedHosts.some((allowed) => {
+      const normalized = allowed.trim().toLowerCase()
+      return normalized === hostname || normalized === parsed.host.toLowerCase()
+    })
     if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && local)) return undefined
+    if (!local && !allowlisted) return undefined
+    if (parsed.username || parsed.password || parsed.search || parsed.hash) return undefined
     const pathname = trimSlash(parsed.pathname)
     if (pathname === "" || pathname === "/v1") return `${parsed.origin}${pathname || "/v1"}`
     return undefined
@@ -321,8 +337,18 @@ function trustedNvidiaBaseURL(value: string) {
 }
 
 function decode(body: unknown, provider: ImageGeneration.Provider, model: string, status: number): Output {
-  if (provider === "nvidia" && model === "black-forest-labs/flux_1-kontext-dev")
+  if (provider === "nvidia" && NVIDIA_MODEL_SLUGS[model] === NVIDIA_FLUX_MODEL_SLUG)
     return decodeNvidiaArtifact(body, provider, model, status)
+  if (provider === "nvidia" && model === "qwen/qwen-image-edit") {
+    if (!isRecord(body) || !Number.isInteger(body.created))
+      throw new ProviderError({
+        provider,
+        model,
+        status,
+        retryable: false,
+        reason: "provider response omitted created timestamp",
+      })
+  }
   if (!isRecord(body) || !Array.isArray(body.data) || !isRecord(body.data[0]))
     throw new ProviderError({
       provider,
