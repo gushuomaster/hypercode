@@ -17,6 +17,13 @@ export const Parameters = Schema.Struct({
   ),
 })
 
+type Metadata = (
+  | ({ status: "success" } & ImageGeneration.Result)
+  | { status: "error"; segmentID: string; guidance?: string }
+) & { truncated?: boolean }
+
+const QWEN_GUIDANCE = "Configure a trusted NVIDIA Qwen NIM endpoint before retrying."
+
 export const ImageGenerateTool = Tool.define(
   "image_generate",
   Effect.gen(function* () {
@@ -35,6 +42,7 @@ export const ImageGenerateTool = Tool.define(
             title: `Generated image for ${result.segmentID}`,
             output: `Image generated successfully: ${result.filePath}`,
             metadata: {
+              status: "success" as const,
               segmentID: result.segmentID,
               filePath: result.filePath,
               mimeType: result.mimeType,
@@ -43,7 +51,7 @@ export const ImageGenerateTool = Tool.define(
               attempts: result.attempts,
               elapsedMs: result.elapsedMs,
               cost: result.cost,
-            },
+            } as Metadata,
             attachments: [
               {
                 type: "file" as const,
@@ -53,7 +61,28 @@ export const ImageGenerateTool = Tool.define(
               },
             ],
           }
-        }).pipe(Effect.catch((error) => Effect.die(error))),
+        }).pipe(
+          Effect.catch((error) =>
+            Effect.succeed(
+              (() => {
+                const guidance =
+                  error instanceof ImageGenerationService.GenerationError && error.guidance === QWEN_GUIDANCE
+                    ? error.guidance
+                    : undefined
+                return {
+                  title: `Image generation failed for ${params.segmentID}`,
+                  output: guidance ?? `Image generation failed for segment ${params.segmentID}.`,
+                  metadata: {
+                    status: "error" as const,
+                    segmentID: params.segmentID,
+                    ...(guidance && { guidance }),
+                  } as Metadata,
+                  attachments: [],
+                }
+              })(),
+            ),
+          ),
+        ),
     }
   }),
 )

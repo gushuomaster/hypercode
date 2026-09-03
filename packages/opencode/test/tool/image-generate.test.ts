@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { Cause, Effect, Exit, Layer } from "effect"
+import { Effect, Layer } from "effect"
 import path from "node:path"
 import { Agent } from "../../src/agent/agent"
 import { ImageGenerationService } from "../../src/image-generation/service"
@@ -59,14 +59,53 @@ describe("tool.image_generate", () => {
     expect(output.attachments).toEqual([
       { type: "file", mime: "image/png", filename: "seg-1.png", url: Bun.pathToFileURL(result.filePath).href },
     ])
-    expect(output.metadata).toMatchObject(result)
+    expect(output.metadata).toMatchObject({ status: "success", ...result })
     expect(JSON.stringify(output)).not.toContain("secret")
   })
 
-  test("preserves generation errors as diagnosable failures", async () => {
-    const failure = new ImageGenerationService.GenerationError({ segmentID: "seg-1", reason: "contract unavailable" })
-    const exit = await Effect.runPromiseExit(execute({ generate: () => Effect.fail(failure) }))
-    expect(Exit.isFailure(exit)).toBe(true)
-    if (Exit.isFailure(exit)) expect(Cause.pretty(exit.cause)).toContain("contract unavailable")
+  test("returns generation errors as safe structured tool results", async () => {
+    const failure = new ImageGenerationService.GenerationError({
+      segmentID: "seg-1",
+      reason: "credential secret prompt image-bytes",
+    })
+    const output = await Effect.runPromise(execute({ generate: () => Effect.fail(failure) }))
+    expect(output).toEqual({
+      title: "Image generation failed for seg-1",
+      output: "Image generation failed for segment seg-1.",
+      metadata: { status: "error", segmentID: "seg-1", truncated: false },
+      attachments: [],
+    })
+    expect(JSON.stringify(output)).not.toContain("credential secret")
+    expect(JSON.stringify(output)).not.toContain("prompt")
+    expect(JSON.stringify(output)).not.toContain("image-bytes")
+  })
+
+  test("returns safe configuration guidance for an unavailable Qwen NIM endpoint", async () => {
+    const failure = Object.assign(
+      new ImageGenerationService.GenerationError({ segmentID: "seg-1", reason: "internal provider details" }),
+      { guidance: "Configure a trusted NVIDIA Qwen NIM endpoint before retrying." },
+    )
+    const output = await Effect.runPromise(execute({ generate: () => Effect.fail(failure) }))
+    expect(output).toMatchObject({
+      output: "Configure a trusted NVIDIA Qwen NIM endpoint before retrying.",
+      metadata: {
+        status: "error",
+        segmentID: "seg-1",
+        guidance: "Configure a trusted NVIDIA Qwen NIM endpoint before retrying.",
+      },
+      attachments: [],
+    })
+    expect(JSON.stringify(output)).not.toContain("internal provider details")
+  })
+
+  test("does not expose arbitrary generation guidance", async () => {
+    const failure = Object.assign(
+      new ImageGenerationService.GenerationError({ segmentID: "seg-1", reason: "internal" }),
+      { guidance: "secret prompt and credentials" },
+    )
+    const output = await Effect.runPromise(execute({ generate: () => Effect.fail(failure) }))
+    expect(output.metadata).toEqual({ status: "error", segmentID: "seg-1", truncated: false })
+    expect(output.output).toBe("Image generation failed for segment seg-1.")
+    expect(JSON.stringify(output)).not.toContain("secret prompt")
   })
 })

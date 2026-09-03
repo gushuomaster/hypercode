@@ -12,7 +12,9 @@ describe("image generation output paths", () => {
     )
   })
 
-  test("rejects switching Windows drives", async () => {
+  const windows = process.platform === "win32" ? test : test.skip
+
+  windows("rejects switching Windows drives", async () => {
     await using project = await tmpdir()
     const drive = path.parse(project.path).root.toUpperCase().startsWith("C:") ? "D:" : "C:"
     await expect(normalizeOutputPath(project.path, `${drive}\\escape.png`)).rejects.toThrow(
