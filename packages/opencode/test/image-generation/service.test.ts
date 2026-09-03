@@ -645,13 +645,14 @@ describe("image generation service", () => {
     }
   })
 
-  test("rejects an output directory exchanged during the provider request", async () => {
+  test("rejects an exchanged output directory without following it during cleanup", async () => {
     await using project = await tmpdir()
     await using outside = await tmpdir()
     const outputDirectory = path.join(project.path, "generated")
     const movedDirectory = path.join(project.path, "generated-moved")
     const destination = path.join(outputDirectory, "seg-1-fixed.png")
     const outsideFile = path.join(outside.path, "seg-1-fixed.png")
+    let outsideTemporary = ""
     let reservedBeforeRequest = false
     let exchangeBlocked = false
     const server = Bun.serve({
@@ -669,8 +670,12 @@ describe("image generation service", () => {
             if (process.platform !== "win32" || error.code !== "EPERM") throw error
             exchangeBlocked = true
             return false
-          })
+        })
         if (!exchanged) return Response.json({ data: [{ b64_json: png.toString("base64") }] })
+        const temporary = (await fs.readdir(movedDirectory)).find((file) => file.endsWith(".tmp"))
+        if (!temporary) throw new Error("temporary output was not reserved")
+        outsideTemporary = path.join(outside.path, temporary)
+        await fs.link(path.join(movedDirectory, temporary), outsideTemporary)
         await fs.symlink(outside.path, outputDirectory, process.platform === "win32" ? "junction" : "dir")
         await Bun.write(outsideFile, "outside-marker")
         return Response.json({ data: [{ b64_json: png.toString("base64") }] })
@@ -694,6 +699,7 @@ describe("image generation service", () => {
       expect(outcome).toHaveProperty("error")
       if ("error" in outcome) expect(String(outcome.error)).toContain("could not be persisted")
       expect(await Bun.file(outsideFile).text()).toBe("outside-marker")
+      expect(await Bun.file(outsideTemporary).exists()).toBe(true)
       expect(await Bun.file(path.join(movedDirectory, "seg-1-fixed.png")).exists()).toBe(false)
     } finally {
       server.stop(true)
