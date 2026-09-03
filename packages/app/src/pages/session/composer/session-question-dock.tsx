@@ -14,7 +14,7 @@ import { useServerSDK } from "@/context/server-sdk"
 import { ScopedKey } from "@/utils/server-scope"
 import { ImagePreview } from "@opencode-ai/ui/image-preview"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
-import { toPresentationView } from "./question-presentation"
+import { hasPresentation, toPresentationView } from "./question-presentation"
 
 const cache = new Map<string, { tab: number; answers: QuestionAnswer[]; custom: string[]; customOn: boolean[] }>()
 
@@ -478,8 +478,11 @@ export const SessionQuestionDock: Component<{ request: QuestionRequest; onSubmit
         </>
       }
     >
-      <Show when={presentation().facts.length > 0 || presentation().images.length > 0}>
+      <Show when={hasPresentation(question())}>
         <div data-slot="question-presentation" data-tone={presentation().tone}>
+          <span data-slot="question-presentation-tone" data-tone={presentation().tone}>
+            {presentation().tone}
+          </span>
           <Show when={presentation().facts.length > 0}>
             <dl data-slot="question-facts">
               <For each={presentation().facts}>

@@ -26,3 +26,10 @@ export function toPresentationView(question: QuestionInfo | undefined): Question
     images: presentation?.images ?? [],
   }
 }
+
+export function hasPresentation(question: QuestionInfo | undefined): boolean {
+  if (!question) return false
+
+  const presentation = (question as QuestionInfo & PresentationCarrier).presentation
+  return presentation !== undefined
+}
