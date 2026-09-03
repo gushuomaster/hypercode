@@ -780,7 +780,10 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       generated.push(acceptedImage)
       await appendProviderAttempt(record, acceptedImage, "success")
     }
-    const concurrency = Math.max(1, Math.min(4, Math.floor(options.generationConcurrency ?? 4)))
+    const configuredConcurrency = options.generationConcurrency ?? 4
+    const concurrency = Number.isFinite(configuredConcurrency)
+      ? Math.max(1, Math.min(4, Math.floor(configuredConcurrency)))
+      : 4
     for (let index = 0; index < pending.length; index += concurrency) {
       await Promise.all(pending.slice(index, index + concurrency).map(processSegment))
     }
