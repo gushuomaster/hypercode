@@ -525,6 +525,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       ...state,
       approved_models: [...new Set([...state.approved_models, ...(state.pending_model_confirmations ?? []), ...(confirmPaid ? paid : [])])],
       image_pool: [...new Set([...state.image_pool, ...(confirmPaid ? state.paid_image_pool ?? [] : [])])],
+      ...(confirmPaid && { image_failed_models: [] }),
       pending_model_confirmations: [],
       pending_paid_model_confirmations: confirmPaid ? [] : paid,
     }
@@ -802,12 +803,45 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
         } catch (error) {
           if (error instanceof WorkflowError || error instanceof DependencyError || error instanceof SkillBridgeError) throw error
           failureReason = safeReason(error)
+          const current = requireHypercode(record)
+          const failedModels =
+            error instanceof ImageGenerationService.GenerationError && error.failures?.length
+              ? error.failures.map((failure) => `${failure.provider}/${failure.model}`)
+              : input.modelPool.map((candidate) => `${candidate.provider}/${candidate.model}`)
+          const attempted = [...new Set([...(current.image_failed_models ?? []), ...failedModels])]
+          const remainingFree = current.image_pool.filter((model) => !attempted.includes(model))
+          record.hypercode = {
+            ...current,
+            image_failed_models: attempted,
+            ...(remainingFree.length === 0 && current.image_pool.length > 0 ? { image_pool: [] } : {}),
+          }
+          await persist(record)
+          if (error instanceof ImageGenerationService.GenerationError && error.failures?.length) {
+            await Promise.all(
+              error.failures.map((failure) =>
+                appendProviderAttempt(
+                  record,
+                  {
+                    segmentID,
+                    provider: failure.provider,
+                    model: failure.model,
+                    attempts: failure.attempts,
+                    errorStatus: failure.status,
+                    failureReason: failure.reason,
+                  },
+                  "failed",
+                ),
+              ),
+            )
+          }
           break
         }
       }
       if (!acceptedImage) {
         failed.push({ segmentID, reason: failureReason })
-        await appendProviderAttempt(record, { segmentID, provider: "unknown", model: "unknown" }, "failed")
+        const attempts = requireHypercode(record).provider_attempts
+        if (!attempts.some((item) => item.segment_id === segmentID && item.status === "failed"))
+          await appendProviderAttempt(record, { segmentID, provider: "unknown", model: "unknown" }, "failed")
         return
       }
       record.generated.set(segmentID, acceptedImage)
@@ -1373,7 +1407,11 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     } satisfies GeneratedImage
   }
 
-  async function appendProviderAttempt(record: RecordState, image: GeneratedImage, status: string) {
+  async function appendProviderAttempt(
+    record: RecordState,
+    image: GeneratedImage & { errorStatus?: number; failureReason?: string },
+    status: string,
+  ) {
     const state = requireHypercode(record)
     record.hypercode = {
       ...state,
@@ -1387,6 +1425,8 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
           ...(image.segmentID && { segment_id: image.segmentID }),
           ...(image.attempts !== undefined && { attempts: image.attempts }),
           ...(image.elapsedMs !== undefined && { elapsed_ms: image.elapsedMs }),
+          ...(image.errorStatus !== undefined && { error_status: image.errorStatus }),
+          ...(image.failureReason && { error_reason: redactSecrets(image.failureReason).slice(0, 500) }),
           ...(image.cost && {
             cost_known: image.cost.known,
             ...(image.cost.amount !== undefined && { cost_amount: image.cost.amount }),
@@ -1438,12 +1478,13 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
   function imagePool(record: RecordState) {
     const ids = record.hypercode?.image_pool ?? []
     const pending = new Set(record.hypercode?.pending_model_confirmations ?? [])
+    const failed = new Set(record.hypercode?.image_failed_models ?? [])
     return ids.map((id) => {
       const slash = id.indexOf("/")
       const provider = slash > 0 ? id.slice(0, slash) : id
       const model = slash > 0 ? id.slice(slash + 1) : id
       return { provider, model }
-    }).filter((candidate) => !pending.has(`${candidate.provider}/${candidate.model}`))
+    }).filter((candidate) => !pending.has(`${candidate.provider}/${candidate.model}`) && !failed.has(`${candidate.provider}/${candidate.model}`))
   }
 
   function orchestrationPool(record: RecordState) {
@@ -1471,6 +1512,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       chapter: 1,
       orchestration_pool: orchestration,
       image_pool: image,
+      image_failed_models: [],
       paid_image_pool: paidImage,
       approved_models: [...(options.approvedModels ?? [])],
       checkpoint: {

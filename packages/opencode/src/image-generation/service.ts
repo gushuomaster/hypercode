@@ -16,6 +16,19 @@ export class GenerationError extends Schema.TaggedErrorClass<GenerationError>()(
   segmentID: Schema.String,
   reason: Schema.String,
   guidance: Schema.optional(Schema.String),
+  attempts: Schema.optional(Schema.Number),
+  failures: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        provider: Schema.String,
+        model: Schema.String,
+        status: Schema.optional(Schema.Number),
+        attempts: Schema.Number,
+        retryable: Schema.Boolean,
+        reason: Schema.String,
+      }),
+    ),
+  ),
 }) {
   override get message() {
     return `Image generation failed for segment ${this.segmentID}: ${this.reason}`
@@ -112,11 +125,13 @@ export const layer = (options: Options = {}) =>
         return yield* Effect.gen(function* () {
           const attempts = yield* attemptModels(provider, { ...request, referenceImages: safeReferences }).pipe(
             Effect.mapError(
-              (reason) =>
+              (failure) =>
                 new GenerationError({
                   segmentID: request.segmentID,
-                  reason,
-                  ...(reason.includes("NVIDIA Qwen NIM endpoint is not configured") && {
+                  reason: failure.reason,
+                  attempts: failure.attempts,
+                  failures: failure.failures,
+                  ...(failure.reason.includes("NVIDIA Qwen NIM endpoint is not configured") && {
                     guidance: "Configure a trusted NVIDIA Qwen NIM endpoint before retrying.",
                   }),
                 }),
@@ -161,12 +176,15 @@ export const defaultLayer = layer().pipe(Layer.provide(ImageGenerationProvider.d
 export const node = LayerNode.make(layer(), [ImageGenerationProvider.node])
 
 function attemptModels(provider: ImageGenerationProvider.Interface, request: PreparedRequest) {
-  if (!request.modelPool.length) return Effect.fail("model pool is empty")
+  if (!request.modelPool.length)
+    return Effect.fail({ reason: "model pool is empty", failures: [], attempts: 0 } satisfies AttemptFailureSummary)
   return Effect.gen(function* () {
-    const failures: string[] = []
+    const failures: AttemptFailure[] = []
     let totalAttempts = 0
     for (const candidate of request.modelPool) {
+      let modelAttempts = 0
       for (const attempt of [1, 2]) {
+        modelAttempts = attempt
         totalAttempts++
         const result = yield* Effect.result(
           provider.generate({
@@ -179,12 +197,38 @@ function attemptModels(provider: ImageGenerationProvider.Interface, request: Pre
           }),
         )
         if (result._tag === "Success") return { output: result.success, ...candidate, attempts: totalAttempts }
-        failures.push(`${candidate.provider}/${candidate.model}: ${result.failure.reason}`)
+        failures.push({
+          provider: result.failure.provider,
+          model: result.failure.model,
+          status: result.failure.status,
+          attempts: modelAttempts,
+          retryable: result.failure.retryable,
+          reason: result.failure.reason,
+        })
         if (!result.failure.retryable) break
       }
     }
-    return yield* Effect.fail(failures.join("; "))
+    return yield* Effect.fail({
+      reason: failures.map((failure) => `${failure.provider}/${failure.model}: ${failure.reason}`).join("; "),
+      failures,
+      attempts: totalAttempts,
+    } satisfies AttemptFailureSummary)
   })
+}
+
+type AttemptFailure = {
+  provider: string
+  model: string
+  status?: number
+  attempts: number
+  retryable: boolean
+  reason: string
+}
+
+type AttemptFailureSummary = {
+  reason: string
+  failures: ReadonlyArray<AttemptFailure>
+  attempts: number
 }
 
 function sanitize(value: string) {

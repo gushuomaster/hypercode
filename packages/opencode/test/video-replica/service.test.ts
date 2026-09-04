@@ -3,6 +3,7 @@ import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { createVideoReplicaService, APPROVAL_PHRASE, type SkillBridgeLike } from "@/video-replica/service"
+import { ImageGenerationService } from "@/image-generation/service"
 
 async function makeProject() {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "hypercode-video-replica-"))
@@ -124,6 +125,63 @@ describe("VideoReplica workflow service", () => {
     const state = JSON.parse(await fs.readFile(path.join(outputDirectory, "project-state.json"), "utf8"))
     expect(state.hypercode.pending_paid_model_confirmations).toEqual(["openai/gpt-image-1-mini"])
     expect(state.hypercode.image_pool).toEqual(["nvidia/free-image"])
+  })
+
+  it("asks for paid confirmation after every free image model fails", async () => {
+    const project = await makeProject()
+    const outputDirectory = path.join(project.directory, "output")
+    const service = createVideoReplicaService({
+      platform: "win32",
+      bridge: bridgeFor({ segments: [{ segment_id: "seg-1" }], duration_seconds: 4 }),
+      modelPool: {
+        createdAt: new Date().toISOString(),
+        orchestration: [],
+        image: [{ providerID: "nvidia", modelID: "free-image", kind: "image", requiresConfirmation: false }],
+        paidImage: [{ providerID: "openai", modelID: "gpt-image-1-mini", kind: "image", requiresConfirmation: true }],
+      },
+      generateImage: async () => {
+        throw new Error("provider returned HTTP 429")
+      },
+    })
+    const run = service.start({ referenceVideo: project.referenceVideo, productImages: [project.productImage], outputDirectory })
+    await run.nextQuestion()
+    await run.approveStoryboard(["seg-1"], APPROVAL_PHRASE)
+    const result = await run.generate()
+    expect(result.failed).toEqual([{ segmentID: "seg-1", reason: "provider returned HTTP 429" }])
+    const state = JSON.parse(await fs.readFile(path.join(outputDirectory, "project-state.json"), "utf8"))
+    expect(state.hypercode.image_pool).toEqual([])
+    expect((await run.nextQuestion()).questions[0]?.presentation?.tone).toBe("payment")
+  })
+
+  it("persists provider status and retry details for exhausted image models", async () => {
+    const project = await makeProject()
+    const outputDirectory = path.join(project.directory, "output")
+    const service = createVideoReplicaService({
+      platform: "win32",
+      bridge: bridgeFor({ segments: [{ segment_id: "seg-1" }], duration_seconds: 4 }),
+      modelPool: {
+        createdAt: new Date().toISOString(),
+        orchestration: [],
+        image: [{ providerID: "nvidia", modelID: "free-image", kind: "image", requiresConfirmation: false }],
+        paidImage: [],
+      },
+      generateImage: async () => {
+        throw new ImageGenerationService.GenerationError({
+          segmentID: "seg-1",
+          reason: "nvidia/free-image: provider returned HTTP 429",
+          attempts: 2,
+          failures: [{ provider: "nvidia", model: "free-image", status: 429, attempts: 2, retryable: true, reason: "provider returned HTTP 429" }],
+        })
+      },
+    })
+    const run = service.start({ referenceVideo: project.referenceVideo, productImages: [project.productImage], outputDirectory })
+    await run.nextQuestion()
+    await run.approveStoryboard(["seg-1"], APPROVAL_PHRASE)
+    await run.generate()
+    const state = JSON.parse(await fs.readFile(path.join(outputDirectory, "project-state.json"), "utf8"))
+    expect(state.hypercode.provider_attempts).toEqual([
+      expect.objectContaining({ provider: "nvidia", model: "free-image", status: "failed", error_status: 429, attempts: 2, error_reason: "provider returned HTTP 429" }),
+    ])
   })
 
   it("requires an explicit exact storyboard approval answer", async () => {

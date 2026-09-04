@@ -20,6 +20,7 @@ export type ProviderAttempt = {
   cost_amount?: number
   cost_currency?: string
   error_status?: number
+  error_reason?: string
 }
 
 export type GenerationWave = {
@@ -41,6 +42,7 @@ export type HypercodeState = {
   chapter: number
   orchestration_pool: ReadonlyArray<string>
   image_pool: ReadonlyArray<string>
+  image_failed_models?: ReadonlyArray<string>
   paid_image_pool?: ReadonlyArray<string>
   approved_models: ReadonlyArray<string>
   checkpoint: Checkpoint
@@ -65,6 +67,7 @@ export const HypercodeStateSchema = Schema.Struct({
   chapter: Schema.Number,
   orchestration_pool: Schema.Array(Schema.String),
   image_pool: Schema.Array(Schema.String),
+  image_failed_models: Schema.optional(Schema.Array(Schema.String)),
   paid_image_pool: Schema.optional(Schema.Array(Schema.String)),
   approved_models: Schema.Array(Schema.String),
   checkpoint: CheckpointSchema,
@@ -88,6 +91,7 @@ export const HypercodeStateSchema = Schema.Struct({
       cost_amount: Schema.optional(Schema.Number),
       cost_currency: Schema.optional(Schema.String),
       error_status: Schema.optional(Schema.Number),
+      error_reason: Schema.optional(Schema.String),
     }),
   ),
   generation_waves: Schema.optional(
@@ -187,6 +191,7 @@ export function decodeHypercodeState(value: unknown): HypercodeState {
     chapter: value.chapter,
     orchestration_pool: [...value.orchestration_pool],
     image_pool: [...value.image_pool],
+    ...(value.image_failed_models && { image_failed_models: [...value.image_failed_models] }),
     ...(value.paid_image_pool && { paid_image_pool: [...value.paid_image_pool] }),
     approved_models: [...value.approved_models],
     checkpoint: {

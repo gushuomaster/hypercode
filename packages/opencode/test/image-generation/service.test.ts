@@ -174,7 +174,10 @@ describe("image generation service", () => {
     })
 
     try {
-      await expect(run(project.path, server.url.toString(), request("generated"))).rejects.toThrow("HTTP 409")
+      await expect(run(project.path, server.url.toString(), request("generated"))).rejects.toMatchObject({
+        failures: [{ provider: "openai", model: "gpt-image-1-mini", status: 409, attempts: 1, reason: "provider returned HTTP 409" }],
+        attempts: 1,
+      })
       expect(calls).toBe(1)
     } finally {
       server.stop(true)
