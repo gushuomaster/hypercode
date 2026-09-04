@@ -510,6 +510,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     if (answer !== "确认使用") throw new ApprovalRequiredError(workflowID)
     record.hypercode = { ...state, approved_models: [...new Set([...state.approved_models, ...(state.pending_model_confirmations ?? [])])], pending_model_confirmations: [] }
     await persist(record)
+    record.prepared = false
     return runView(record)
   }
 
