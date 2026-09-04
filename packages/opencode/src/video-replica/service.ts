@@ -6,6 +6,7 @@ import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { ModelsDev } from "@opencode-ai/core/models-dev"
 import { Skill } from "@/skill"
 import { Question } from "@/question"
+import { Auth } from "@/auth"
 import { SessionID } from "@/session/schema"
 import { InstanceRef } from "@/effect/instance-ref"
 import type { InstanceContext } from "@/project/instance-context"
@@ -18,6 +19,7 @@ import {
   APPROVAL_PHRASE,
   type Chapter,
   type ExternalProjectState,
+  type GenerationWave,
   type HypercodeState,
   type ImageDecision,
   type ProviderAttempt,
@@ -50,7 +52,7 @@ import {
 } from "./skill-bridge"
 
 export { APPROVAL_PHRASE }
-export type { Chapter, HypercodeState, ImageDecision, ProviderAttempt, Segment, StoryboardQuestion, WorkflowInput }
+export type { Chapter, GenerationWave, HypercodeState, ImageDecision, ProviderAttempt, Segment, StoryboardQuestion, WorkflowInput }
 export type { SkillBridgeLike }
 
 export type GeneratedImage = {
@@ -792,8 +794,32 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     const concurrency = Number.isFinite(configuredConcurrency)
       ? Math.max(1, Math.min(4, Math.floor(configuredConcurrency)))
       : 4
-    for (let index = 0; index < pending.length; index += concurrency) {
-      await Promise.all(pending.slice(index, index + concurrency).map(processSegment))
+    const previousWaves = latestGenerationWaves(state)
+    for (let index = 0, wave = previousWaves.length + 1; index < pending.length; index += concurrency, wave++) {
+      const waveSegments = pending.slice(index, index + concurrency)
+      const generatedBefore = generated.length
+      const failedBefore = failed.length
+      const started = performance.now()
+      await Promise.all(waveSegments.map(processSegment))
+      const waveImages = generated.slice(generatedBefore)
+      const knownCosts = waveImages.filter((image) => image.cost?.known && image.cost.amount !== undefined)
+      const waveReport: GenerationWave = {
+        wave,
+        concurrency,
+        segment_ids: [...waveSegments],
+        generated: generated.length - generatedBefore,
+        failed: failed.length - failedBefore,
+        model_switches: waveImages.filter((image) => (image.attempts ?? 1) > 2).length,
+        elapsed_ms: Math.round(performance.now() - started),
+        cost_known: knownCosts.length === waveImages.length && waveImages.length > 0,
+        ...(knownCosts.length > 0 && { cost_amount: knownCosts.reduce((total, image) => total + (image.cost?.amount ?? 0), 0) }),
+        ...(knownCosts.find((image) => image.cost?.currency)?.cost?.currency && {
+          cost_currency: knownCosts.find((image) => image.cost?.currency)?.cost?.currency,
+        }),
+      }
+      const afterWave = requireHypercode(record)
+      record.hypercode = { ...afterWave, generation_waves: [...(afterWave.generation_waves ?? previousWaves), waveReport] }
+      await persist(record)
     }
     const latest = requireHypercode(record)
     const allIDs = allSegmentIDs(record, latest)
@@ -1390,6 +1416,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       },
       approvals: [],
       provider_attempts: [],
+      generation_waves: [],
       pending_model_confirmations: pending,
     }
   }
@@ -1403,6 +1430,7 @@ export const layer = Layer.effect(
     const bridge = yield* SkillBridge.Service
     const image = yield* ImageGenerationService.Service
     const question = yield* Question.Service
+    const auth = yield* Effect.serviceOption(Auth.Service)
     const modelsDev = yield* Effect.serviceOption(ModelsDev.Service)
     const skillLocation =
       Option.isSome(skill) && instance
@@ -1416,7 +1444,17 @@ export const layer = Layer.effect(
           const catalog = await Effect.runPromise(modelsDev.value.get())
           return ModelPool.discover(catalog, {
             providers: ["nvidia", "openai"],
-            healthProbe: async (candidate) => Boolean(catalog[candidate.providerID]?.models[candidate.modelID]),
+            healthProbe: async (candidate) => {
+              const provider = catalog[candidate.providerID]
+              const model = provider?.models[candidate.modelID]
+              if (!provider || !model) return { healthy: false, reason: "model is missing from the current catalog" }
+              const configured = provider.env.some((name) => Boolean(process.env[name]?.trim()))
+              const authenticated = Option.isSome(auth)
+                ? Boolean(await Effect.runPromise(auth.value.get(candidate.providerID)).catch(() => undefined))
+                : false
+              if (!configured && !authenticated) return { healthy: false, reason: "provider credentials are not configured" }
+              return { healthy: true, reason: "catalog entry and provider credentials are available" }
+            },
           })
         }
       : undefined
@@ -1439,10 +1477,11 @@ export const defaultLayer = layer.pipe(
   Layer.provide(SkillBridge.defaultLayer),
   Layer.provide(ImageGenerationService.defaultLayer),
   Layer.provide(Question.defaultLayer),
+  Layer.provide(Auth.defaultLayer),
   Layer.provide(ModelsDev.defaultLayer),
 )
 
-export const node = LayerNode.make(layer, [SkillBridge.node, ImageGenerationService.node, Question.node, Skill.node, ModelsDev.node])
+export const node = LayerNode.make(layer, [SkillBridge.node, ImageGenerationService.node, Question.node, Auth.node, Skill.node, ModelsDev.node])
 
 export async function readState(outputDirectory: string) {
   const directory = await ensureOutputDirectory(outputDirectory, { create: false })
@@ -1480,6 +1519,10 @@ function latestDecisionsBySegment(approvals: HypercodeState["approvals"]) {
   const latest = new Map<string, string>()
   for (const item of approvals) latest.set(item.segment_id, item.decision)
   return latest
+}
+
+function latestGenerationWaves(state: HypercodeState) {
+  return state.generation_waves?.map((item) => ({ ...item, segment_ids: [...item.segment_ids] })) ?? []
 }
 
 function allSegmentIDs(record: Pick<RecordState, "segments">, state?: HypercodeState) {

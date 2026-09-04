@@ -249,6 +249,30 @@ describe("VideoReplica workflow service", () => {
     ])
   })
 
+  it("persists generation wave reports with concurrency and cost metadata", async () => {
+    const project = await makeProject()
+    const outputDirectory = path.join(project.directory, "output")
+    const service = createVideoReplicaService({
+      platform: "win32",
+      generationConcurrency: 1,
+      bridge: bridgeFor({ segments: [{ segment_id: "seg-1" }, { segment_id: "seg-2" }], duration_seconds: 4 }),
+      generateImage: async (input) => {
+        const filePath = path.join(input.outputDirectory, `${input.segmentID}-${crypto.randomUUID()}.png`)
+        await fs.writeFile(filePath, "image")
+        return { segmentID: input.segmentID, filePath, provider: "nvidia", model: "qwen/qwen-image-edit", cost: { known: true, amount: 0, currency: "USD" } }
+      },
+    })
+    const run = service.start({ referenceVideo: project.referenceVideo, productImages: [project.productImage], outputDirectory })
+    await run.nextQuestion()
+    await run.approveStoryboard(["seg-1", "seg-2"], APPROVAL_PHRASE)
+    await run.generate()
+    const state = JSON.parse(await fs.readFile(path.join(outputDirectory, "project-state.json"), "utf8"))
+    expect(state.hypercode.generation_waves).toMatchObject([
+      { wave: 1, concurrency: 1, segment_ids: ["seg-1"], generated: 1, failed: 0, cost_known: true, cost_amount: 0 },
+      { wave: 2, concurrency: 1, segment_ids: ["seg-2"], generated: 1, failed: 0, cost_known: true, cost_amount: 0 },
+    ])
+  })
+
   it("resumes from a persisted workflow index in a fresh service instance", async () => {
     const project = await makeProject()
     const outputRoot = project.directory

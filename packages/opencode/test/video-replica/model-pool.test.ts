@@ -10,6 +10,7 @@ import {
   type ModelPoolConfig,
 } from "@/video-replica/model-pool"
 import type { ModelsDev } from "@opencode-ai/core/models-dev"
+import { checkHealth } from "@/video-replica/model-health"
 
 const model = (id: string, overrides: Record<string, unknown> = {}) =>
   ({
@@ -177,5 +178,11 @@ describe("video replica model pool", () => {
       paidConfirmationRequired: true,
     })
     expect(exhausted("image", [], false).paidConfirmationRequired).toBe(true)
+  })
+
+  it("preserves structured health probe evidence", async () => {
+    await expect(
+      checkHealth([{ providerID: "nvidia", modelID: "one" }], async () => ({ healthy: false, reason: "credential rejected" })),
+    ).resolves.toEqual([{ providerID: "nvidia", modelID: "one", healthy: false, reason: "credential rejected" }])
   })
 })

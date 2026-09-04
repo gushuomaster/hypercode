@@ -22,6 +22,19 @@ export type ProviderAttempt = {
   error_status?: number
 }
 
+export type GenerationWave = {
+  wave: number
+  concurrency: number
+  segment_ids: ReadonlyArray<string>
+  generated: number
+  failed: number
+  model_switches: number
+  elapsed_ms: number
+  cost_known: boolean
+  cost_amount?: number
+  cost_currency?: string
+}
+
 export type HypercodeState = {
   schema_version: 1
   workflow_id: string
@@ -32,6 +45,7 @@ export type HypercodeState = {
   checkpoint: Checkpoint
   approvals: ReadonlyArray<{ segment_id: string; decision: string; at: string }>
   provider_attempts: ReadonlyArray<ProviderAttempt>
+  generation_waves?: ReadonlyArray<GenerationWave>
   quality_checks?: ReadonlyArray<{ segment_id: string; status: "accepted" | "rejected" | "uncertain"; reason?: string; attempt: number; at: string }>
   pending_model_confirmations?: ReadonlyArray<string>
   metrics?: Record<string, number>
@@ -72,6 +86,22 @@ export const HypercodeStateSchema = Schema.Struct({
       cost_currency: Schema.optional(Schema.String),
       error_status: Schema.optional(Schema.Number),
     }),
+  ),
+  generation_waves: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        wave: Schema.Number,
+        concurrency: Schema.Number,
+        segment_ids: Schema.Array(Schema.String),
+        generated: Schema.Number,
+        failed: Schema.Number,
+        model_switches: Schema.Number,
+        elapsed_ms: Schema.Number,
+        cost_known: Schema.Boolean,
+        cost_amount: Schema.optional(Schema.Number),
+        cost_currency: Schema.optional(Schema.String),
+      }),
+    ),
   ),
   quality_checks: Schema.optional(
     Schema.Array(
@@ -161,6 +191,9 @@ export function decodeHypercodeState(value: unknown): HypercodeState {
     },
     approvals: value.approvals.map((item) => ({ ...item })),
     provider_attempts: value.provider_attempts.map((item) => ({ ...item })),
+    ...(value.generation_waves && {
+      generation_waves: value.generation_waves.map((item) => ({ ...item, segment_ids: [...item.segment_ids] })),
+    }),
     ...(value.quality_checks && { quality_checks: value.quality_checks.map((item) => ({ ...item })) }),
     ...(value.pending_model_confirmations && { pending_model_confirmations: [...value.pending_model_confirmations] }),
     ...(value.metrics && { metrics: { ...value.metrics } }),
