@@ -88,6 +88,23 @@ describe("VideoReplica workflow service", () => {
     await expect(run.nextQuestion()).rejects.toThrow("configure a semantic segmenter")
   })
 
+  it("requires confirmation for an unapproved orchestration model", async () => {
+    const project = await makeProject()
+    const service = createVideoReplicaService({
+      platform: "win32",
+      bridge: bridgeFor({ segments: [{ segment_id: "seg-1" }], duration_seconds: 4 }),
+      modelPool: {
+        createdAt: new Date().toISOString(),
+        orchestration: [{ providerID: "nvidia", modelID: "free-orchestrator", kind: "orchestration", requiresConfirmation: true }],
+        image: [],
+      },
+    })
+    const run = service.start({ referenceVideo: project.referenceVideo, productImages: [project.productImage], outputDirectory: path.join(project.directory, "output") })
+    const question = await run.nextQuestion()
+    expect(question.questions[0]?.header).toContain("模型")
+    await expect(run.generate()).rejects.toThrow("free-orchestrator")
+  })
+
   it("requires an explicit exact storyboard approval answer", async () => {
     const project = await makeProject()
     const service = createVideoReplicaService({
