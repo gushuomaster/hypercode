@@ -520,12 +520,13 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     const state = requireHypercode(record)
     if (answer !== "确认使用") throw new ApprovalRequiredError(workflowID)
     const paid = state.pending_paid_model_confirmations ?? []
+    const confirmPaid = state.image_pool.length === 0
     record.hypercode = {
       ...state,
-      approved_models: [...new Set([...state.approved_models, ...(state.pending_model_confirmations ?? []), ...paid])],
-      image_pool: [...new Set([...state.image_pool, ...(state.paid_image_pool ?? [])])],
+      approved_models: [...new Set([...state.approved_models, ...(state.pending_model_confirmations ?? []), ...(confirmPaid ? paid : [])])],
+      image_pool: [...new Set([...state.image_pool, ...(confirmPaid ? state.paid_image_pool ?? [] : [])])],
       pending_model_confirmations: [],
-      pending_paid_model_confirmations: [],
+      pending_paid_model_confirmations: confirmPaid ? [] : paid,
     }
     await persist(record)
     record.prepared = false

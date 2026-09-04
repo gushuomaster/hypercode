@@ -105,6 +105,27 @@ describe("VideoReplica workflow service", () => {
     await expect(run.generate()).rejects.toThrow("free-orchestrator")
   })
 
+  it("does not approve paid image fallback while confirming free models", async () => {
+    const project = await makeProject()
+    const outputDirectory = path.join(project.directory, "output")
+    const service = createVideoReplicaService({
+      platform: "win32",
+      bridge: bridgeFor({ segments: [{ segment_id: "seg-1" }], duration_seconds: 4 }),
+      modelPool: {
+        createdAt: new Date().toISOString(),
+        orchestration: [],
+        image: [{ providerID: "nvidia", modelID: "free-image", kind: "image", requiresConfirmation: true }],
+        paidImage: [{ providerID: "openai", modelID: "gpt-image-1-mini", kind: "image", requiresConfirmation: true }],
+      },
+    })
+    const run = service.start({ referenceVideo: project.referenceVideo, productImages: [project.productImage], outputDirectory })
+    const modelQuestion = await run.nextQuestion()
+    await run.confirmModels(modelQuestion.questions[0]!.options[0]!.label)
+    const state = JSON.parse(await fs.readFile(path.join(outputDirectory, "project-state.json"), "utf8"))
+    expect(state.hypercode.pending_paid_model_confirmations).toEqual(["openai/gpt-image-1-mini"])
+    expect(state.hypercode.image_pool).toEqual(["nvidia/free-image"])
+  })
+
   it("requires an explicit exact storyboard approval answer", async () => {
     const project = await makeProject()
     const service = createVideoReplicaService({
