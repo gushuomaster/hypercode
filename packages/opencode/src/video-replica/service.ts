@@ -81,6 +81,8 @@ export type GenerateImageInput = {
   productImages: ReadonlyArray<string>
   outputDirectory: string
   modelPool: ReadonlyArray<{ provider: string; model: string }>
+  orchestrationPool?: ReadonlyArray<{ provider: string; model: string }>
+  sessionID?: string
 }
 
 export type QualityInput = GenerateImageInput & { image: GeneratedImage }
@@ -765,6 +767,8 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
         productImages: record.input.productImages,
         outputDirectory: record.outputDirectory,
         modelPool: imagePool(record),
+        orchestrationPool: orchestrationPool(record),
+        sessionID: record.input.sessionID,
       }
       let acceptedImage: GeneratedImage | undefined
       let failureReason = "image generation failed"
@@ -1417,6 +1421,17 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     }).filter((candidate) => !pending.has(`${candidate.provider}/${candidate.model}`))
   }
 
+  function orchestrationPool(record: RecordState) {
+    const ids = record.hypercode?.orchestration_pool ?? []
+    const pending = new Set(record.hypercode?.pending_model_confirmations ?? [])
+    return ids
+      .map((id) => {
+        const slash = id.indexOf("/")
+        return { provider: slash > 0 ? id.slice(0, slash) : id, model: slash > 0 ? id.slice(slash + 1) : id }
+      })
+      .filter((candidate) => !pending.has(`${candidate.provider}/${candidate.model}`))
+  }
+
   function createHypercode(record: RecordState, snapshot?: ModelPool.Snapshot): HypercodeState {
     const orchestration = snapshot?.orchestration.map((item) => `${item.providerID}/${item.modelID}`) ?? []
     const image = snapshot?.image.map((item) => `${item.providerID}/${item.modelID}`) ?? []
@@ -1530,6 +1545,55 @@ export const layer = Layer.effect(
           throw new WorkflowError(`All confirmed orchestration models failed: ${failures.join("; ")}`, input.workflowID)
         }
       : undefined
+    const qualityCheck = Option.isSome(llm) && Option.isSome(provider) && Option.isSome(agents)
+      ? async (input: QualityInput): Promise<QualityResult> => {
+          if (!input.sessionID || !input.orchestrationPool?.length || !input.image.filePath)
+            return { status: "uncertain", reason: "No confirmed quality model or generated image is available" }
+          const generated = await readReviewImage(input.image.filePath)
+          const reference = await readReviewImage(input.productImages[0])
+          if (!generated || !reference) return { status: "uncertain", reason: "QC reference image could not be read" }
+          const review = async (candidate: { provider: string; model: string }) => {
+            const model = await Effect.runPromise(provider.value.getModel(ProviderV2.ID.make(candidate.provider), ModelV2.ID.make(candidate.model)))
+            const agent = await Effect.runPromise(agents.value.defaultInfo())
+            const sessionID = SessionID.make(input.sessionID!)
+            const text = await Effect.runPromise(
+              llm.value
+                .stream({
+                  agent,
+                  user: {
+                    id: MessageID.ascending(),
+                    sessionID,
+                    role: "user",
+                    time: { created: Date.now() },
+                    agent: agent.name,
+                    model: { providerID: model.providerID, modelID: model.id },
+                  },
+                  system: ["Return only JSON: {status: accepted|rejected|uncertain, reason: string}."],
+                  tools: {},
+                  model,
+                  sessionID,
+                  retries: 1,
+                  messages: [{
+                    role: "user",
+                    content: [
+                      { type: "text", text: "Perform strict first-frame QC. Reject visible product identity, logo, shape, interface, material, composition, watermark, subtitle, duplicate-product, or rendering artifact mismatches. Use uncertain only when evidence is insufficient." },
+                      { type: "text", text: `Segment: ${input.segmentID}\nPrompt: ${promptFor(input.segment)}` },
+                      { type: "text", text: "Product reference image:" },
+                      { type: "image", image: reference.dataUrl },
+                      { type: "text", text: "Generated first frame:" },
+                      { type: "image", image: generated.dataUrl },
+                    ],
+                  }],
+                })
+                .pipe(Stream.filter(LLMEvent.is.textDelta), Stream.map((event) => event.text), Stream.mkString),
+            )
+            return parseQualityOutput(text)
+          }
+          const first = await review(input.orchestrationPool[0]!)
+          if (first.status !== "uncertain" || input.orchestrationPool.length < 2) return first
+          return review(input.orchestrationPool[1]!)
+        }
+      : undefined
     return Service.of(
       createVideoReplicaService({
         bridge: skillLocation ? undefined : bridge,
@@ -1538,6 +1602,7 @@ export const layer = Layer.effect(
         instance,
         modelPool,
         semanticSegmenter,
+        qualityCheck,
         skillLocation,
         platform: process.platform,
         outputRoots: [process.cwd()],
@@ -1664,6 +1729,33 @@ function parseSemanticSegmentOutput(text: string) {
   const segments = readSegments({ segments: value })
   if (!segments.length) throw new Error("orchestration output contained no semantic segments")
   return segments
+}
+
+function parseQualityOutput(text: string): QualityResult {
+  const normalized = text.replace(/```(?:json)?/gi, "").replace(/```/g, "").trim()
+  const start = normalized.indexOf("{")
+  const end = normalized.lastIndexOf("}")
+  if (start < 0 || end <= start) throw new Error("QC output did not contain a JSON object")
+  const value = JSON.parse(normalized.slice(start, end + 1)) as Record<string, unknown>
+  const status = value.status
+  if (status !== "accepted" && status !== "rejected" && status !== "uncertain") throw new Error("QC output contained an invalid status")
+  return { status, ...(typeof value.reason === "string" && { reason: value.reason.slice(0, 500) }) }
+}
+
+async function readReviewImage(filePath: string | undefined) {
+  if (!filePath) return undefined
+  const bytes = await fs.readFile(filePath).catch(() => undefined)
+  if (!bytes) return undefined
+  const mimeType = reviewImageMime(bytes)
+  if (!mimeType) return undefined
+  return { dataUrl: `data:${mimeType};base64,${bytes.toString("base64")}` }
+}
+
+function reviewImageMime(bytes: Uint8Array) {
+  if (bytes.length >= 8 && Buffer.from(bytes.subarray(0, 8)).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return "image/png"
+  if (bytes[0] === 255 && bytes[1] === 216 && bytes.at(-2) === 255 && bytes.at(-1) === 217) return "image/jpeg"
+  if (Buffer.from(bytes.subarray(0, 4)).toString("ascii") === "RIFF" && Buffer.from(bytes.subarray(8, 12)).toString("ascii") === "WEBP") return "image/webp"
+  return undefined
 }
 
 function inferInput(state: ExternalProjectState, outputDirectory: string): WorkflowInput {
