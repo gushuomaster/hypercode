@@ -84,6 +84,7 @@ export type SemanticSegmentationInput = {
   referenceVideo: string
   manifest: Readonly<Record<string, unknown>>
   chapters: ReadonlyArray<Chapter>
+  models: ReadonlyArray<{ provider: string; model: string }>
 }
 
 export type VideoReplicaOptions = {
@@ -1007,6 +1008,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       if (!record.chapters.length) record.chapters = duration ? splitChapters(duration) : [{ chapter: 1, startSeconds: 0, endSeconds: 0, durationSeconds: 0 }]
       record.segments = readSegments(record.state)
       if (!record.segments.length) record.segments = readSegments(record.manifest)
+      const modelSnapshot = await readModelSnapshot()
       if (!record.segments.length && options.semanticSegmenter) {
         const started = performance.now()
         const proposed = await options.semanticSegmenter({
@@ -1014,6 +1016,9 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
           referenceVideo,
           manifest: record.manifest,
           chapters: record.chapters,
+          models: modelSnapshot?.orchestration
+            .filter((candidate) => !candidate.requiresConfirmation)
+            .map((candidate) => ({ provider: candidate.providerID, model: candidate.modelID })) ?? [],
         })
         trackMetric(record, "other_agent_compute_seconds", started)
         record.segments = readSegments({ segments: proposed })
@@ -1038,7 +1043,6 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       validateSemanticSegments(record.segments, record.workflowID)
       await prepareVisualAssetMapping(record, bridge, stateFile)
       if (record.segments.length) record.state = { ...record.state, segments: record.segments }
-      const modelSnapshot = await readModelSnapshot()
       const current = record.state.hypercode
       if (current !== undefined && !isHypercodeLike(current))
         throw new StateError("project-state.json contains an invalid hypercode checkpoint", record.workflowID)
@@ -1399,7 +1403,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     const orchestration = snapshot?.orchestration.map((item) => `${item.providerID}/${item.modelID}`) ?? []
     const image = snapshot?.image.map((item) => `${item.providerID}/${item.modelID}`) ?? []
     const approved = new Set(options.approvedModels ?? [])
-    const pending = snapshot?.image
+    const pending = [...(snapshot?.orchestration ?? []), ...(snapshot?.image ?? [])]
       .filter((item) => item.requiresConfirmation && !approved.has(`${item.providerID}/${item.modelID}`) && !approved.has(item.modelID))
       .map((item) => `${item.providerID}/${item.modelID}`) ?? []
     return {
