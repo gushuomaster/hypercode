@@ -2,12 +2,19 @@ import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { Context, Effect, Layer, Option } from "effect"
+import * as Stream from "effect/Stream"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { ModelsDev } from "@opencode-ai/core/models-dev"
+import { ProviderV2 } from "@opencode-ai/core/provider"
+import { ModelV2 } from "@opencode-ai/core/model"
 import { Skill } from "@/skill"
 import { Question } from "@/question"
 import { Auth } from "@/auth"
-import { SessionID } from "@/session/schema"
+import { Agent } from "@/agent/agent"
+import { Provider } from "@/provider/provider"
+import { LLM } from "@/session/llm"
+import { LLMEvent } from "@opencode-ai/llm"
+import { MessageID, SessionID } from "@/session/schema"
 import { InstanceRef } from "@/effect/instance-ref"
 import type { InstanceContext } from "@/project/instance-context"
 import { ImageGenerationService } from "@/image-generation/service"
@@ -81,6 +88,7 @@ export type QualityResult = { status: "accepted" | "rejected" | "uncertain"; rea
 
 export type SemanticSegmentationInput = {
   workflowID: string
+  sessionID?: string
   referenceVideo: string
   manifest: Readonly<Record<string, unknown>>
   chapters: ReadonlyArray<Chapter>
@@ -1010,15 +1018,30 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       record.segments = readSegments(record.state)
       if (!record.segments.length) record.segments = readSegments(record.manifest)
       const modelSnapshot = await readModelSnapshot()
+      const current = record.state.hypercode
+      if (current !== undefined && !isHypercodeLike(current))
+        throw new StateError("project-state.json contains an invalid hypercode checkpoint", record.workflowID)
+      if (current && current.workflow_id !== record.workflowID)
+        throw new StateError("project-state.json belongs to a different workflow", record.workflowID)
+      record.hypercode = current ? decodeHypercodeState(current) : createHypercode(record, modelSnapshot)
+      if (!record.segments.length && record.hypercode.pending_model_confirmations?.length) {
+        syncMetrics(record)
+        record.hypercode = { ...record.hypercode, quality_checks: record.qualityChecks }
+        await persist(record)
+        record.prepared = true
+        return
+      }
       if (!record.segments.length && options.semanticSegmenter) {
         const started = performance.now()
+        const approved = new Set(record.hypercode.approved_models)
         const proposed = await options.semanticSegmenter({
           workflowID: record.workflowID,
+          sessionID: record.input.sessionID,
           referenceVideo,
           manifest: record.manifest,
           chapters: record.chapters,
           models: modelSnapshot?.orchestration
-            .filter((candidate) => !candidate.requiresConfirmation)
+            .filter((candidate) => !candidate.requiresConfirmation || approved.has(`${candidate.providerID}/${candidate.modelID}`) || approved.has(candidate.modelID))
             .map((candidate) => ({ provider: candidate.providerID, model: candidate.modelID })) ?? [],
         })
         trackMetric(record, "other_agent_compute_seconds", started)
@@ -1044,12 +1067,6 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       validateSemanticSegments(record.segments, record.workflowID)
       await prepareVisualAssetMapping(record, bridge, stateFile)
       if (record.segments.length) record.state = { ...record.state, segments: record.segments }
-      const current = record.state.hypercode
-      if (current !== undefined && !isHypercodeLike(current))
-        throw new StateError("project-state.json contains an invalid hypercode checkpoint", record.workflowID)
-      if (current && current.workflow_id !== record.workflowID)
-        throw new StateError("project-state.json belongs to a different workflow", record.workflowID)
-      record.hypercode = current ? decodeHypercodeState(current) : createHypercode(record, modelSnapshot)
       syncMetrics(record)
       record.hypercode = { ...record.hypercode, quality_checks: record.qualityChecks }
       const visualState = readVisualAssets(record.state)
@@ -1436,6 +1453,9 @@ export const layer = Layer.effect(
     const image = yield* ImageGenerationService.Service
     const question = yield* Question.Service
     const auth = yield* Effect.serviceOption(Auth.Service)
+    const llm = yield* Effect.serviceOption(LLM.Service)
+    const provider = yield* Effect.serviceOption(Provider.Service)
+    const agents = yield* Effect.serviceOption(Agent.Service)
     const modelsDev = yield* Effect.serviceOption(ModelsDev.Service)
     const skillLocation =
       Option.isSome(skill) && instance
@@ -1463,6 +1483,53 @@ export const layer = Layer.effect(
           })
         }
       : undefined
+    const semanticSegmenter = Option.isSome(llm) && Option.isSome(provider) && Option.isSome(agents)
+      ? async (input: SemanticSegmentationInput) => {
+          if (!input.sessionID) throw new WorkflowError("Semantic orchestration requires a session context", input.workflowID)
+          if (!input.models.length) throw new WorkflowError("No confirmed orchestration model is available", input.workflowID)
+          const failures: string[] = []
+          for (const candidate of input.models) {
+            try {
+              const model = await Effect.runPromise(provider.value.getModel(ProviderV2.ID.make(candidate.provider), ModelV2.ID.make(candidate.model)))
+              const agent = await Effect.runPromise(agents.value.defaultInfo())
+              const sessionID = SessionID.make(input.sessionID)
+              const text = await Effect.runPromise(
+                llm.value
+                  .stream({
+                    agent,
+                    user: {
+                      id: MessageID.ascending(),
+                      sessionID,
+                      role: "user",
+                      time: { created: Date.now() },
+                      agent: agent.name,
+                      model: { providerID: model.providerID, modelID: model.id },
+                    },
+                    system: ["Return only a JSON array of semantic video segments. Do not include markdown fences."],
+                    tools: {},
+                    model,
+                    sessionID,
+                    retries: 1,
+                    messages: [{
+                      role: "user",
+                      content: [
+                        "Analyze the visual evidence and produce dynamic semantic segments. Each segment must have a unique segment_id, source_start_seconds, source_end_seconds, action_state, visible_hands, scene, camera, props, and product_required. Do not invent evidence outside the manifest.",
+                        JSON.stringify({ manifest: input.manifest, chapters: input.chapters }),
+                      ].join("\n\n"),
+                    }],
+                  })
+                  .pipe(Stream.filter(LLMEvent.is.textDelta), Stream.map((event) => event.text), Stream.mkString),
+              )
+              const segments = parseSemanticSegmentOutput(text)
+              if (segments.length) return segments
+              failures.push(`${candidate.provider}/${candidate.model}: empty segment result`)
+            } catch (error) {
+              failures.push(`${candidate.provider}/${candidate.model}: ${safeReason(error)}`)
+            }
+          }
+          throw new WorkflowError(`All confirmed orchestration models failed: ${failures.join("; ")}`, input.workflowID)
+        }
+      : undefined
     return Service.of(
       createVideoReplicaService({
         bridge: skillLocation ? undefined : bridge,
@@ -1470,6 +1537,7 @@ export const layer = Layer.effect(
         question,
         instance,
         modelPool,
+        semanticSegmenter,
         skillLocation,
         platform: process.platform,
         outputRoots: [process.cwd()],
@@ -1585,6 +1653,17 @@ function validateSemanticSegments(segments: ReadonlyArray<Segment>, workflowID: 
     if (start !== undefined && end !== undefined && (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start))
       throw new StateError(`Video analysis returned invalid timing for semantic segment: ${segment.segment_id}`, workflowID)
   }
+}
+
+function parseSemanticSegmentOutput(text: string) {
+  const normalized = text.replace(/```(?:json)?/gi, "").replace(/```/g, "").trim()
+  const start = normalized.indexOf("[")
+  const end = normalized.lastIndexOf("]")
+  if (start < 0 || end <= start) throw new Error("orchestration output did not contain a JSON array")
+  const value = JSON.parse(normalized.slice(start, end + 1)) as unknown
+  const segments = readSegments({ segments: value })
+  if (!segments.length) throw new Error("orchestration output contained no semantic segments")
+  return segments
 }
 
 function inferInput(state: ExternalProjectState, outputDirectory: string): WorkflowInput {
