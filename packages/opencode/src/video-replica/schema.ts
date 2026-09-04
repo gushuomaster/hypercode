@@ -41,6 +41,7 @@ export type HypercodeState = {
   chapter: number
   orchestration_pool: ReadonlyArray<string>
   image_pool: ReadonlyArray<string>
+  paid_image_pool?: ReadonlyArray<string>
   approved_models: ReadonlyArray<string>
   checkpoint: Checkpoint
   approvals: ReadonlyArray<{ segment_id: string; decision: string; at: string }>
@@ -48,6 +49,7 @@ export type HypercodeState = {
   generation_waves?: ReadonlyArray<GenerationWave>
   quality_checks?: ReadonlyArray<{ segment_id: string; status: "accepted" | "rejected" | "uncertain"; reason?: string; attempt: number; at: string }>
   pending_model_confirmations?: ReadonlyArray<string>
+  pending_paid_model_confirmations?: ReadonlyArray<string>
   metrics?: Record<string, number>
 }
 
@@ -63,6 +65,7 @@ export const HypercodeStateSchema = Schema.Struct({
   chapter: Schema.Number,
   orchestration_pool: Schema.Array(Schema.String),
   image_pool: Schema.Array(Schema.String),
+  paid_image_pool: Schema.optional(Schema.Array(Schema.String)),
   approved_models: Schema.Array(Schema.String),
   checkpoint: CheckpointSchema,
   approvals: Schema.Array(
@@ -115,6 +118,7 @@ export const HypercodeStateSchema = Schema.Struct({
     ),
   ),
   pending_model_confirmations: Schema.optional(Schema.Array(Schema.String)),
+  pending_paid_model_confirmations: Schema.optional(Schema.Array(Schema.String)),
   metrics: Schema.optional(Schema.Record(Schema.String, Schema.Number)),
 })
 
@@ -183,6 +187,7 @@ export function decodeHypercodeState(value: unknown): HypercodeState {
     chapter: value.chapter,
     orchestration_pool: [...value.orchestration_pool],
     image_pool: [...value.image_pool],
+    ...(value.paid_image_pool && { paid_image_pool: [...value.paid_image_pool] }),
     approved_models: [...value.approved_models],
     checkpoint: {
       phase: value.checkpoint.phase,
@@ -196,6 +201,7 @@ export function decodeHypercodeState(value: unknown): HypercodeState {
     }),
     ...(value.quality_checks && { quality_checks: value.quality_checks.map((item) => ({ ...item })) }),
     ...(value.pending_model_confirmations && { pending_model_confirmations: [...value.pending_model_confirmations] }),
+    ...(value.pending_paid_model_confirmations && { pending_paid_model_confirmations: [...value.pending_paid_model_confirmations] }),
     ...(value.metrics && { metrics: { ...value.metrics } }),
   }
 }

@@ -12,6 +12,7 @@ export type Snapshot = {
   createdAt: string
   orchestration: ReadonlyArray<Candidate>
   image: ReadonlyArray<Candidate>
+  paidImage?: ReadonlyArray<Candidate>
 }
 
 export type ModelPoolConfig = {
@@ -25,6 +26,7 @@ export type ModelPoolConfig = {
   imageOrder?: ReadonlyArray<string>
   providerOrder?: ReadonlyArray<string>
   healthProbe?: HealthProbe
+  cost?: "free" | "paid" | "any"
 }
 
 export type Exhausted = {
@@ -62,7 +64,7 @@ export function discoverCandidates(
       Object.values(provider.models).flatMap((model) => {
         const status = model.status as string | undefined
         if (status !== undefined && status !== "active") return []
-        if (!isFreeCost(model.cost)) return []
+        if (config.cost !== "any" && (config.cost === "paid" ? isFreeCost(model.cost) : !isFreeCost(model.cost))) return []
         const input = model.modalities?.input
         const output = model.modalities?.output
         if (!input || !output) return []
@@ -109,14 +111,29 @@ export async function discover(
   return freeze({
     orchestration: healthy.filter((candidate) => candidate.kind === "orchestration"),
     image: healthy.filter((candidate) => candidate.kind === "image"),
+    paidImage: [],
   })
 }
 
-export function freeze(pool: Pick<Snapshot, "orchestration" | "image">): Snapshot {
+export async function discoverPaidImage(
+  catalog: Record<string, ModelsDev.Provider>,
+  config: ModelPoolConfig,
+): Promise<Snapshot> {
+  const candidates = discoverCandidates(catalog, { ...config, cost: "paid" }).filter((candidate) => candidate.kind === "image")
+  const health = await checkHealth(candidates, config.healthProbe)
+  return freeze({
+    orchestration: [],
+    image: [],
+    paidImage: candidates.filter((candidate) => health.find((item) => item.providerID === candidate.providerID && item.modelID === candidate.modelID)?.healthy),
+  })
+}
+
+export function freeze(pool: Pick<Snapshot, "orchestration" | "image" | "paidImage">): Snapshot {
   return {
     createdAt: new Date().toISOString(),
     orchestration: pool.orchestration.map((candidate) => ({ ...candidate })),
     image: pool.image.map((candidate) => ({ ...candidate })),
+    ...(pool.paidImage && { paidImage: pool.paidImage.map((candidate) => ({ ...candidate })) }),
   }
 }
 

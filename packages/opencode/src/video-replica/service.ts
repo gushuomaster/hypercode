@@ -20,6 +20,7 @@ import type { InstanceContext } from "@/project/instance-context"
 import { ImageGenerationService } from "@/image-generation/service"
 import { ImageGeneration } from "@/image-generation/schema"
 import { ModelPool } from "./model-pool"
+import type { HealthProbe } from "./model-health"
 import { matchAndPropose, type PlusImportProposal } from "./plus-import"
 import { calculateWorkflowMetrics, REQUIRED_METRICS, type WorkflowMetricName } from "./metrics"
 import {
@@ -518,7 +519,14 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     const record = requireWorkflow(workflowID)
     const state = requireHypercode(record)
     if (answer !== "确认使用") throw new ApprovalRequiredError(workflowID)
-    record.hypercode = { ...state, approved_models: [...new Set([...state.approved_models, ...(state.pending_model_confirmations ?? [])])], pending_model_confirmations: [] }
+    const paid = state.pending_paid_model_confirmations ?? []
+    record.hypercode = {
+      ...state,
+      approved_models: [...new Set([...state.approved_models, ...(state.pending_model_confirmations ?? []), ...paid])],
+      image_pool: [...new Set([...state.image_pool, ...(state.paid_image_pool ?? [])])],
+      pending_model_confirmations: [],
+      pending_paid_model_confirmations: [],
+    }
     await persist(record)
     record.prepared = false
     return runView(record)
@@ -746,6 +754,8 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
     const state = requireHypercode(record)
     if (state.pending_model_confirmations?.length)
       throw new WorkflowError(`首次使用以下图片模型需要用户确认：${state.pending_model_confirmations.join(", ")}`, record.workflowID)
+    if (!state.image_pool.length && state.pending_paid_model_confirmations?.length)
+      throw new WorkflowError(`Free image models are exhausted; paid model confirmation is required: ${state.pending_paid_model_confirmations.join(", ")}`, record.workflowID)
     if (state.checkpoint.phase !== "generation" && state.checkpoint.phase !== "qc")
       throw new ApprovalRequiredError(record.workflowID)
     const all = allSegmentIDs(record, state)
@@ -883,6 +893,20 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
             custom: false,
           },
         ],
+      }
+    }
+    if (!state.image_pool.length && state.pending_paid_model_confirmations?.length) {
+      return {
+        questions: [{
+          question: `Free image models are unavailable. Allow paid image models for this workflow? ${state.pending_paid_model_confirmations.join(", ")}`,
+          header: "纭鍥剧墖妯″瀷",
+          options: [
+            { label: "纭浣跨敤", description: "Confirm paid image generation and its provider charges." },
+            { label: "鍙栨秷", description: "Keep the workflow paused without paid generation." },
+          ],
+          custom: false,
+          presentation: { tone: "payment" as const, facts: [{ label: "Paid models", value: state.pending_paid_model_confirmations.join(", ") }] },
+        }],
       }
     }
     if (state.checkpoint.phase !== "approval") {
@@ -1435,6 +1459,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
   function createHypercode(record: RecordState, snapshot?: ModelPool.Snapshot): HypercodeState {
     const orchestration = snapshot?.orchestration.map((item) => `${item.providerID}/${item.modelID}`) ?? []
     const image = snapshot?.image.map((item) => `${item.providerID}/${item.modelID}`) ?? []
+    const paidImage = snapshot?.paidImage?.map((item) => `${item.providerID}/${item.modelID}`) ?? []
     const approved = new Set(options.approvedModels ?? [])
     const pending = [...(snapshot?.orchestration ?? []), ...(snapshot?.image ?? [])]
       .filter((item) => item.requiresConfirmation && !approved.has(`${item.providerID}/${item.modelID}`) && !approved.has(item.modelID))
@@ -1445,6 +1470,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       chapter: 1,
       orchestration_pool: orchestration,
       image_pool: image,
+      paid_image_pool: paidImage,
       approved_models: [...(options.approvedModels ?? [])],
       checkpoint: {
         phase: "approval",
@@ -1455,6 +1481,7 @@ export function createVideoReplicaService(options: VideoReplicaOptions = {}): In
       provider_attempts: [],
       generation_waves: [],
       pending_model_confirmations: pending,
+      pending_paid_model_confirmations: paidImage,
     }
   }
 }
@@ -1480,22 +1507,25 @@ export const layer = Layer.effect(
           )
         : undefined
     const modelPool = Option.isSome(modelsDev)
-      ? async () => {
+        ? async () => {
           const catalog = await Effect.runPromise(modelsDev.value.get())
-          return ModelPool.discover(catalog, {
+          const healthProbe: HealthProbe = async (candidate) => {
+            const provider = catalog[candidate.providerID]
+            const model = provider?.models[candidate.modelID]
+            if (!provider || !model) return { healthy: false, reason: "model is missing from the current catalog" }
+            const configured = provider.env.some((name) => Boolean(process.env[name]?.trim()))
+            const authenticated = Option.isSome(auth)
+              ? Boolean(await Effect.runPromise(auth.value.get(candidate.providerID)).catch(() => undefined))
+              : false
+            if (!configured && !authenticated) return { healthy: false, reason: "provider credentials are not configured" }
+            return { healthy: true, reason: "catalog entry and provider credentials are available" }
+          }
+          const config: ModelPool.ModelPoolConfig = {
             providers: ["nvidia", "openai"],
-            healthProbe: async (candidate) => {
-              const provider = catalog[candidate.providerID]
-              const model = provider?.models[candidate.modelID]
-              if (!provider || !model) return { healthy: false, reason: "model is missing from the current catalog" }
-              const configured = provider.env.some((name) => Boolean(process.env[name]?.trim()))
-              const authenticated = Option.isSome(auth)
-                ? Boolean(await Effect.runPromise(auth.value.get(candidate.providerID)).catch(() => undefined))
-                : false
-              if (!configured && !authenticated) return { healthy: false, reason: "provider credentials are not configured" }
-              return { healthy: true, reason: "catalog entry and provider credentials are available" }
-            },
-          })
+            healthProbe,
+          }
+          const [free, paid] = await Promise.all([ModelPool.discover(catalog, config), ModelPool.discoverPaidImage(catalog, config)])
+          return { ...free, paidImage: paid.paidImage }
         }
       : undefined
     const semanticSegmenter = Option.isSome(llm) && Option.isSome(provider) && Option.isSome(agents)
