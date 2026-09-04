@@ -10,7 +10,7 @@ import {
   type ModelPoolConfig,
 } from "@/video-replica/model-pool"
 import type { ModelsDev } from "@opencode-ai/core/models-dev"
-import { checkHealth } from "@/video-replica/model-health"
+import { checkHealth, probeEndpoint } from "@/video-replica/model-health"
 
 const model = (id: string, overrides: Record<string, unknown> = {}) =>
   ({
@@ -184,5 +184,25 @@ describe("video replica model pool", () => {
     await expect(
       checkHealth([{ providerID: "nvidia", modelID: "one" }], async () => ({ healthy: false, reason: "credential rejected" })),
     ).resolves.toEqual([{ providerID: "nvidia", modelID: "one", healthy: false, reason: "credential rejected" }])
+  })
+
+  it("probes an endpoint with a bodyless HEAD request", async () => {
+    let method = ""
+    let body: unknown = "unset"
+    const server = Bun.serve({
+      port: 0,
+      fetch: async (request) => {
+        method = request.method
+        body = await request.text()
+        return new Response("", { status: 401 })
+      },
+    })
+    try {
+      await expect(probeEndpoint(server.url.toString())).resolves.toMatchObject({ healthy: true, status: 401 })
+      expect(method).toBe("HEAD")
+      expect(body).toBe("")
+    } finally {
+      server.stop(true)
+    }
   })
 })

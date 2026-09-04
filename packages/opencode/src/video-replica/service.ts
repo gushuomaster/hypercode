@@ -20,7 +20,7 @@ import type { InstanceContext } from "@/project/instance-context"
 import { ImageGenerationService } from "@/image-generation/service"
 import { ImageGeneration } from "@/image-generation/schema"
 import { ModelPool } from "./model-pool"
-import type { HealthProbe } from "./model-health"
+import { probeEndpoint, type HealthProbe } from "./model-health"
 import { matchAndPropose, type PlusImportProposal } from "./plus-import"
 import { calculateWorkflowMetrics, REQUIRED_METRICS, type WorkflowMetricName } from "./metrics"
 import {
@@ -1552,6 +1552,7 @@ export const layer = Layer.effect(
     const modelPool = Option.isSome(modelsDev)
         ? async () => {
           const catalog = await Effect.runPromise(modelsDev.value.get())
+          const endpointChecks = new Map<string, ReturnType<typeof probeEndpoint>>()
           const healthProbe: HealthProbe = async (candidate) => {
             const provider = catalog[candidate.providerID]
             const model = provider?.models[candidate.modelID]
@@ -1561,7 +1562,16 @@ export const layer = Layer.effect(
               ? Boolean(await Effect.runPromise(auth.value.get(candidate.providerID)).catch(() => undefined))
               : false
             if (!configured && !authenticated) return { healthy: false, reason: "provider credentials are not configured" }
-            return { healthy: true, reason: "catalog entry and provider credentials are available" }
+            if (!provider.api) return { healthy: true, reason: "catalog entry and provider credentials are available; endpoint URL is not declared" }
+            const endpointCheck = endpointChecks.get(provider.api) ?? probeEndpoint(provider.api)
+            endpointChecks.set(provider.api, endpointCheck)
+            const endpoint = await endpointCheck
+            if (!endpoint.healthy) return { healthy: false, reason: endpoint.reason, status: endpoint.status }
+            return {
+              healthy: true,
+              reason: `catalog entry and provider credentials are available; ${endpoint.reason}`,
+              status: endpoint.status,
+            }
           }
           const config: ModelPool.ModelPoolConfig = {
             providers: ["nvidia", "openai"],
