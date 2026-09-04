@@ -13,6 +13,7 @@ export type HealthResult = {
   modelID: string
   healthy: boolean
   reason?: string
+  status?: number
 }
 
 export async function checkHealth(
