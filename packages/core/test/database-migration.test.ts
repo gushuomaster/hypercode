@@ -69,6 +69,16 @@ describe("DatabaseMigration", () => {
           yield* db.get(sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'session_context_epoch'`),
         ).toEqual({ name: "session_context_epoch" })
         expect(
+          yield* db.all(
+            sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('skill_execution', 'skill_operation', 'skill_artifact') ORDER BY name`,
+          ),
+        ).toEqual([{ name: "skill_artifact" }, { name: "skill_execution" }, { name: "skill_operation" }])
+        expect(
+          yield* db.get(
+            sql`SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'skill_operation_identity_idx'`,
+          ),
+        ).toEqual({ name: "skill_operation_identity_idx" })
+        expect(
           yield* db.get(
             sql`SELECT name, dflt_value FROM pragma_table_info('session_context_epoch') WHERE name = 'agent'`,
           ),

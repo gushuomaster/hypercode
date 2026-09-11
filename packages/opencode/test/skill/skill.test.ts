@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { Effect, Layer } from "effect"
 import { Skill } from "../../src/skill"
 import { Discovery } from "../../src/skill/discovery"
@@ -388,6 +388,65 @@ This skill is loaded from the global home directory.
         }),
       )
     }),
+  )
+
+  test("marks executable skills in the model-facing skill list", () => {
+    const output = Skill.fmt([
+      {
+        name: "video-replica",
+        description: "Analyze and replicate product videos.",
+        location: "C:/skills/video-replica/SKILL.md",
+        content: "",
+        executable: {
+          status: "ready",
+          protocol: "executable-skill/1",
+          actions: ["llm.generate", "image.generate", "user.ask"],
+        },
+      },
+    ], { verbose: true })
+
+    expect(output).toContain("<executable>true</executable>")
+    expect(output).toContain("对此 skill 使用 skill_run")
+  })
+
+  it.live("keeps instructions available when an executable manifest is invalid", () =>
+    provideTmpdirInstance(
+      (dir) =>
+        Effect.gen(function* () {
+          yield* Effect.promise(() =>
+            Promise.all([
+              Bun.write(
+                path.join(dir, ".opencode", "skill", "invalid-executable", "SKILL.md"),
+                `---
+name: invalid-executable
+description: Instructions survive executable validation failures.
+---
+
+# Invalid Executable
+
+Instructions here.
+`,
+              ),
+              Bun.write(
+                path.join(dir, ".opencode", "skill", "invalid-executable", "skill-runtime.json"),
+                JSON.stringify({ schema_version: 99 }),
+              ),
+            ]),
+          )
+
+          const skill = yield* Skill.Service
+          const item = (yield* skill.all()).find((entry) => entry.name === "invalid-executable")
+          expect(item?.content).toContain("Instructions here.")
+          expect(item?.executable).toEqual({
+            status: "invalid",
+            error: {
+              code: "manifest-version-unsupported",
+              message: "Manifest schema version is not supported",
+            },
+          })
+        }),
+      { git: true },
+    ),
   )
 
   it.live("discovers Codex personal skills from ~/.codex/skills", () =>

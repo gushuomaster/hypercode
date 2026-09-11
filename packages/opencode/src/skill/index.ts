@@ -17,6 +17,7 @@ import { RuntimeFlags } from "@/effect/runtime-flags"
 import { Glob } from "@opencode-ai/core/util/glob"
 import { Discovery } from "./discovery"
 import { isRecord } from "@/util/record"
+import { ExecutableManifest } from "./executable-manifest"
 
 const CLAUDE_EXTERNAL_DIR = ".claude"
 const AGENTS_EXTERNAL_DIR = ".agents"
@@ -40,6 +41,7 @@ export const Info = Schema.Struct({
   description: Schema.optional(Schema.String),
   location: Schema.String,
   content: Schema.String,
+  executable: Schema.optional(ExecutableManifest.Info),
 })
 export type Info = Schema.Schema.Type<typeof Info>
 
@@ -103,7 +105,12 @@ export interface Interface {
   readonly available: (agent?: Agent.Info) => Effect.Effect<Info[]>
 }
 
-const add = Effect.fnUntraced(function* (state: State, match: string, events: EventV2Bridge.Service["Service"]) {
+const add = Effect.fnUntraced(function* (
+  state: State,
+  match: string,
+  events: EventV2Bridge.Service["Service"],
+  fsys: FSUtil.Interface,
+) {
   const md = yield* Effect.tryPromise({
     try: () => ConfigMarkdown.parse(match),
     catch: (err) => err,
@@ -132,11 +139,22 @@ const add = Effect.fnUntraced(function* (state: State, match: string, events: Ev
   }
 
   state.dirs.add(path.dirname(match))
+  const executable = yield* ExecutableManifest.load(path.dirname(match)).pipe(
+    Effect.provideService(FSUtil.Service, fsys),
+    Effect.map((manifest) => (manifest ? ExecutableManifest.summary(manifest) : undefined)),
+    Effect.catchTag("ExecutableManifestError", (error) =>
+      Effect.succeed({
+        status: "invalid" as const,
+        error: { code: error.code, message: error.message },
+      }),
+    ),
+  )
   state.skills[md.data.name] = {
     name: md.data.name,
     description: md.data.description,
     location: match,
     content: md.content,
+    executable,
   }
 })
 
@@ -238,8 +256,9 @@ const loadSkills = Effect.fnUntraced(function* (
   state: State,
   discovered: DiscoveryState,
   events: EventV2Bridge.Service["Service"],
+  fsys: FSUtil.Interface,
 ) {
-  yield* Effect.forEach(discovered.matches, (match) => add(state, match, events), {
+  yield* Effect.forEach(discovered.matches, (match) => add(state, match, events, fsys), {
     concurrency: "unbounded",
     discard: true,
   })
@@ -283,7 +302,7 @@ export const layer = Layer.effect(
           location: "<built-in>",
           content: CUSTOMIZE_OPENCODE_SKILL_BODY,
         }
-        yield* loadSkills(s, yield* InstanceState.get(discovered), events)
+        yield* loadSkills(s, yield* InstanceState.get(discovered), events, fsys)
         return s
       }),
     )
@@ -341,6 +360,12 @@ export function fmt(list: Info[], opts: { verbose: boolean }) {
           "  <skill>",
           `    <name>${skill.name}</name>`,
           `    <description>${skill.description}</description>`,
+          ...(skill.executable?.status === "ready"
+            ? [
+                "    <executable>true</executable>",
+                "    <execution>对此 skill 使用 skill_run；不要直接调用其脚本。</execution>",
+              ]
+            : []),
           `    <location>${pathToFileURL(skill.location).href}</location>`,
           "  </skill>",
         ]),

@@ -33,6 +33,7 @@ import { RuntimeFlags } from "@/effect/runtime-flags"
 import { ProviderError } from "./error"
 
 const OPENAI_HEADER_TIMEOUT_DEFAULT = 10_000
+const OPENAI_OAUTH_HEADER_TIMEOUT_DEFAULT = 60_000
 
 function wrapSSE(res: Response, ms: number, ctl: AbortController) {
   if (typeof ms !== "number" || ms <= 0) return res
@@ -199,14 +200,19 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         options: ok ? {} : { apiKey: "public" },
       }
     }),
-    openai: () =>
-      Effect.succeed({
+    openai: Effect.fnUntraced(function* () {
+      const storedAuth = yield* dep.auth("openai")
+      return {
         autoload: false,
         async getModel(sdk: any, modelID: string, _options?: Record<string, any>) {
           return sdk.responses(modelID)
         },
-        options: { headerTimeout: OPENAI_HEADER_TIMEOUT_DEFAULT },
-      }),
+        options: {
+          headerTimeout:
+            storedAuth?.type === "oauth" ? OPENAI_OAUTH_HEADER_TIMEOUT_DEFAULT : OPENAI_HEADER_TIMEOUT_DEFAULT,
+        },
+      }
+    }),
     xai: () =>
       Effect.succeed({
         autoload: false,

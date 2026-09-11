@@ -10,6 +10,13 @@ export const Parameters = Schema.Struct({
   name: Schema.String.annotate({ description: "The name of the skill from available_skills" }),
 })
 
+type Metadata = {
+  readonly name: string
+  readonly dir?: string
+  readonly executable?: Skill.Info["executable"]
+  readonly requires_skill_run: boolean
+}
+
 export const SkillTool = Tool.define(
   "skill",
   Effect.gen(function* () {
@@ -24,6 +31,19 @@ export const SkillTool = Tool.define(
           const info = yield* skill
             .require(params.name)
             .pipe(Effect.catchTag("Skill.NotFoundError", (error) => Effect.die(new Error(error.message))))
+
+          if (info.executable?.status === "ready") {
+            const result: Tool.ExecuteResult<Metadata> = {
+              title: `请使用 skill_run：${info.name}`,
+              output: `“${info.name}”是 executable skill，不能通过普通 skill 工具执行。请调用 skill_run 启动或恢复工作流，不要直接读取或调用其脚本。`,
+              metadata: {
+                name: info.name,
+                executable: info.executable,
+                requires_skill_run: true,
+              },
+            }
+            return result
+          }
 
           yield* ctx.ask({
             permission: "skill",
@@ -43,7 +63,7 @@ export const SkillTool = Tool.define(
             limit: 10,
           })
 
-          return {
+          const result: Tool.ExecuteResult<Metadata> = {
             title: `Loaded skill: ${info.name}`,
             output: [
               `<skill_content name="${info.name}">`,
@@ -51,6 +71,13 @@ export const SkillTool = Tool.define(
               "",
               info.content.trim(),
               "",
+              ...(info.executable?.status === "invalid"
+                ? [
+                    "Executable: unavailable",
+                    `Executable error: ${info.executable.error.code} — ${info.executable.error.message}`,
+                    "",
+                  ]
+                : ["Executable: no", ""]),
               `Base directory for this skill: ${base}`,
               "Relative paths in this skill (e.g., scripts/, reference/) are relative to this base directory.",
               "Note: file list is sampled.",
@@ -63,8 +90,11 @@ export const SkillTool = Tool.define(
             metadata: {
               name: info.name,
               dir,
+              executable: info.executable,
+              requires_skill_run: false,
             },
           }
+          return result
         }).pipe(Effect.orDie),
     }
   }),

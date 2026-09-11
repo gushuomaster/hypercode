@@ -1,24 +1,25 @@
-export type Provider = "nvidia" | "openai"
+import type { Artifact } from "@/artifact/schema"
+
+export type Provider = string
 
 export type Request = {
-  segmentID: string
-  prompt: string
-  referenceImages: ReadonlyArray<string>
-  outputDirectory: string
-  modelPool: ReadonlyArray<{ provider: Provider; model: string }>
-  width: 9
-  height: 16
+  readonly workflowID: string
+  readonly operationID: string
+  readonly prompt: string
+  readonly referenceImages: ReadonlyArray<string>
+  readonly modelPool: ReadonlyArray<{ readonly provider: Provider; readonly model: string }>
+  readonly width: number
+  readonly height: number
 }
 
 export type Result = {
-  segmentID: string
-  filePath: string
-  mimeType: "image/png" | "image/jpeg" | "image/webp"
-  provider: Provider
-  model: string
-  attempts: number
-  elapsedMs: number
-  cost: { amount?: number; currency?: string; known: boolean }
+  readonly operationID: string
+  readonly artifact: Artifact.Metadata
+  readonly provider: Provider
+  readonly model: string
+  readonly attempts: number
+  readonly elapsedMs: number
+  readonly cost: Artifact.Cost
 }
 
 export * as ImageGeneration from "./schema"

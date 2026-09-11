@@ -365,7 +365,7 @@ export async function CodexAuthPlugin(input: PluginInput, options: CodexAuthPlug
       async models(provider, ctx) {
         if (ctx.auth?.type !== "oauth") return provider.models
 
-        return Object.fromEntries(
+        const models = Object.fromEntries(
           Object.entries(provider.models)
             .filter(([, model]) => {
               if (ALLOWED_MODELS.has(model.api.id)) return true
@@ -391,6 +391,20 @@ export async function CodexAuthPlugin(input: PluginInput, options: CodexAuthPlug
               },
             ]),
         )
+        const base = models["gpt-5.5"]
+        if (!base) return models
+        return {
+          ...models,
+          "gpt-5.5-image": {
+            ...base,
+            id: "gpt-5.5-image",
+            name: "GPT-5.5 图片生成（ChatGPT Plus）",
+            capabilities: {
+              ...base.capabilities,
+              output: { ...base.capabilities.output, text: false, image: true },
+            },
+          },
+        }
       },
     },
     auth: {

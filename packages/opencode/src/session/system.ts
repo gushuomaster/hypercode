@@ -99,6 +99,7 @@ export const layer = Layer.effect(
         return [
           "Skills provide specialized instructions and workflows for specific tasks.",
           "Use the skill tool to load a skill when a task matches its description.",
+          "对于标记为 executable 的 skill，必须使用 skill_run 启动或恢复工作流，不要直接调用 skill 目录中的脚本。",
           // the agents seem to ingest the information about skills a bit better if we present a more verbose
           // version of them here and a less verbose version in tool description, rather than vice versa.
           Skill.fmt(list, { verbose: true }),

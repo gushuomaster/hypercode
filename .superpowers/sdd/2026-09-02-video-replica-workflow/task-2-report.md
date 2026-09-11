@@ -101,6 +101,24 @@ bun typecheck
 - 基线 `f36d74283cc4139a8c45f52cb345d3bcdc79dd74` 在 detached worktree、复用等价根/包依赖后直接运行 `tsgo --noEmit`：exit 0。
 - 当前工作树运行 `bun typecheck`：Task 2 与 session registry 图无 TypeScript diagnostic；唯一错误为并行 Task 3 未跟踪草稿 `test/video-replica/model-pool.test.ts(89,7): Cannot find name 'discover'`。因此不声称当前全量 typecheck 通过，也未修改 Task 3 文件。
 
+## Fix Round 3
+
+- NVIDIA Qwen Image Edit 官方证据为 `https://docs.nvidia.com/nim/visual-genai/latest/api/qwen-image-edit.html` 与 `https://docs.nvidia.com/nim/visual-genai/latest/_static/_static/yaml/qwen-image-edit.openapi.yaml`。本任务采用其中的 OpenAI-compatible `POST /v1/images/edits`：请求字段包含 `prompt`、`image`、`model`、`n`、`response_format: b64_json` 和 `size`，响应必须包含整数 `created` 与 `data[0].b64_json`。同一文档中的 native `/v1/infer` 未启用，因为本任务已明确选择 OpenAI-compatible 契约。
+- Qwen 自定义 NIM endpoint 仅接受 loopback（`localhost`、IPv4 loopback 或 IPv6 loopback）或 `nvidiaAllowedHosts` 显式 allowlist。未列入 allowlist 的 HTTPS 主机在 HTTP 请求前失败，避免 NVIDIA 凭据被转发；URL credentials、query、fragment 均被拒绝，路径只允许根路径或 `/v1`。
+- NVIDIA hosted FLUX 固定使用 `https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-kontext-dev`。models.dev 别名 `black-forest-labs/flux_1-kontext-dev` 与官方 dotted slug `black-forest-labs/flux.1-kontext-dev` 都映射到该 endpoint；响应按 `artifacts[0].base64` 解码。
+- 最终输出路径不再预创建。服务先在同一目录预留随机 `.tmp` 文件，provider 完成后通过 `fs.link` no-clobber 发布。若 provider 执行期间出现同名目标，则安全失败且不覆盖已有内容。新增回归覆盖 provider 期间的目标可见性与竞态、FLUX slug/host、Qwen schema、远程主机 allowlist 和 IPv6 loopback。
+- cleanup 删除临时文件前重新验证 project/output 的 `realpath` 和 `dev`/`ino` identity；父目录被交换时放弃删除，不跟随 junction/symlink。Node 的 `fs.rm`/`fs.link` 仅提供路径 API，因此验证与单个系统调用之间仍有理论 TOCTOU 窗口。该窗口属于同机攻击者并发重命名受控目录的威胁边界；当前通过 identity 复核和安全失败降低风险，但不声称实现了 descriptor-relative 原子 unlink。
+
+### Fix Round 3 验证
+
+```text
+bun test test/image-generation test/tool/image-generate.test.ts
+33 pass, 0 fail
+
+bun typecheck
+exit 0 (packages/opencode)
+```
+
 ## Fix Round 2
 
 - 提交：`e1737030c`（`fix(opencode): harden image provider contracts`）。

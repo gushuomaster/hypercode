@@ -170,6 +170,22 @@ it.live("OpenAI API auth gets default headerTimeout", () =>
   }),
 )
 
+it.live("OpenAI Codex OAuth gets an extended headerTimeout for large requests", () =>
+  Effect.gen(function* () {
+    yield* withAuthContent(
+      Effect.gen(function* () {
+        yield* provideTmpdirInstance(() =>
+          Effect.gen(function* () {
+            const provider = yield* Provider.Service
+            const openai = yield* provider.getProvider(ProviderV2.ID.openai)
+            expect(openai.options.headerTimeout).toBe(60_000)
+          }),
+        )
+      }),
+    )
+  }),
+)
+
 function providerConfig(url: string, options: Record<string, unknown> = {}) {
   const config = testProviderConfig(url)
   return {

@@ -176,6 +176,23 @@ const mustTruncate = (result: {
 }
 
 describe("tool.shell", () => {
+  for (const item of ps) {
+    it.live(`preserves UTF-8 output in PowerShell [${item.label}]`, () =>
+      withShell(item,
+        runIn(
+          projectRoot,
+          Effect.gen(function* () {
+            const result = yield* run({
+              command: `[Console]::WriteLine("小推车置物架")`,
+              description: "Print Unicode text",
+            })
+            expect(result.output).toContain("小推车置物架")
+          }),
+        ),
+      ),
+    )
+  }
+
   each("basic", () =>
     runIn(
       projectRoot,

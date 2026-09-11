@@ -29,7 +29,7 @@ await $`bun drizzle-kit generate ${args.values.name ? ["--name", args.values.nam
 )
 
 const sqlMigrations = (await Array.fromAsync(new Bun.Glob("*/migration.sql").scan({ cwd: sqlDir })))
-  .map((file) => file.split("/")[0])
+  .map((file) => file.split(/[\\/]/)[0])
   .filter((name) => name !== undefined)
   .sort()
 
@@ -66,7 +66,7 @@ export default { ...config, out: ${JSON.stringify(output)} }
     }
 
     const migrations = before
-      .map((entry) => entry.path.split("/")[0])
+      .map((entry) => entry.path.split(/[\\/]/)[0])
       .filter((name, index, all) => name !== undefined && all.indexOf(name) === index)
       .sort()
     for (const name of migrations) {

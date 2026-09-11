@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "protocol": "executable-skill/1",
+  "entrypoint": ["python", "scripts/main.py"],
+  "runtime": {
+    "kind": "python",
+    "version": ">=3.11",
+    "requirements": []
+  },
+  "actions": ["llm.generate", "image.generate", "user.ask"],
+  "permissions": {
+    "read": ["skill", "project"],
+    "write": ["project"],
+    "process": ["python"]
+  },
+  "protected": ["scripts/**/*.py"]
+}

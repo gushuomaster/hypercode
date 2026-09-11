@@ -4,6 +4,7 @@ import { Context, Effect, Layer, Schema } from "effect"
 import { ImageGeneration } from "./schema"
 
 const OPENAI_BASE_URL = "https://api.openai.com/v1"
+const CHATGPT_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex"
 const NVIDIA_HOSTED_BASE_URL = "https://ai.api.nvidia.com/v1"
 const NVIDIA_FLUX_MODEL_SLUG = "black-forest-labs/flux.1-kontext-dev"
 const NVIDIA_MODEL_SLUGS: Record<string, string> = {
@@ -17,7 +18,7 @@ export type ReferenceImage = {
 }
 
 export class ProviderError extends Schema.TaggedErrorClass<ProviderError>()("ImageGenerationProviderError", {
-  provider: Schema.Union([Schema.Literal("nvidia"), Schema.Literal("openai")]),
+  provider: Schema.String,
   model: Schema.String,
   status: Schema.optional(Schema.Number),
   retryable: Schema.Boolean,
@@ -51,8 +52,8 @@ export interface Interface {
     model: string
     prompt: string
     referenceImages: ReadonlyArray<ReferenceImage>
-    width: 9
-    height: 16
+    width: number
+    height: number
   }) => Effect.Effect<Output, ProviderError>
 }
 
@@ -60,6 +61,7 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/Im
 
 type LayerOptions = {
   openaiBaseURL?: string
+  chatgptBaseURL?: string
   nvidiaBaseURL?: string
   nvidiaQwenBaseURL?: string
   nvidiaAllowedHosts?: ReadonlyArray<string>
@@ -77,8 +79,8 @@ export const layer = (options: LayerOptions = {}) =>
         model: string
         prompt: string
         referenceImages: ReadonlyArray<ReferenceImage>
-        width: 9
-        height: 16
+        width: number
+        height: number
       }) {
         const stored = yield* auth.get(input.provider).pipe(
           Effect.mapError(
@@ -91,6 +93,14 @@ export const layer = (options: LayerOptions = {}) =>
               }),
           ),
         )
+        if (input.provider !== "nvidia" && input.provider !== "openai") {
+          return yield* new ProviderError({
+            provider: input.provider,
+            model: input.model,
+            retryable: false,
+            reason: "image provider is unsupported",
+          })
+        }
         const key = credential(stored) ?? process.env[input.provider === "nvidia" ? "NVIDIA_API_KEY" : "OPENAI_API_KEY"]
         if (!key)
           return yield* new ProviderError({
@@ -101,12 +111,17 @@ export const layer = (options: LayerOptions = {}) =>
           })
 
         const request = yield* input.provider === "nvidia"
-          ? nvidiaRequest({ ...input, provider: "nvidia" }, {
-              ...options,
-              nvidiaQwenBaseURL:
-                options.nvidiaQwenBaseURL ?? (stored?.type === "api" ? stored.metadata?.nimBaseURL : undefined),
-            })
-          : Effect.succeed(openaiRequest(input, options))
+          ? nvidiaRequest(
+              { ...input, provider: "nvidia" },
+              {
+                ...options,
+                nvidiaQwenBaseURL:
+                  options.nvidiaQwenBaseURL ?? (stored?.type === "api" ? stored.metadata?.nimBaseURL : undefined),
+              },
+            )
+          : Effect.succeed(
+              stored?.type === "oauth" ? chatgptRequest(input, stored, options) : openaiRequest(input, options),
+            )
         const response = yield* Effect.tryPromise({
           try: () =>
             (options.fetch ?? globalThis.fetch)(request.url, {
@@ -143,7 +158,10 @@ export const layer = (options: LayerOptions = {}) =>
             }),
         })
         const body = yield* Effect.try({
-          try: () => JSON.parse(new TextDecoder().decode(encoded)) as unknown,
+          try: () =>
+            stored?.type === "oauth"
+              ? new TextDecoder().decode(encoded)
+              : (JSON.parse(new TextDecoder().decode(encoded)) as unknown),
           catch: () =>
             new ProviderError({
               provider: input.provider,
@@ -154,7 +172,10 @@ export const layer = (options: LayerOptions = {}) =>
             }),
         })
         return yield* Effect.try({
-          try: () => decode(body, input.provider, input.model, response.status),
+          try: () =>
+            stored?.type === "oauth"
+              ? decodeChatGpt(body as string, input.provider, input.model, response.status)
+              : decode(body, input.provider, input.model, response.status),
           catch: (cause) =>
             cause instanceof ProviderError
               ? cause
@@ -183,7 +204,6 @@ function editBody(input: { model: string; prompt: string; referenceImages: Reado
   form.set("size", "1024x1536")
   form.set("output_format", "png")
   input.referenceImages
-    .slice(0, 1)
     .forEach((file) =>
       form.append(
         "image",
@@ -201,6 +221,8 @@ function openaiRequest(
     model: string
     prompt: string
     referenceImages: ReadonlyArray<ReferenceImage>
+    width: number
+    height: number
   },
   options: { openaiBaseURL?: string },
 ): HttpRequest {
@@ -216,6 +238,62 @@ function openaiRequest(
           output_format: "png",
         }),
   }
+}
+
+function chatgptRequest(
+  input: {
+    model: string
+    prompt: string
+    referenceImages: ReadonlyArray<ReferenceImage>
+    width: number
+    height: number
+  },
+  auth: Auth.Oauth,
+  options: { chatgptBaseURL?: string },
+): HttpRequest {
+  const content = [
+    { type: "input_text", text: input.prompt },
+    ...input.referenceImages.flatMap((reference) => {
+      const mimeType = imageMime(reference.bytes)
+      return mimeType
+        ? [
+            {
+              type: "input_image",
+              image_url: `data:${mimeType};base64,${Buffer.from(reference.bytes).toString("base64")}`,
+            },
+          ]
+        : []
+    }),
+  ]
+  return {
+    url: `${trimSlash(options.chatgptBaseURL ?? CHATGPT_CODEX_BASE_URL)}/responses`,
+    headers: {
+      "content-type": "application/json",
+      originator: "opencode",
+      ...(auth.accountId ? { "ChatGPT-Account-Id": auth.accountId } : {}),
+    },
+    body: JSON.stringify({
+      model: "gpt-5.5",
+      store: false,
+      stream: true,
+      input: [{ role: "user", content }],
+      tools: [
+        {
+          type: "image_generation",
+          model: "gpt-image-1",
+          size: imageSize(input.width, input.height),
+          quality: "low",
+          output_format: "png",
+        },
+      ],
+      tool_choice: { type: "image_generation" },
+    }),
+  }
+}
+
+function imageSize(width: number, height: number) {
+  if (width === height) return "1024x1024"
+  return width > height ? "1536x1024" : "1024x1536"
 }
 
 function nvidiaRequest(
@@ -383,6 +461,50 @@ function decode(body: unknown, provider: ImageGeneration.Provider, model: string
     mimeType: detectMime(bytes, provider, model, status),
     cost: amount === undefined ? { known: false } : { amount, currency, known: true },
   }
+}
+
+function decodeChatGpt(body: string, provider: ImageGeneration.Provider, model: string, status: number): Output {
+  let encoded: string | undefined
+  for (const line of body.split(/\r?\n/)) {
+    if (!line.startsWith("data:") || line.slice(5).trim() === "[DONE]") continue
+    let event: unknown
+    try {
+      event = JSON.parse(line.slice(5).trim()) as unknown
+    } catch {
+      continue
+    }
+    const found = findImageResult(event)
+    if (found) encoded = found
+  }
+  if (!encoded)
+    throw new ProviderError({
+      provider,
+      model,
+      status,
+      retryable: false,
+      reason: "ChatGPT response omitted image bytes",
+    })
+  const data = encoded.startsWith("data:") ? encoded.slice(encoded.indexOf(",") + 1) : encoded
+  const bytes = Buffer.from(data, "base64")
+  if (!bytes.length)
+    throw new ProviderError({
+      provider,
+      model,
+      status,
+      retryable: false,
+      reason: "ChatGPT response returned empty image bytes",
+    })
+  return { bytes, mimeType: detectMime(bytes, provider, model, status), cost: { known: false } }
+}
+
+function findImageResult(value: unknown): string | undefined {
+  if (!isRecord(value)) return undefined
+  if (value.type === "image_generation_call" && typeof value.result === "string") return value.result
+  for (const child of Object.values(value)) {
+    const found = findImageResult(child)
+    if (found) return found
+  }
+  return undefined
 }
 
 function decodeNvidiaArtifact(body: unknown, provider: "nvidia", model: string, status: number): Output {

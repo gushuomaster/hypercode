@@ -44,7 +44,7 @@ describe("opencode read-only commands (smoke)", () => {
       Effect.gen(function* () {
         const r = yield* opencode.spawn(["providers", "list"])
         opencode.expectExit(r, 0, "providers list")
-        expect(r.stdout).toContain("Credentials")
+        expect(r.stdout).toContain("凭据")
       }),
     60_000,
   )

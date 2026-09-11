@@ -1,5 +1,7 @@
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { httpClient } from "@opencode-ai/core/effect/layer-node-platform"
+import { AppProcess } from "@opencode-ai/core/process"
+import { Global } from "@opencode-ai/core/global"
 import { Ripgrep } from "@opencode-ai/core/ripgrep"
 import { PlanExitTool } from "./plan"
 import { Session } from "@/session/session"
@@ -54,8 +56,8 @@ import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { ImageGenerateTool } from "./image-generate"
 import { ImageGenerationService } from "@/image-generation/service"
-import { VideoReplicaTool } from "./video-replica"
-import { VideoReplica } from "@/video-replica/service"
+import { SkillRunTool } from "./skill-run"
+import { SkillExecutor } from "@/skill-runtime/executor"
 
 export function webSearchEnabled(providerID: ProviderV2.ID, flags = { exa: false, parallel: false }) {
   return providerID === ProviderV2.ID.opencode || flags.exa || flags.parallel
@@ -101,7 +103,7 @@ export const layer = Layer.effect(
     const lsptool = yield* LspTool
     const plan = yield* PlanExitTool
     const imageGenerate = yield* ImageGenerateTool
-    const videoReplica = yield* VideoReplicaTool
+    const skillRun = yield* SkillRunTool
     const webfetch = yield* WebFetchTool
     const websearch = yield* WebSearchTool
     const shell = yield* ShellTool
@@ -219,7 +221,7 @@ export const layer = Layer.effect(
           lsp: Tool.init(lsptool),
           plan: Tool.init(plan),
           imageGenerate: Tool.init(imageGenerate),
-          videoReplica: Tool.init(videoReplica),
+          skillRun: Tool.init(skillRun),
         })
 
         return {
@@ -242,7 +244,7 @@ export const layer = Layer.effect(
             ...(flags.experimentalLspTool ? [tool.lsp] : []),
             ...(flags.experimentalPlanMode && flags.client === "cli" ? [tool.plan] : []),
             tool.imageGenerate,
-            tool.videoReplica,
+            tool.skillRun,
           ],
           task: tool.task,
           read: tool.read,
@@ -330,6 +332,7 @@ export const defaultLayer = Layer.suspend(() =>
     .pipe(
       Layer.provide(Config.defaultLayer),
       Layer.provide(ImageGenerationService.defaultLayer),
+      Layer.provide(SkillExecutor.defaultLayer),
       Layer.provide(Plugin.defaultLayer),
       Layer.provide(Question.defaultLayer),
       Layer.provide(Todo.defaultLayer),
@@ -341,14 +344,18 @@ export const defaultLayer = Layer.suspend(() =>
       Layer.provide(LSP.defaultLayer),
       Layer.provide(Instruction.defaultLayer),
       Layer.provide(FSUtil.defaultLayer),
+      Layer.provide(AppProcess.defaultLayer),
+      Layer.provide(Global.defaultLayer),
       Layer.provide(EventV2Bridge.defaultLayer),
       Layer.provide(FetchHttpClient.layer),
       Layer.provide(Format.defaultLayer),
       Layer.provide(CrossSpawnSpawner.defaultLayer),
-      Layer.provide(Truncate.defaultLayer),
-      Layer.provide(VideoReplica.defaultLayer),
     )
-    .pipe(Layer.provide(Database.defaultLayer), Layer.provide(RuntimeFlags.defaultLayer)),
+    .pipe(
+      Layer.provide(Truncate.defaultLayer),
+      Layer.provide(Database.defaultLayer),
+      Layer.provide(RuntimeFlags.defaultLayer),
+    ),
 )
 
 function isZodType(value: unknown): value is z.ZodType {
@@ -440,6 +447,8 @@ export const node = LayerNode.make(layer.pipe(Layer.provide(Ripgrep.defaultLayer
   LSP.node,
   Instruction.node,
   FSUtil.node,
+  AppProcess.node,
+  Global.node,
   EventV2Bridge.node,
   httpClient,
   CrossSpawnSpawner.node,
@@ -447,7 +456,7 @@ export const node = LayerNode.make(layer.pipe(Layer.provide(Ripgrep.defaultLayer
   Truncate.node,
   RuntimeFlags.node,
   ImageGenerationService.node,
-  VideoReplica.node,
+  SkillExecutor.node,
   Database.node,
 ])
 

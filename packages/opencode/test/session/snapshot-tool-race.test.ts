@@ -58,9 +58,12 @@ import { ToolRegistry } from "@/tool/registry"
 import { Truncate } from "@/tool/truncate"
 import { FSUtil } from "@opencode-ai/core/fs-util"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
+import { AppProcess } from "@opencode-ai/core/process"
+import { Global } from "@opencode-ai/core/global"
 import { Ripgrep } from "@opencode-ai/core/ripgrep"
 import { Format } from "../../src/format"
 import { RuntimeFlags } from "@/effect/runtime-flags"
+import { SkillExecutor } from "@/skill-runtime/executor"
 
 const mcp = Layer.succeed(
   MCP.Service,
@@ -133,6 +136,9 @@ function makeHttp() {
   const todo = Todo.layer.pipe(Layer.provideMerge(deps))
   const registry = ToolRegistry.layer.pipe(
     Layer.provide(ImageGenerationService.defaultLayer),
+    Layer.provide(SkillExecutor.defaultLayer),
+    Layer.provide(AppProcess.defaultLayer),
+    Layer.provide(Global.defaultLayer),
     Layer.provide(Skill.defaultLayer),
     Layer.provide(FetchHttpClient.layer),
     Layer.provide(CrossSpawnSpawner.defaultLayer),

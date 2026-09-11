@@ -20,3 +20,10 @@
 ## 关注点
 
 ModelsDev 当前 `status` schema 没有 `active` 字面量；实现按“非 deprecated 即可用（undefined 视为 active）”处理。健康探针为可选注入函数，未提供时默认健康。
+\n## Fix Round 1
+ - Strict status/capability and zero-cost checks are enforced; legacy undefined status is explicitly documented as compatible active.
+- Missing health probes produce no healthy candidates; probe exceptions are unhealthy.
+- Confirmation keys are provider-qualified and failover skips unconfirmed candidates.
+- Exhaustion includes attempted IDs and paid confirmation metadata.
+
+Fix round 3: `initialDecision` blocks when the first sorted candidate needs confirmation; image candidates require both text and image input; paid escalation confirmation remains a hard gate.

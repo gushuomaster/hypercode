@@ -32,6 +32,50 @@ const node = CrossSpawnSpawner.defaultLayer
 const it = testEffect(Layer.mergeAll(ToolRegistry.defaultLayer, node).pipe(Layer.provide(Ripgrep.defaultLayer)))
 
 describe("tool.skill", () => {
+  it.instance("refuses to load executable skills through the ordinary skill tool", () =>
+    Effect.gen(function* () {
+      const dir = (yield* TestInstance).directory
+      const skill = path.join(dir, ".opencode", "skill", "executable-skill")
+      yield* Effect.promise(() => Promise.all([
+        Bun.write(path.join(skill, "SKILL.md"), "---\nname: executable-skill\ndescription: Executable test skill.\n---\n\nDo not inline this."),
+        Bun.write(path.join(skill, "scripts", "main.py"), "print('workflow')"),
+        Bun.write(path.join(skill, "skill-runtime.json"), JSON.stringify({
+          schema_version: 1,
+          protocol: "executable-skill/1",
+          entrypoint: ["python", "scripts/main.py"],
+          runtime: { kind: "python", version: ">=3.11", requirements: [] },
+          actions: ["llm.generate", "image.generate", "user.ask"],
+          permissions: { read: ["skill"], write: ["project"], process: ["python"] },
+          protected: ["scripts/**/*.py"],
+        })),
+      ]))
+
+      const home = process.env.OPENCODE_TEST_HOME
+      process.env.OPENCODE_TEST_HOME = dir
+      yield* Effect.addFinalizer(() => Effect.sync(() => {
+        process.env.OPENCODE_TEST_HOME = home
+      }))
+
+      const registry = yield* ToolRegistry.Service
+      const agent = { name: "build", mode: "primary" as const, permission: [], options: {} }
+      const tool = (yield* registry.tools({
+        providerID: "opencode" as any,
+        modelID: "gpt-5" as any,
+        agent,
+      })).find((item) => item.id === SkillTool.id)
+      if (!tool) throw new Error("Skill tool not found")
+
+      const result = yield* tool.execute({ name: "executable-skill" }, {
+        ...baseCtx,
+        ask: () => Effect.void,
+      })
+
+      expect(result.output).toContain("不能通过普通 skill 工具执行")
+      expect(result.output).toContain("skill_run")
+      expect(result.output).not.toContain("Do not inline this.")
+    }),
+  )
+
   it.instance("execute returns skill content block with files", () =>
     Effect.gen(function* () {
       const dir = (yield* TestInstance).directory

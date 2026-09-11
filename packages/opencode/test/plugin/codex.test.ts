@@ -140,6 +140,32 @@ describe("plugin.codex", () => {
     await enabled.dispose?.()
   })
 
+  test("registers a ChatGPT OAuth image model with image output capability", async () => {
+    const hooks = await CodexAuthPlugin({} as never)
+    const models = await hooks.provider!.models!(
+      {
+        id: "openai",
+        models: {
+          "gpt-5.5": {
+            id: "gpt-5.5",
+            api: { id: "gpt-5.5" },
+            cost: { input: 1, output: 1, cache: { read: 0, write: 0 } },
+            limit: { context: 1, input: 1, output: 1 },
+            capabilities: {
+              input: { text: true, image: false, audio: false, video: false, pdf: false },
+              output: { text: true, image: false, audio: false, video: false, pdf: false },
+            },
+          },
+        },
+      } as never,
+      { auth: { type: "oauth" } as never },
+    )
+    expect(models["gpt-5.5-image"]).toMatchObject({
+      id: "gpt-5.5-image",
+      capabilities: { output: { image: true, text: false } },
+    })
+  })
+
   test("deduplicates concurrent Codex token refreshes", async () => {
     let auth = {
       type: "oauth" as const,

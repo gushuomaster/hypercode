@@ -1,5 +1,7 @@
 # HyperCode 豆包产品视频复刻工作流设计
 
+> **状态：已于 2026-09-04 被取代。** 本文档保留为历史记录，不再作为实现依据。新的职责边界与协议见 [`2026-09-04-executable-skill-workflow-boundary-design.md`](./2026-09-04-executable-skill-workflow-boundary-design.md)。后续实施分别遵循 skill 协议计划和 HyperCode 运行时计划。
+
 ## 目标
 
 在 Windows 桌面版 HyperCode 中接入当前用户已安装的 `doubao-video-replica` 个人 skill，使用户可以在聊天中提交参考视频和产品参考图，完成视频分析、分镜审批、首帧生成与质检，并获得逐段豆包提示词。
