@@ -214,6 +214,61 @@ describe("Config", () => {
     ),
   )
 
+  it.live("loads and migrates a global HyperCode MiniMax configuration", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const global = path.join(tmp.path, "global")
+          yield* Effect.promise(async () => {
+            await fs.mkdir(global)
+            await fs.writeFile(
+              path.join(global, "hypercode.json"),
+              JSON.stringify({
+                model: "minimax-direct/MiniMax-M2.7",
+                small_model: "minimax-direct/MiniMax-M2.7",
+                provider: {
+                  "minimax-direct": {
+                    npm: "@ai-sdk/openai-compatible",
+                    name: "MiniMax (直连)",
+                    options: {
+                      baseURL: "https://api.minimaxi.com/v1",
+                      apiKey: "{env:MINIMAX_API_KEY}",
+                    },
+                    models: {
+                      "MiniMax-M2.7": { name: "MiniMax M2.7" },
+                      "MiniMax-M2.7-highspeed": { name: "MiniMax M2.7 (highspeed)" },
+                    },
+                  },
+                },
+              }),
+            )
+          })
+
+          return yield* Effect.gen(function* () {
+            const config = yield* Config.Service
+            const documents = (yield* config.entries()).filter((entry) => entry.type === "document")
+            const document = documents[0]
+
+            expect(documents).toHaveLength(1)
+            expect(document?.path).toBe(path.join(global, "hypercode.json"))
+            expect(Config.latest(documents, "model")).toBe("minimax-direct/MiniMax-M2.7")
+            expect(document?.info.providers?.["minimax-direct"]).toBeInstanceOf(ConfigProvider.Info)
+            expect(document?.info.providers?.["minimax-direct"]?.api).toEqual({
+              type: "aisdk",
+              package: "@ai-sdk/openai-compatible",
+              url: "https://api.minimaxi.com/v1",
+              settings: { apiKey: "{env:MINIMAX_API_KEY}" },
+            })
+            expect(document?.info.providers?.["minimax-direct"]?.models?.["MiniMax-M2.7"]?.name).toBe("MiniMax M2.7")
+          }).pipe(Effect.provide(testLayer(tmp.path, global)))
+        }),
+      ),
+    ),
+  )
+
   it.live("accepts $schema metadata without writing it into config files", () =>
     Effect.acquireRelease(
       Effect.promise(() => tmpdir()),

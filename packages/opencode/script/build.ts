@@ -4,7 +4,9 @@ import { $ } from "bun"
 import fs from "fs"
 import path from "path"
 import { fileURLToPath } from "url"
+import { parseArgs } from "util"
 import { createSolidTransformPlugin } from "@opentui/solid/bun-plugin"
+import { buildTargetName, resolveBuildTargets } from "./target"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -19,12 +21,27 @@ import pkg from "../package.json"
 
 const distributionName = "hypercode"
 
-const singleFlag = process.argv.includes("--single")
-const baselineFlag = process.argv.includes("--baseline")
-const skipInstall = process.argv.includes("--skip-install")
-const sourcemapsFlag = process.argv.includes("--sourcemaps")
+const args = parseArgs({
+  args: process.argv.slice(2),
+  options: {
+    single: { type: "boolean" },
+    baseline: { type: "boolean" },
+    target: { type: "string", multiple: true },
+    "skip-install": { type: "boolean" },
+    sourcemaps: { type: "boolean" },
+    "skip-embed-web-ui": { type: "boolean" },
+  },
+  strict: true,
+  allowPositionals: false,
+}).values
+const skipInstall = args["skip-install"] ?? false
+const sourcemapsFlag = args.sourcemaps ?? false
 const plugin = createSolidTransformPlugin()
-const skipEmbedWebUi = process.argv.includes("--skip-embed-web-ui")
+const skipEmbedWebUi = args["skip-embed-web-ui"] ?? false
+const compileExecutable = (name: string) => {
+  const key = `HYPERCODE_BUN_EXECUTABLE_${name.replaceAll("-", "_").toUpperCase()}`
+  return process.env[key]
+}
 
 const createEmbeddedWebUIBundle = async () => {
   console.log(`Building Web UI to embed in the binary`)
@@ -52,89 +69,13 @@ const createEmbeddedWebUIBundle = async () => {
 
 const embeddedFileMap = skipEmbedWebUi ? null : await createEmbeddedWebUIBundle()
 
-const allTargets: {
-  os: string
-  arch: "arm64" | "x64"
-  abi?: "musl"
-  avx2?: false
-}[] = [
-  {
-    os: "linux",
-    arch: "arm64",
-  },
-  {
-    os: "linux",
-    arch: "x64",
-  },
-  {
-    os: "linux",
-    arch: "x64",
-    avx2: false,
-  },
-  {
-    os: "linux",
-    arch: "arm64",
-    abi: "musl",
-  },
-  {
-    os: "linux",
-    arch: "x64",
-    abi: "musl",
-  },
-  {
-    os: "linux",
-    arch: "x64",
-    abi: "musl",
-    avx2: false,
-  },
-  {
-    os: "darwin",
-    arch: "arm64",
-  },
-  {
-    os: "darwin",
-    arch: "x64",
-  },
-  {
-    os: "darwin",
-    arch: "x64",
-    avx2: false,
-  },
-  {
-    os: "win32",
-    arch: "arm64",
-  },
-  {
-    os: "win32",
-    arch: "x64",
-  },
-  {
-    os: "win32",
-    arch: "x64",
-    avx2: false,
-  },
-]
-
-const targets = singleFlag
-  ? allTargets.filter((item) => {
-      if (item.os !== process.platform || item.arch !== process.arch) {
-        return false
-      }
-
-      // When building for the current platform, prefer a single native binary by default.
-      // Baseline binaries require additional Bun artifacts and can be flaky to download.
-      if (item.avx2 === false) {
-        return baselineFlag
-      }
-
-      // also skip abi-specific builds for the same reason
-      if (item.abi !== undefined) {
-        return false
-      }
-
-      return true
-    })
-  : allTargets
+const targets = resolveBuildTargets({
+  targets: args.target,
+  single: args.single ?? false,
+  baseline: args.baseline ?? false,
+  platform: process.platform,
+  arch: process.arch,
+})
 
 await $`rm -rf dist`
 
@@ -145,16 +86,8 @@ if (!skipInstall) {
   await $`bun install --os="*" --cpu="*" @ff-labs/fff-bun@${pkg.dependencies["@ff-labs/fff-bun"]}`
 }
 for (const item of targets) {
-  const name = [
-    distributionName,
-    // changing to win32 flags npm for some reason
-    item.os === "win32" ? "windows" : item.os,
-    item.arch,
-    item.avx2 === false ? "baseline" : undefined,
-    item.abi === undefined ? undefined : item.abi,
-  ]
-    .filter(Boolean)
-    .join("-")
+  const name = `${distributionName}-${buildTargetName(item)}`
+  const executablePath = compileExecutable(buildTargetName(item))
   console.log(`building ${name}`)
   await $`mkdir -p dist/${name}/bin`
 
@@ -183,6 +116,7 @@ for (const item of targets) {
       autoloadPackageJson: true,
       target: name.replace(distributionName, "bun") as any,
       outfile: `dist/${name}/bin/hypercode`,
+      ...(executablePath ? { executablePath } : {}),
       execArgv: [`--user-agent=opencode/${Script.version}`, "--use-system-ca", "--"],
       windows: {},
     },

@@ -190,7 +190,7 @@ describe("composer integration visibility", () => {
     assert.equal(result.trigger, "slash")
     assert.equal(result.hostResults.length, 0, "host search not triggered for slash")
     assert.ok(result.items.every((item) => item.kind === "action"), "only actions returned for /")
-    assert.deepEqual(result.items.map((item) => item.label), ["compact", "model", "new", "refresh", "sessions", "skills", "theme", "undo"], "built-in slash actions sort alphabetically")
+    assert.deepEqual(result.items.map((item) => item.label), ["agents", "compact", "model", "new", "refresh", "sessions", "skills", "theme", "undo"], "built-in slash actions sort alphabetically")
   })
 
   test("recent files appear before workspace search results", () => {
@@ -245,7 +245,7 @@ describe("composer integration visibility", () => {
     const labels = result.items.map((item) => item.label)
     const sorted = [...labels].sort((a, b) => a.localeCompare(b))
     assert.deepEqual(labels, sorted, "items are in alphabetical label order (upstream behavior)")
-    assert.equal(labels[0], "compact")
+    assert.equal(labels[0], "agents")
     assert.ok(labels.includes("undo"))
   })
 

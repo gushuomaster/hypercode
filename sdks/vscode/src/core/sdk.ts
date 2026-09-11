@@ -102,6 +102,7 @@ export type ProviderList = {
 
 export type AgentInfo = {
   name: string
+  description?: string
   mode: "subagent" | "primary" | "all"
   hidden?: boolean
   model?: {

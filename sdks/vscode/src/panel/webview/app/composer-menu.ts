@@ -12,6 +12,14 @@ type ComposerMenuState = {
 export function buildComposerMenuItems(state: ComposerMenuState, files: ComposerPathResult[]): ComposerAutocompleteItem[] {
   const slashItems: ComposerAutocompleteItem[] = [
     {
+      id: "slash-agents",
+      label: "agents",
+      detail: "选择或调用智能体。",
+      keywords: ["agent", "primary", "subagent"],
+      trigger: "slash",
+      kind: "action",
+    },
+    {
       id: "slash-new",
       label: "new",
       detail: "在此工作区开启新会话。",
@@ -105,7 +113,7 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
       id: `command:${cmd.name}`,
       label: cmd.name,
       detail: localizeCommandDescription(cmd.name, cmd.description ?? "", cmd.source === "mcp"),
-      keywords: [cmd.source ?? "", cmd.agent ?? ""].filter(Boolean),
+      keywords: [cmd.source ?? "", cmd.agent ?? "", cmd.description ?? ""].filter(Boolean),
       trigger: "slash" as const,
       kind: "command" as const,
     }))

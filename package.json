@@ -8,6 +8,8 @@
   "scripts": {
     "rebrand:check": "node scripts/rebrand-opencode-to-hypercode.mjs --dry-run",
     "rebrand:write": "node scripts/rebrand-opencode-to-hypercode.mjs --write",
+    "build:offline-linux": "bun run script/build-offline-linux.ts",
+    "build:offline-windows": "bun run script/build-offline-windows.ts",
     "dev": "bun run --cwd packages/opencode --conditions=browser src/index.ts",
     "dev:desktop": "bun --cwd packages/desktop dev",
     "dev:web": "bun --cwd packages/app dev",

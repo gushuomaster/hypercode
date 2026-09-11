@@ -21,6 +21,12 @@ describe("resolveComposerSlashAction", () => {
     })
   })
 
+  test("routes /agents to the local agent-picker action", () => {
+    assert.deepEqual(resolveComposerSlashAction("/agents", []), {
+      type: "openAgentPicker",
+    })
+  })
+
   test("keeps routing /skills to the local skill-picker action when direct slash display is enabled", () => {
     assert.deepEqual(resolveComposerSlashAction("/skills", [], {
       showSkillsInSlashAutocomplete: true,
@@ -108,6 +114,15 @@ describe("isCompletedSlashCommand", () => {
 })
 
 describe("resolveComposerAutocompleteAction", () => {
+  test("routes slash-agents autocomplete acceptance to the local agent picker", () => {
+    assert.deepEqual(resolveComposerAutocompleteAction({
+      id: "slash-agents",
+      kind: "action",
+    }), {
+      type: "openAgentPicker",
+    })
+  })
+
   test("routes slash-sessions autocomplete acceptance to the local session picker", () => {
     assert.deepEqual(resolveComposerAutocompleteAction({
       id: "slash-sessions",

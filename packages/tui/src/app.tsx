@@ -671,7 +671,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         category: t("command.category.agent"),
         slashName: "agents",
         run: () => {
-          dialog.replace(() => <DialogAgent />)
+          dialog.replace(() => <DialogAgent prompt={() => promptRef.current} />)
         },
       },
       {

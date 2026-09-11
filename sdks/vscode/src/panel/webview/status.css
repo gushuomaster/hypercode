@@ -826,6 +826,18 @@
   gap: 8px;
 }
 
+.oc-agentPickerIdentity {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.oc-agentPickerIdentity .oc-modelPickerItemDetail {
+  width: 100%;
+}
+
 .oc-modelPickerEmptyActions {
   flex-direction: column;
   align-items: flex-start;
