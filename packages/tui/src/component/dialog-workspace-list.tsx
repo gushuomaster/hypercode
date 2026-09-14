@@ -39,7 +39,7 @@ export function DialogWorkspaceList() {
         return {
           title:
             removing() === workspace.id
-              ? "Deleting..."
+              ? "Deleting…"
               : deleting() === workspace.id
                 ? `Delete ${workspace.name}? Press delete again`
                 : workspace.name,
@@ -82,7 +82,7 @@ export function DialogWorkspaceList() {
       route.navigate({ type: "home" })
     }
     await project.workspace.sync()
-    await sync.bootstrap()
+    await sync.bootstrap({ fatal: false }).catch(() => undefined)
     setRemoving(undefined)
   }
 

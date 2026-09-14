@@ -11,8 +11,8 @@ export function useNavigate() {
   return () => undefined
 }
 
-export function useSearchParams() {
-  return [{}, () => undefined] as const
+export function useSearchParams<T extends Record<string, string>>() {
+  return [{} as Partial<T>, () => undefined] as const
 }
 
 export function useLocation() {
