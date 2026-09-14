@@ -1250,11 +1250,6 @@ describe("session.compaction.process", () => {
           Effect.andThen(Fiber.await(fiber)),
           Effect.timeout("250 millis"),
         )
-        const exit = yield* Fiber.interrupt(fiber).pipe(
-          Effect.andThen(Fiber.await(fiber)),
-          Effect.timeout("250 millis"),
-        )
-
         expect(Exit.isFailure(exit)).toBe(true)
         if (Exit.isFailure(exit)) {
           expect(Cause.hasInterrupts(exit.cause)).toBe(true)
