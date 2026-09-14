@@ -18,6 +18,24 @@ describe("RuntimeFlags", () => {
     }),
   )
 
+  it.effect("reads HYPERCODE aliases", () =>
+    Effect.gen(function* () {
+      const flags = yield* readFlags.pipe(Effect.provide(fromConfig({ HYPERCODE_AUTO_SHARE: "true" })))
+
+      expect(flags.autoShare).toBe(true)
+    }),
+  )
+
+  it.effect("prefers HYPERCODE aliases when both names are set", () =>
+    Effect.gen(function* () {
+      const flags = yield* readFlags.pipe(
+        Effect.provide(fromConfig({ HYPERCODE_AUTO_SHARE: "false", OPENCODE_AUTO_SHARE: "true" })),
+      )
+
+      expect(flags.autoShare).toBe(false)
+    }),
+  )
+
   it.effect("layer parses plugin flags from the active ConfigProvider", () =>
     Effect.gen(function* () {
       const flags = yield* readFlags.pipe(

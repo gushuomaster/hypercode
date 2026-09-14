@@ -1,8 +1,8 @@
 import { Config } from "effect"
+import { names } from "./env"
 
 function env(key: string) {
-  const alias = key.startsWith("OPENCODE_") ? `HYPERCODE_${key.slice("OPENCODE_".length)}` : undefined
-  return (alias ? process.env[alias] : undefined) ?? process.env[key]
+  return names(key).map((name) => process.env[name]).find((value) => value !== undefined)
 }
 
 export function truthy(key: string) {

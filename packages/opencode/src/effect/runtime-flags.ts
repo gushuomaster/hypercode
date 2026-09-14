@@ -1,10 +1,6 @@
 import { Config, ConfigProvider, Context, Effect, Layer, Option } from "effect"
+import { names } from "@opencode-ai/core/flag/env"
 import { ConfigService } from "@/effect/config-service"
-
-function names(name: string) {
-  const alias = name.startsWith("OPENCODE_") ? `HYPERCODE_${name.slice("OPENCODE_".length)}` : undefined
-  return alias ? [alias, name] : [name]
-}
 
 const string = (name: string) =>
   names(name)
