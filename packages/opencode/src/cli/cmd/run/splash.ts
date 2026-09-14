@@ -20,6 +20,7 @@ import {
 import * as Locale from "@/util/locale"
 import { go } from "@/cli/logo"
 import type { RunSplashTheme } from "./theme"
+import { Brand } from "@/brand"
 
 export const SPLASH_TITLE_LIMIT = 50
 export const SPLASH_TITLE_FALLBACK = "Untitled session"
@@ -194,7 +195,7 @@ function build(input: SplashWriterInput, kind: "entry" | "exit", ctx: Scrollback
       })
     }
 
-    push(lines, body_left, top, "HyperCode", right, undefined, TextAttributes.BOLD)
+    push(lines, body_left, top, Brand.product, right, undefined, TextAttributes.BOLD)
     if (input.detail) {
       push(
         lines,
@@ -234,7 +235,7 @@ function build(input: SplashWriterInput, kind: "entry" | "exit", ctx: Scrollback
       lines,
       body_left + label.length,
       top + 1,
-      `hypercode run -i -s ${meta.session_id}`,
+      `${Brand.command} run -i -s ${meta.session_id}`,
       right,
       undefined,
       TextAttributes.BOLD,

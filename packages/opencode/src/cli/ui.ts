@@ -1,7 +1,10 @@
 import { EOL } from "os"
 import { Schema } from "effect"
+import { Brand } from "@/brand"
 
-const wordmark = ["HyperCode", "AI coding agent"]
+const wordmark = [Brand.product, "AI coding agent"]
+export const product = Brand.product
+export const command = Brand.command
 
 export class CancelledError extends Schema.TaggedErrorClass<CancelledError>()("UICancelledError", {}) {}
 

@@ -8,7 +8,7 @@ import { Brand } from "@/brand"
 
 export const PrCommand = effectCmd({
   command: "pr <number>",
-  describe: "fetch and checkout a GitHub PR branch, then run HyperCode",
+  describe: `fetch and checkout a GitHub PR branch, then run ${Brand.product}`,
   builder: (yargs) =>
     yargs.positional("number", {
       type: "number",
@@ -77,7 +77,7 @@ export const PrCommand = effectCmd({
         const sessionMatch = prInfo.body.match(/https:\/\/opncd\.ai\/s\/([a-zA-Z0-9_-]+)/)
         if (sessionMatch) {
           const sessionUrl = sessionMatch[0]
-          UI.println(`Found HyperCode session: ${sessionUrl}`)
+          UI.println(`Found ${Brand.product} session: ${sessionUrl}`)
           UI.println(`Importing session...`)
 
           const importResult = yield* Effect.promise(() =>
@@ -96,7 +96,7 @@ export const PrCommand = effectCmd({
 
     UI.println(`Successfully checked out PR #${prNumber} as branch '${localBranchName}'`)
     UI.println()
-    UI.println("Starting HyperCode...")
+    UI.println(`Starting ${Brand.product}...`)
     UI.println()
 
     const opencodeArgs = sessionId ? ["-s", sessionId] : []
@@ -111,6 +111,6 @@ export const PrCommand = effectCmd({
     )
     // Match legacy throw semantics — propagate as a defect so the top-level
     // index.ts catch handles it identically (exit 1, "Unexpected error" banner).
-    if (code !== 0) return yield* Effect.die(new Error(`HyperCode exited with code ${code}`))
+    if (code !== 0) return yield* Effect.die(new Error(`${Brand.product} exited with code ${code}`))
   }),
 })
