@@ -293,26 +293,25 @@ export const layer = Layer.effect(
       return yield* loadConfig(text, { path: filepath }, env)
     })
 
-    const syncBundledGlobalConfig = Effect.fnUntraced(function* () {
+    const bootstrapGlobalConfig = Effect.fnUntraced(function* () {
       if (!shouldSyncBundledGlobalConfig()) return
       if (hasExistingGlobalConfigFile()) return
       const file = path.join(Global.Path.config, "opencode.json")
       yield* fs.writeWithDirs(file, bundledHypercodeConfig).pipe(Effect.catch(() => Effect.void))
+      if (hasExistingGlobalConfigFile()) return
+      const fallback = globalConfigFile()
+      if (!existsSync(fallback)) {
+        yield* fs
+          .writeWithDirs(fallback, JSON.stringify({ $schema: "https://opencode.ai/config.json" }, null, 2))
+          .pipe(Effect.catch(() => Effect.void))
+      }
     })
 
     const loadGlobal = Effect.fnUntraced(function* (env?: Record<string, string>) {
       let result: Info = {}
-      yield* syncBundledGlobalConfig()
       // Seed the default global config with the schema for editor completion, but avoid writing when the user
       // explicitly routes config through env-provided paths or content.
-      if (shouldSyncBundledGlobalConfig() && !hasExistingGlobalConfigFile()) {
-        const file = globalConfigFile()
-        if (!existsSync(file)) {
-          yield* fs
-            .writeWithDirs(file, JSON.stringify({ $schema: "https://opencode.ai/config.json" }, null, 2))
-            .pipe(Effect.catch(() => Effect.void))
-        }
-      }
+      yield* bootstrapGlobalConfig()
       result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "config.json"), env))
       result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "opencode.json"), env))
       result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "opencode.jsonc"), env))
