@@ -10,6 +10,7 @@ type OpenApiParameter = {
 }
 
 type OpenApiOperation = {
+  description?: string
   parameters?: OpenApiParameter[]
   responses?: Record<string, OpenApiResponse>
   requestBody?: {
@@ -75,7 +76,7 @@ const QueryParameterSchemas: Record<string, OpenApiSchema> = {
 
 const LegacyComponentDescriptions: Record<string, string> = {
   LogLevel: "Log level",
-  ServerConfig: "Server configuration for hypercode serve and web commands",
+  ServerConfig: "Server configuration for opencode serve and web commands",
   LayoutConfig: "@deprecated Always uses stretch layout.",
 }
 
@@ -152,6 +153,7 @@ function matchLegacyOpenApi(input: Record<string, unknown>) {
         normalizeLegacyErrorResponses(operation)
       }
       normalizeLegacyOperation(operation, path, method)
+      if (!isV2Api && operation.description) operation.description = brandLegacyDescription(operation.description)
       if ((path === "/event" || path === "/global/event" || path === "/api/event") && method === "get") {
         // HttpApi has no first-class SSE response schema, and these handlers are
         // raw/streaming routes. Document the actual wire protocol explicitly.
@@ -179,6 +181,10 @@ function matchLegacyOpenApi(input: Record<string, unknown>) {
 
 function isV2ApiPath(path: string) {
   return path === "/api" || path.startsWith("/api/")
+}
+
+function brandLegacyDescription(description: string) {
+  return description.replaceAll("OpenCode", "HyperCode").replaceAll("opencode", "hypercode")
 }
 
 function addLegacyErrorSchemas(spec: OpenApiSpec) {
@@ -282,7 +288,7 @@ function normalizeComponentDescriptions(spec: OpenApiSpec) {
   for (const [name, schema] of Object.entries(spec.components?.schemas ?? {})) {
     const description = LegacyComponentDescriptions[name]
     if (description) {
-      schema.description = description
+      schema.description = brandLegacyDescription(description)
       continue
     }
     delete schema.description
