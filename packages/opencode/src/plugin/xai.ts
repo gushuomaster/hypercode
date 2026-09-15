@@ -1,9 +1,11 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin"
 import { OAUTH_DUMMY_KEY } from "../auth"
+import { createServer } from "http"
 import { InstallationVersion } from "@opencode-ai/core/installation/version"
 
 // Public Grok-CLI OAuth client.
 const CLIENT_ID = "b1a00492-073a-47ea-816f-4c329264a828"
+const AUTHORIZE_URL = "https://auth.x.ai/oauth2/authorize"
 const TOKEN_URL = "https://auth.x.ai/oauth2/token"
 // RFC 8628 device authorization grant. Confirmed exposed by xAI's
 // /.well-known/openid-configuration as `device_authorization_endpoint`
@@ -25,13 +27,65 @@ const DEVICE_CODE_SLOW_DOWN_INCREMENT_MS = 5_000
 const DEVICE_CODE_DEFAULT_EXPIRES_MS = 5 * 60 * 1000
 const OAUTH_POLLING_SAFETY_MARGIN_MS = 3_000
 
+const OAUTH_HOST = "127.0.0.1"
+const OAUTH_PORT = 56121
+const OAUTH_REDIRECT_PATH = "/callback"
+const REDIRECT_URI = `http://${OAUTH_HOST}:${OAUTH_PORT}${OAUTH_REDIRECT_PATH}`
+
 // Refresh the access token a little before it actually expires so a single
 // long-running tool call doesn't have to recover from a mid-flight 401.
 const ACCESS_TOKEN_REFRESH_SKEW_MS = 120_000
 
 interface XaiAuthPluginOptions {
+  authorizeUrl?: string
   tokenUrl?: string
   deviceAuthorizationUrl?: string
+}
+
+interface PkceCodes {
+  verifier: string
+  challenge: string
+}
+
+async function generatePKCE(): Promise<PkceCodes> {
+  const verifier = generateRandomString(64)
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))
+  return { verifier, challenge: base64UrlEncode(hash) }
+}
+
+function generateRandomString(length: number): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+  return Array.from(crypto.getRandomValues(new Uint8Array(length)))
+    .map((b) => chars[b % chars.length])
+    .join("")
+}
+
+function base64UrlEncode(buffer: ArrayBuffer): string {
+  const binary = String.fromCharCode(...new Uint8Array(buffer))
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
+}
+
+function generateState(): string {
+  return base64UrlEncode(crypto.getRandomValues(new Uint8Array(32)).buffer)
+}
+
+export function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case "&":
+        return "&amp;"
+      case "<":
+        return "&lt;"
+      case ">":
+        return "&gt;"
+      case '"':
+        return "&quot;"
+      case "'":
+        return "&#39;"
+      default:
+        return char
+    }
+  })
 }
 
 interface TokenResponse {
@@ -72,6 +126,50 @@ export function accessTokenIsExpiring(
   } catch {
     return false
   }
+}
+
+export function buildAuthorizeUrl(
+  pkce: PkceCodes,
+  state: string,
+  nonce: string,
+  options: XaiAuthPluginOptions = {},
+): string {
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    scope: SCOPE,
+    code_challenge: pkce.challenge,
+    code_challenge_method: "S256",
+    state,
+    nonce,
+    plan: "generic",
+    referrer: "opencode",
+  })
+  return `${options.authorizeUrl ?? AUTHORIZE_URL}?${params.toString()}`
+}
+
+async function exchangeCodeForTokens(
+  code: string,
+  pkce: PkceCodes,
+  options: XaiAuthPluginOptions = {},
+): Promise<TokenResponse> {
+  const response = await fetch(options.tokenUrl ?? TOKEN_URL, {
+    method: "POST",
+    headers: authHeaders(),
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: REDIRECT_URI,
+      client_id: CLIENT_ID,
+      code_verifier: pkce.verifier,
+    }).toString(),
+  })
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "")
+    throw new Error(`xAI token exchange failed (${response.status})${detail ? `: ${detail}` : ""}`)
+  }
+  return response.json() as Promise<TokenResponse>
 }
 
 async function refreshAccessToken(refreshToken: string, options: XaiAuthPluginOptions = {}): Promise<TokenResponse> {
