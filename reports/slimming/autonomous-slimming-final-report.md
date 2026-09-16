@@ -162,3 +162,13 @@ git diff --numstat 193de13a88d62a6409c6d385831180f1def527dc HEAD -- packages/cor
 The only newly discovered high-benefit candidate, C-017, is accepted and reduces seven upstream paths with strong generated-spec and server validation. The remaining queue consists of active compatibility, required product surface, low-benefit environment work, or Frozen architectural decisions. Continuing would optimize file count at the expense of behavior confidence or add abstractions without reducing upstream invasiveness.
 
 This is the current evidence-supported optimum, not a claim that future upstream releases can never unlock new replacements. On the next OpenCode upgrade, reuse this report's baseline, rerun the generated-spec hashes, and re-evaluate only when upstream provides a new equivalent boundary or stronger runtime evidence becomes available.
+
+## Phase 12 Closure Addendum
+
+Phase 11 selective replay is now committed in independent responsibility-boundary commits. Final maintenance readiness is `MAINTENANCE_READY_WITH_KNOWN_DEBT` at `e7333ecac2f5f4ce33fe051cfcd0e604f598e910`.
+
+- Final Fork Tax: `141 / 92 / 48 / 792`; the single-file increase from `140` is governance-only `AGENTS.md` replay, while production and core patch counts remain unchanged.
+- Core/TUI/VS Code validation passes; OpenCode retains historical F-013 plus the fully attributed user-script-only Doubao debt.
+- Broad validation: `3611 pass / 58 skip / 1 todo / 7 fail`; seven failures match known Windows symlink and CLI snapshot signatures; new regression count is `0`.
+- Preservation stashes remain retained, and the next maintenance entrypoint is `scripts/sync-opencode-upstream.ps1` with `reports/slimming/post-slimming-baseline.md`.
+- See `reports/slimming/phase12-final-maintenance-readiness.md` for the complete 18-point closure record.
