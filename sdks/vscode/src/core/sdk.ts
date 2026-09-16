@@ -194,6 +194,13 @@ export type ContextOverflowError = {
   }
 }
 
+export type ContentFilterError = {
+  name: "ContentFilterError"
+  data: {
+    message: string
+  }
+}
+
 export type ApiError = {
   name: "APIError"
   data: {
@@ -217,6 +224,7 @@ export type MessageError =
   | MessageAbortedError
   | StructuredOutputError
   | ContextOverflowError
+  | ContentFilterError
   | ApiError
 
 export type MessageInfo = {
