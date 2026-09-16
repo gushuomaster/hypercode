@@ -423,12 +423,6 @@ const layer = Layer.effect(
 
           case "step-start":
             if (!ctx.snapshot && !ctx.assistantMessage.summary) ctx.snapshot = yield* snapshot.track()
-            if (!ctx.assistantMessage.summary) {
-              // TODO(v2): Temporary dual-write while migrating session messages to v2 events.
-              if (mirrorAssistant) {
-                yield* ensureV2AssistantMessage()
-              }
-            }
             yield* session.updatePart({
               id: PartID.ascending(),
               messageID: ctx.assistantMessage.id,
