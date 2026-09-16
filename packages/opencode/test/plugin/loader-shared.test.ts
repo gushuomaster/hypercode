@@ -129,10 +129,9 @@ describe("plugin.loader.shared", () => {
             expect(yield* Effect.promise(() => fs.readFile(tmp.extra.mark, "utf8"))).toBe("called")
           }).pipe(
             Effect.provide(
-              Plugin.layer.pipe(
-                Layer.provide(EventV2Bridge.defaultLayer),
-                Layer.provide(RuntimeFlags.layer({ disableDefaultPlugins: true })),
-                Layer.provide(
+              LayerNode.compile(Plugin.node, [
+                [
+                  Config.node,
                   TestConfig.layer({
                     get: () =>
                       Effect.succeed({
@@ -145,8 +144,9 @@ describe("plugin.loader.shared", () => {
                         waits += 1
                       }),
                   }),
-                ),
-              ),
+                ],
+                [RuntimeFlags.node, RuntimeFlags.layer({ disableDefaultPlugins: true })],
+              ]),
             ),
             provideInstance(tmp.path),
           )

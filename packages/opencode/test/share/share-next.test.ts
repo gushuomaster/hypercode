@@ -156,7 +156,7 @@ describe("ShareNext", () => {
           const session = yield* (yield* Session.Service).create({ title: "test" })
 
           const result = yield* (yield* ShareNext.Service).create(session.id)
-          const createRequests = seen.filter(
+          const filteredRequests = createRequests.filter(
             (req) => req.method === "POST" && req.url === "https://legacy-share.example.com/api/share",
           )
 
@@ -169,9 +169,9 @@ describe("ShareNext", () => {
           expect(row?.url).toBe("https://legacy-share.example.com/share/abc")
           expect(row?.secret).toBe("sec_123")
 
-          expect(createRequests).toHaveLength(1)
-          expect(createRequests[0].method).toBe("POST")
-          expect(createRequests[0].url).toBe("https://legacy-share.example.com/api/share")
+          expect(filteredRequests).toHaveLength(1)
+          expect(filteredRequests[0].method).toBe("POST")
+          expect(filteredRequests[0].url).toBe("https://legacy-share.example.com/api/share")
         }).pipe(Effect.provide(integrationLayer(client)))
       },
       { config: { enterprise: { url: "https://legacy-share.example.com" } } },

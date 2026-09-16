@@ -11,8 +11,6 @@ import { ConfigManaged } from "@/config/managed"
 import { ConfigParse } from "../../src/config/parse"
 import { ConfigV2Compat } from "../../src/config/v2-compat"
 import { snapshot } from "./snapshot"
-import { Npm } from "@opencode-ai/core/npm"
-
 import { InstanceRef } from "../../src/effect/instance-ref"
 import type { InstanceContext } from "../../src/project/instance-context"
 import { Auth } from "../../src/auth"
@@ -45,6 +43,9 @@ import { ConfigPluginV1 } from "@opencode-ai/core/v1/config/plugin"
 import { AccountTest } from "../fake/account"
 import { AuthTest } from "../fake/auth"
 import { NpmTest } from "../fake/npm"
+import { EffectFlock } from "@opencode-ai/core/util/effect-flock"
+
+const testFlock = LayerNode.compile(EffectFlock.node)
 
 const unexpectedHttp = HttpClient.make((request) =>
   Effect.die(`unexpected http request: ${request.method} ${request.url}`),
@@ -105,13 +106,13 @@ const configLayer = (
 ) =>
   Config.layer.pipe(
     Layer.provide(testFlock),
-    Layer.provide(Env.defaultLayer),
+    Layer.provide(LayerNode.compile(Env.node)),
     Layer.provide(options.auth ?? AuthTest.empty),
     Layer.provide(options.account ?? AccountTest.empty),
-    Layer.provideMerge(infra),
+    Layer.provideMerge(LayerNode.compile(CrossSpawnSpawner.node)),
     Layer.provide(options.npm ?? NpmTest.noop),
     Layer.provide(Layer.succeed(HttpClient.HttpClient, options.client ?? unexpectedHttp)),
-    Layer.provideMerge(FSUtil.defaultLayer),
+    Layer.provideMerge(LayerNode.compile(FSUtil.node)),
   )
 
 const layer = configLayer()
@@ -344,7 +345,7 @@ it.effect("creates bundled global opencode.json when no global configs exist", (
 
         const content = yield* FSUtil.use.readFileString(path.join(dir, "opencode.json"))
         expect(content).toBe(bundledHypercodeConfig)
-      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(LayerNode.compile(CrossSpawnSpawner.node))),
     ),
   ),
 )
@@ -359,7 +360,7 @@ it.effect("preserves existing global opencode.json when bundled content differs"
 
         const content = yield* FSUtil.use.readFileString(path.join(dir, "opencode.json"))
         expect(content).toBe(JSON.stringify(schemaConfig({ model: "openai/gpt-5" })))
-      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(LayerNode.compile(CrossSpawnSpawner.node))),
     ),
   ),
 )
@@ -373,7 +374,7 @@ it.effect("does not create bundled opencode.json when hypercode.jsonc already ex
         yield* Config.use.get().pipe(provideInstanceEffect(dir))
 
         expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
-      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(LayerNode.compile(CrossSpawnSpawner.node))),
     ),
   ),
 )
@@ -406,7 +407,7 @@ it.effect("loads existing global hypercode.json without modifying it", () =>
           expect(config.provider?.internal?.models?.["qwen3.6-27b"]).toBeDefined()
           expect(yield* FSUtil.use.readFileString(file)).toBe(before)
           expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
-        }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+        }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(LayerNode.compile(CrossSpawnSpawner.node))),
     ),
   ),
 )
@@ -420,7 +421,7 @@ it.effect("does not create bundled opencode.json when config.json already exists
         yield* Config.use.get().pipe(provideInstanceEffect(dir))
 
         expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
-      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(LayerNode.compile(CrossSpawnSpawner.node))),
     ),
   ),
 )
@@ -442,7 +443,7 @@ it.effect("does not create bundled opencode.json when legacy config already exis
         expect(yield* FSUtil.use.existsSafe(path.join(dir, "hypercode.json"))).toBe(false)
         expect(yield* FSUtil.use.existsSafe(path.join(dir, "hypercode.jsonc"))).toBe(false)
         expect(yield* FSUtil.use.existsSafe(path.join(dir, "config.json"))).toBe(true)
-      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+      }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(LayerNode.compile(CrossSpawnSpawner.node))),
     ),
   ),
 )
@@ -480,7 +481,7 @@ it.effect("does not create bundled opencode.json when OPENCODE_CONFIG is set", (
             yield* Config.use.get().pipe(provideInstanceEffect(dir))
 
             expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
-          }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+          }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(LayerNode.compile(CrossSpawnSpawner.node))),
         ),
       )
     }),
@@ -499,7 +500,7 @@ it.effect("does not create bundled opencode.json when OPENCODE_CONFIG_CONTENT is
           yield* Config.use.get().pipe(provideInstanceEffect(dir))
 
           expect(yield* FSUtil.use.existsSafe(path.join(dir, "opencode.json"))).toBe(false)
-        }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+          }).pipe(Effect.provide(testInstanceStoreLayer), Effect.provide(LayerNode.compile(CrossSpawnSpawner.node))),
       ),
     ),
   ),
