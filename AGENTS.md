@@ -1,3 +1,13 @@
+# HyperCode User Experience
+
+- HyperCode primarily serves Chinese users. All user-visible copy defaults to Simplified Chinese.
+- This applies to UI, CLI, TUI, command help, tool descriptions, permission prompts, status messages, errors, skill descriptions, and workflow displays.
+- Do not expose localizable English copy directly just because upstream code, templates, or third-party APIs use English.
+- Command names, code identifiers, protocol fields, provider/model IDs, workflow IDs, file paths, and original third-party errors may remain in English.
+- Explain third-party English errors in Chinese while preserving the original text for diagnosis.
+- Keep model-internal reasoning hidden; user-facing answers and reasoning summaries use Chinese.
+- Tests for user-visible flows should cover critical Chinese copy to prevent regressions to English.
+
 - To regenerate the legacy JavaScript SDK, run `./packages/sdk/js/script/build.ts`.
 - After changing the public Protocol or Server `HttpApi`, run `bun run generate` from `packages/client`. Do not edit `src/generated` or `src/generated-effect` directly.
 - Keep runtime dependencies directed from Schema to Core and Protocol, then from Core and Protocol to Server. Client runtime code may depend on Schema and Protocol but never Core or Server; `sdk-next` composes Client, Core, and Server.

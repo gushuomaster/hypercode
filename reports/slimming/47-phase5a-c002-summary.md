@@ -30,7 +30,7 @@ C-002 completed as a minimal config bootstrap extraction/deduplication batch. Ph
 17. `bun.lock`: `UNCHANGED`.
 18. Manifests: `UNCHANGED`.
 19. Final status: `ACCEPTED_WITH_WARNINGS`, retaining baseline F-013 and known Windows/environment warnings.
-20. Commit: recorded after the independent commit is created below.
+20. Commit: `81ef2c8b0f6d74c85c09fcb34310cf0de90db177` (`slim(C-002): deduplicate config bootstrap`).
 
 ## Guardrails retained
 

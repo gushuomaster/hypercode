@@ -39,3 +39,41 @@
 - `RUNTIME_DYNAMIC_UNKNOWN`：`.opencode/agent`、`.opencode/skills`、`.opencode/command`、plugin discovery、VS Code parity fixtures；保持 `KEEP`。
 - `HIGH_CONFIDENCE_UNUSED_DEP`：0。未执行删除；lockfile 安装失败使全局 consumer scan 延后。
 - 语义重复实现：2 组已确认（env alias parsing、品牌 hardcode/resource）；对应 C-001/C-009，建议 Phase 5 先补测试再 `MERGE_DUPLICATES`/`SIMPLIFY_CUSTOM`。
+
+## P1 Candidate Validation Coverage
+
+| ID | Available validation | Typecheck coverage | Test coverage | Build coverage | Runtime smoke coverage | Can safely modify in Phase 5 |
+|---|---|---|---|---|---|---|
+| C-001 | flag/unit fixtures and static alias scan | core/opencode broad typecheck blocked by Drizzle cascade | alias-specific coverage not yet isolated | none | none | No；先补 precedence tests |
+| C-002 | config targeted suite、fresh-home fixtures | targeted path green；整体有 F-013 historical red | 118 pass | app build green；opencode build blocked | fresh-home smoke not independently complete | Guarded；先补 fresh-home smoke |
+| C-006 | provider registry tests and model matrix | broad opencode typecheck partially blocked | provider matrix needs rerun | no isolated build | no live provider smoke | Guarded；仅小范围 metadata 变更 |
+| C-007 | xAI OAuth mock helpers | xAI 相关错误已消失 | 24 pass | no isolated plugin build | no real callback smoke；PKCE/loopback only static+mock | Guarded；不得先抽取流程 |
+| C-010 | VS Code package/check-types | `check-types` FAIL，message union 未归因 | no complete extension suite | package build not baseline green | extension/server protocol smoke absent | No；保持 KEEP_CUSTOM |
+| C-011 | TUI test suite and platform assertions | Drizzle cascade blocks typecheck | 3 historical failures + 1 error | no reliable TUI build | no terminal smoke | No；保留中文/品牌 guardrails |
+| C-012 | offline scripts/static package inspection | package-wide typecheck unavailable | no complete offline suite | offline build not complete | no clean Linux/Windows artifact smoke | No；环境恢复前不动 |
+| C-016 | server protocol and VS Code compatibility scan | VS Code check-types red | matrix incomplete | no end-to-end build | protocol/extension smoke absent | No；先完成 API matrix |
+
+结论：P1 候选均已有审计入口，但只有 targeted config/plugin/XAI 路径达到局部 green；其余修改必须等待 A/B 和 runtime baseline 恢复。
+
+## Phase 5A Final Eligibility
+
+| ID | Static confidence | Runtime baseline required | Blocked by unresolved validation | Phase 5 eligibility |
+|---|---|---|---|---|
+| C-001 | Medium；两处 alias parser 已确认重复，但优先级语义需保持 | YES | YES | `READY_WITH_GUARDRAILS` |
+| C-002 | Medium；upstream config lifecycle 仅部分重叠 | YES | YES | `READY_WITH_GUARDRAILS` |
+| C-003 | Low/Medium；静态有消费者，旧名是否可退需要版本证据 | YES | YES | `FROZEN` |
+| C-004 | Low；涉及 session state/message/tool lifecycle | YES | YES | `FROZEN` |
+| C-005 | Medium；主要为文案，但 retry 展示契约需确认 | YES | YES | `READY_WITH_GUARDRAILS` |
+| C-006 | Medium；provider registry 有 upstream overlap，private loader 仍存在 | YES | YES | `FROZEN` |
+| C-007 | Medium/High；OAuth helper 已在 plugin 边界，但 auth storage 仍是内部依赖 | YES | YES | `READY_WITH_GUARDRAILS` |
+| C-008 | Medium；callback page 有共享模块，参数/错误语义未全对齐 | YES | YES | `READY_WITH_GUARDRAILS` |
+| C-009 | High；branding resource 与多处 hardcode 的静态重复明确 | NO（若只做资源盘点） | YES（若改变 CLI 文案） | `PHASE5A_READY` |
+| C-010 | Low/Medium；产品面与 upstream 仅 partial overlap | YES | YES | `FROZEN` |
+| C-011 | Medium；中文资源与 TUI hook 已定位，跨平台行为未闭合 | YES | YES | `FROZEN` |
+| C-012 | Medium；入口和依赖边界清晰，但 artifact smoke 缺失 | YES | YES | `READY_WITH_GUARDRAILS` |
+| C-013 | Low；license runtime 与产品策略仍需决定 | YES | YES | `FROZEN` |
+| C-014 | Low；动态 workflow/provider 引用未闭合 | YES | YES | `FROZEN` |
+| C-015 | Medium；filesystem discovery 机制 active，内容不可替代 | YES | YES | `FROZEN` |
+| C-016 | Low/Medium；Brand/compat boundary 可见，但 VS Code protocol 未归因 | YES | YES | `FROZEN` |
+
+本表为最终 Phase 5A eligibility；本阶段仍不执行任何候选修改。`READY_WITH_GUARDRAILS` 必须从最小测试和 characterization 开始，并保持回滚点。
