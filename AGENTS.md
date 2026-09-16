@@ -1,12 +1,19 @@
-# HyperCode User Experience
+<!-- HyperCode local overlay. Keep this block small and preserve the upstream OpenCode instructions below when possible. -->
 
-- HyperCode primarily serves Chinese users. All user-visible copy defaults to Simplified Chinese.
-- This applies to UI, CLI, TUI, command help, tool descriptions, permission prompts, status messages, errors, skill descriptions, and workflow displays.
-- Do not expose localizable English copy directly just because upstream code, templates, or third-party APIs use English.
-- Command names, code identifiers, protocol fields, provider/model IDs, workflow IDs, file paths, and original third-party errors may remain in English.
-- Explain third-party English errors in Chinese while preserving the original text for diagnosis.
-- Keep model-internal reasoning hidden; user-facing answers and reasoning summaries use Chinese.
-- Tests for user-visible flows should cover critical Chinese copy to prevent regressions to English.
+**HyperCode 仓库定位。** HyperCode 是持续维护的 OpenCode downstream fork。在合理范围内保持与 upstream OpenCode 的兼容，同时维护 HyperCode 自己的产品行为、中文体验与品牌能力；优先采用满足需求的最小完整修改，避免不必要地扩大 fork tax，使未来的 upstream synchronization 保持可维护。
+
+**语言与用户体验。** 本文件中 HyperCode 本地新增的约定使用中文；下方继承自 upstream OpenCode 的正文保持英文原文，不翻译、不重排、不润色，以减少同步冲突。HyperCode 主要服务中文用户，用户可见内容默认简体中文。
+
+- 默认适用于 UI、CLI、TUI、命令帮助、工具描述、权限提示、状态信息、错误信息、Skill 描述和 Workflow 显示；命令名、代码标识符、协议字段、provider/model ID、workflow ID、文件路径可以保持英文。
+- 不要因为 upstream 代码、模板或第三方 API 使用英文，就直接把可本地化的英文文案暴露给用户；第三方英文错误保留原文以便诊断，同时提供中文解释。
+- 不暴露模型内部 reasoning，面向用户的 reasoning summary 使用中文；关键用户可见流程需要有中文文案的 regression 覆盖。
+- 中文优先只约束产品用户体验，不代表源码标识符、协议字段或 upstream 工程正文需要中文化。
+
+**工程规范。** 涉及 upstream 同步、同步验证（含验证结论归因）与正式合入流程时，遵循 `docs/规范/上游同步工作流总纲.md`；涉及 HyperCode 品牌化差异、fork tax 与 upstream 差异维护时，遵循 `docs/规范/上游同步与品牌化规范.md`。更具体目录中的 `AGENTS.md` 可补充对应子系统约束，但不得与仓库级约定冲突。
+
+**仓库维护。** 避免因无关的 line-ending normalization 产生大范围 diff。
+
+<!-- End HyperCode local overlay. Upstream OpenCode instructions follow unchanged. -->
 
 - To regenerate the legacy JavaScript SDK, run `./packages/sdk/js/script/build.ts`.
 - After changing the public Protocol or Server `HttpApi`, run `bun run generate` from `packages/client`. Do not edit `src/generated` or `src/generated-effect` directly.
