@@ -6,6 +6,7 @@ import { useClipboard } from "../context/clipboard"
 import { InstallationVersion } from "@opencode-ai/core/installation/version"
 import { useExit } from "../context/exit"
 import { describeOS, describeTerminal } from "../util/system"
+import { t } from "../i18n"
 
 export function ErrorComponent(props: { error: Error; reset: () => void; mode?: "dark" | "light" }) {
   const term = useTerminalDimensions()
@@ -40,8 +41,8 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
         success: "#7fd88f",
       }
 
-  const message = props.error.message || "An unknown error occurred."
-  const stack = props.error.stack || "No stack trace available."
+  const message = props.error.message || t("error.crash.unknown")
+  const stack = props.error.stack || t("error.crash.noStack")
   const issueURL = buildIssueURL(message, stack)
 
   const copyReport = () => {
@@ -49,9 +50,14 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
   }
 
   const actions = [
-    { key: "c", label: () => (copied() ? "✓ Copied" : "Copy report"), copy: true, onUse: copyReport },
-    { key: "r", label: () => "Restart", onUse: props.reset },
-    { key: "q", label: () => "Quit", onUse: () => exit() },
+    {
+      key: "c",
+      label: () => (copied() ? `✓ ${t("error.crash.copied")}` : t("error.crash.copyReport")),
+      copy: true,
+      onUse: copyReport,
+    },
+    { key: "r", label: () => t("error.crash.restart"), onUse: props.reset },
+    { key: "q", label: () => t("error.crash.quit"), onUse: () => exit() },
   ]
   const [selected, setSelected] = createSignal(0)
   const move = (delta: number) => setSelected((prev) => (prev + delta + actions.length) % actions.length)
@@ -108,10 +114,10 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
         {/* Headline */}
         <box flexDirection="column" alignItems="center" flexShrink={0}>
           <text attributes={TextAttributes.BOLD} fg={colors.text}>
-            opencode crashed
+            {t("error.crash.title")}
           </text>
           <Show when={showSubtext()}>
-            <text fg={colors.muted}>An unexpected error stopped the session.</text>
+            <text fg={colors.muted}>{t("error.crash.subtitle")}</text>
           </Show>
         </box>
 
@@ -121,7 +127,7 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
           border
           borderStyle="rounded"
           borderColor={colors.error}
-          title=" Error "
+          title={` ${t("error.crash.error")} `}
           titleColor={colors.error}
           paddingLeft={2}
           paddingRight={2}
@@ -168,9 +174,9 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
           border
           borderStyle="rounded"
           borderColor={colors.borderSubtle}
-          title=" Stack trace "
+          title={` ${t("error.crash.stack")} `}
           titleColor={colors.muted}
-          bottomTitle=" ↑↓ scroll "
+          bottomTitle={` ${t("error.crash.scroll")} `}
           bottomTitleAlignment="right"
           paddingLeft={1}
           paddingRight={1}
@@ -189,10 +195,10 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
           <box flexDirection="column" alignItems="center" flexShrink={0}>
             <text fg={colors.muted}>
               {copied()
-                ? "Report copied — paste it into a new GitHub issue."
-                : "Copy the report and open a GitHub issue to help us fix this."}
+                ? t("error.crash.reportCopied")
+                : t("error.crash.reportPrompt")}
             </text>
-            <text fg={colors.muted}>opencode {InstallationVersion}</text>
+            <text fg={colors.muted}>HyperCode {InstallationVersion}</text>
           </box>
         </Show>
       </box>
@@ -205,13 +211,13 @@ function buildIssueURL(message: string, stack: string) {
   // form opens pre-filled. Populating os/terminal/reproduce keeps the report past
   // the contributing-guidelines compliance check, which pushes for system info.
   const url = new URL("https://github.com/anomalyco/opencode/issues/new?template=bug-report.yml")
-  url.searchParams.set("title", `TUI crash: ${message}`)
+  url.searchParams.set("title", t("error.crash.issueTitle", { message }))
   url.searchParams.set("opencode-version", InstallationVersion)
   url.searchParams.set("os", describeOS())
   url.searchParams.set("terminal", describeTerminal())
   url.searchParams.set(
     "reproduce",
-    "Reported automatically from the opencode crash screen. If you can, describe what you were doing when it crashed.",
+    t("error.crash.reproduce"),
   )
 
   // Budget the stack against the fully URL-encoded length (not the raw length) so
@@ -220,7 +226,7 @@ function buildIssueURL(message: string, stack: string) {
   // so measuring url.toString() is both correct and safe on any input.
   const MAX_URL_LENGTH = 6000
   const marker = "\n… (truncated)"
-  const head = `The opencode TUI crashed with an unexpected error.\n\n**Error:** ${message}\n\n**Stack trace:**\n`
+  const head = t("error.crash.issueBody", { message })
   const setBody = (body: string) => url.searchParams.set("description", head + "```\n" + body + "\n```")
 
   setBody(stack)

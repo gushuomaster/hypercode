@@ -1,7 +1,8 @@
 import * as vscode from "vscode"
 import { client } from "./sdk"
 import { freeport, health, spawn, startupFailure, stop, type WorkspaceRuntime } from "./server"
-import { openLicenseFile, promptForLicenseIssue, resolveLicensePath, validateLicense } from "../license"
+import { localizedLicenseMessage, openLicenseFile, promptForLicenseIssue, resolveLicensePath, validateLicense } from "../license"
+import { t } from "../i18n"
 
 type WorkspaceManagerDeps = {
   freeport?: typeof freeport
@@ -157,6 +158,7 @@ export class WorkspaceManager implements vscode.Disposable {
     const licensePath = (this.deps.resolveLicensePath ?? resolveLicensePath)()
     const license = await (this.deps.validateLicense ?? validateLicense)({ licensePath })
     if (!license.ok) {
+      const message = localizedLicenseMessage(license)
       const rt: WorkspaceRuntime = {
         workspaceId: id,
         dir,
@@ -167,13 +169,13 @@ export class WorkspaceManager implements vscode.Disposable {
         sessions: new Map(),
         sessionStatuses: new Map(),
         sessionsState: "idle",
-        err: license.message,
+        err: message,
       }
       this.state.set(id, rt)
       this.dirIndex.set(dir, id)
       this.log(rt, `license check failed: ${license.reason} ${license.message}`)
       this.fire()
-      void this.handleLicenseFailure(license.message)
+      void this.handleLicenseFailure(message)
       return rt
     }
 
@@ -255,15 +257,15 @@ export class WorkspaceManager implements vscode.Disposable {
 
   private async handleLicenseFailure(message: string) {
     const action = await (this.deps.promptForLicenseIssue ?? promptForLicenseIssue)(
-      `HyperCode 授权检查失败：${message}`,
+      t("license.checkFailed", { message }),
     )
 
-    if (action === "打开授权文件" || action === "创建授权文件") {
+    if (action === t("license.open") || action === t("license.create")) {
       await (this.deps.openLicenseFile ?? openLicenseFile)()
       return
     }
 
-    if (action === "重试授权检查") {
+    if (action === t("license.retry")) {
       await this.sync(vscode.workspace.workspaceFolders ?? [])
     }
   }

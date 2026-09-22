@@ -56,7 +56,7 @@ import { Sidebar } from "./sidebar"
 import { SubagentFooter } from "./subagent-footer.tsx"
 import { filetype } from "../../util/filetype"
 import parsers from "../../parsers-config"
-import { errorMessage } from "../../util/error"
+import { errorMessage, sessionErrorMessage } from "../../util/error"
 import { Toast, useToast } from "../../ui/toast"
 import { useKV } from "../../context/kv.tsx"
 import stripAnsi from "strip-ansi"
@@ -81,6 +81,7 @@ import { getRevertDiffFiles } from "../../util/revert-diff"
 import { OPENCODE_BASE_MODE, useBindings, useCommandShortcut, useOpencodeKeymap } from "../../keymap"
 import { usePathFormatter } from "../../context/path-format"
 import { LocationProvider } from "../../context/location"
+import { translate as t } from "../../context/language"
 
 addDefaultParsers(parsers.parsers)
 
@@ -290,7 +291,7 @@ export function Session() {
       const result = await sdk.client.session.get({ sessionID }, { throwOnError: true })
       if (!result.data) {
         toast.show({
-          message: `Session not found: ${sessionID}`,
+          message: t("session.notFound", { id: sessionID }),
           variant: "error",
           duration: 5000,
         })
@@ -464,10 +465,10 @@ export function Session() {
 
   const sessionCommandList = createMemo(() => [
     {
-      title: session()?.share?.url ? "Copy share link" : "Share session",
+      title: session()?.share?.url ? t("session.share.copy") : t("session.share.create"),
       value: "session.share",
       suggested: route.type === "session",
-      category: "Session",
+      category: t("command.category.session"),
       enabled: sync.data.config.share !== "disabled",
       slash: {
         name: "share",
@@ -476,8 +477,8 @@ export function Session() {
         const copy = (url: string) =>
           clipboard
             .write?.(url)
-            .then(() => toast.show({ message: "Share URL copied to clipboard!", variant: "success" }))
-            .catch(() => toast.show({ message: "Failed to copy URL to clipboard", variant: "error" }))
+            .then(() => toast.show({ message: t("session.share.copied"), variant: "success" }))
+            .catch(() => toast.show({ message: t("session.share.copyFailed"), variant: "error" }))
         const url = session()?.share?.url
         if (url) {
           await copy(url)
@@ -485,7 +486,11 @@ export function Session() {
           return
         }
         if (!kv.get("share_consent", false)) {
-          const ok = await DialogConfirm.show(dialog, "Share Session", "Are you sure you want to share it?")
+          const ok = await DialogConfirm.show(
+            dialog,
+            t("session.share.confirmTitle"),
+            t("session.share.confirmMessage"),
+          )
           if (ok !== true) return
           kv.set("share_consent", true)
         }
@@ -496,7 +501,7 @@ export function Session() {
           .then((res) => copy(res.data!.share!.url))
           .catch((error) => {
             toast.show({
-              message: error instanceof Error ? error.message : "Failed to share session",
+              message: error instanceof Error ? error.message : t("session.share.failed"),
               variant: "error",
             })
           })
@@ -504,9 +509,9 @@ export function Session() {
       },
     },
     {
-      title: "Rename session",
+      title: t("session.rename"),
       value: "session.rename",
-      category: "Session",
+      category: t("command.category.session"),
       slash: {
         name: "rename",
       },
@@ -515,9 +520,9 @@ export function Session() {
       },
     },
     {
-      title: "Jump to message",
+      title: t("session.jump"),
       value: "session.timeline",
-      category: "Session",
+      category: t("command.category.session"),
       slash: {
         name: "timeline",
       },
@@ -537,9 +542,9 @@ export function Session() {
       },
     },
     {
-      title: "Fork session",
+      title: t("session.fork"),
       value: "session.fork",
-      category: "Session",
+      category: t("command.category.session"),
       slash: {
         name: "fork",
       },
@@ -559,9 +564,9 @@ export function Session() {
       },
     },
     {
-      title: "Compact session",
+      title: t("session.compact"),
       value: "session.compact",
-      category: "Session",
+      category: t("command.category.session"),
       slash: {
         name: "compact",
         aliases: ["summarize"],
@@ -571,7 +576,7 @@ export function Session() {
         if (!selectedModel) {
           toast.show({
             variant: "warning",
-            message: "Connect a provider to summarize this session",
+            message: t("session.compact.noProvider"),
             duration: 3000,
           })
           return
@@ -585,9 +590,9 @@ export function Session() {
       },
     },
     {
-      title: "Unshare session",
+      title: t("session.unshare"),
       value: "session.unshare",
-      category: "Session",
+      category: t("command.category.session"),
       enabled: !!session()?.share?.url,
       slash: {
         name: "unshare",
@@ -597,10 +602,10 @@ export function Session() {
           .unshare({
             sessionID: route.sessionID,
           })
-          .then(() => toast.show({ message: "Session unshared successfully", variant: "success" }))
+          .then(() => toast.show({ message: t("session.unshare.success"), variant: "success" }))
           .catch((error) => {
             toast.show({
-              message: error instanceof Error ? error.message : "Failed to unshare session",
+              message: error instanceof Error ? error.message : t("session.unshare.failed"),
               variant: "error",
             })
           })
@@ -608,9 +613,9 @@ export function Session() {
       },
     },
     {
-      title: "Undo previous message",
+      title: t("session.undo"),
       value: "session.undo",
-      category: "Session",
+      category: t("command.category.session"),
       slash: {
         name: "undo",
       },
@@ -644,9 +649,9 @@ export function Session() {
       },
     },
     {
-      title: "Redo",
+      title: t("session.redo"),
       value: "session.redo",
-      category: "Session",
+      category: t("command.category.session"),
       enabled: !!session()?.revert?.messageID,
       slash: {
         name: "redo",
@@ -670,9 +675,9 @@ export function Session() {
       },
     },
     {
-      title: sidebarVisible() ? "Hide sidebar" : "Show sidebar",
+      title: sidebarVisible() ? t("session.sidebar.hide") : t("session.sidebar.show"),
       value: "session.sidebar.toggle",
-      category: "Session",
+      category: t("command.category.session"),
       run: () => {
         batch(() => {
           const isVisible = sidebarVisible()
@@ -683,18 +688,18 @@ export function Session() {
       },
     },
     {
-      title: conceal() ? "Disable code concealment" : "Enable code concealment",
+      title: conceal() ? t("session.conceal.disable") : t("session.conceal.enable"),
       value: "session.toggle.conceal",
-      category: "Session",
+      category: t("command.category.session"),
       run: () => {
         setConceal((prev) => !prev)
         dialog.clear()
       },
     },
     {
-      title: showTimestamps() ? "Hide timestamps" : "Show timestamps",
+      title: showTimestamps() ? t("session.timestamps.hide") : t("session.timestamps.show"),
       value: "session.toggle.timestamps",
-      category: "Session",
+      category: t("command.category.session"),
       slash: {
         name: "timestamps",
         aliases: ["toggle-timestamps"],
@@ -707,11 +712,11 @@ export function Session() {
     {
       title: (() => {
         const next = nextThinkingMode(thinkingMode())
-        if (next === "hide") return "Collapse thinking"
-        return "Expand thinking"
+        if (next === "hide") return t("session.thinking.collapse")
+        return t("session.thinking.expand")
       })(),
       value: "session.toggle.thinking",
-      category: "Session",
+      category: t("command.category.session"),
       slash: {
         name: "thinking",
         aliases: ["toggle-thinking"],
@@ -722,36 +727,36 @@ export function Session() {
       },
     },
     {
-      title: showDetails() ? "Hide tool details" : "Show tool details",
+      title: showDetails() ? t("session.details.hide") : t("session.details.show"),
       value: "session.toggle.actions",
-      category: "Session",
+      category: t("command.category.session"),
       run: () => {
         setShowDetails((prev) => !prev)
         dialog.clear()
       },
     },
     {
-      title: "Toggle session scrollbar",
+      title: t("session.scrollbar.toggle"),
       value: "session.toggle.scrollbar",
-      category: "Session",
+      category: t("command.category.session"),
       run: () => {
         setShowScrollbar((prev) => !prev)
         dialog.clear()
       },
     },
     {
-      title: showGenericToolOutput() ? "Hide generic tool output" : "Show generic tool output",
+      title: showGenericToolOutput() ? t("session.genericOutput.hide") : t("session.genericOutput.show"),
       value: "session.toggle.generic_tool_output",
-      category: "Session",
+      category: t("command.category.session"),
       run: () => {
         setShowGenericToolOutput((prev) => !prev)
         dialog.clear()
       },
     },
     {
-      title: "Page up",
+      title: t("session.pageUp"),
       value: "session.page.up",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       run: () => {
         scroll.scrollBy(-scroll.height / 2)
@@ -759,9 +764,9 @@ export function Session() {
       },
     },
     {
-      title: "Page down",
+      title: t("session.pageDown"),
       value: "session.page.down",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       run: () => {
         scroll.scrollBy(scroll.height / 2)
@@ -769,9 +774,9 @@ export function Session() {
       },
     },
     {
-      title: "Line up",
+      title: t("session.lineUp"),
       value: "session.line.up",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       run: () => {
         scroll.scrollBy(-1)
@@ -779,9 +784,9 @@ export function Session() {
       },
     },
     {
-      title: "Line down",
+      title: t("session.lineDown"),
       value: "session.line.down",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       run: () => {
         scroll.scrollBy(1)
@@ -789,9 +794,9 @@ export function Session() {
       },
     },
     {
-      title: "Half page up",
+      title: t("session.halfPageUp"),
       value: "session.half.page.up",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       run: () => {
         scroll.scrollBy(-scroll.height / 4)
@@ -799,9 +804,9 @@ export function Session() {
       },
     },
     {
-      title: "Half page down",
+      title: t("session.halfPageDown"),
       value: "session.half.page.down",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       run: () => {
         scroll.scrollBy(scroll.height / 4)
@@ -809,9 +814,9 @@ export function Session() {
       },
     },
     {
-      title: "First message",
+      title: t("session.firstMessage"),
       value: "session.first",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       run: () => {
         scroll.scrollTo(0)
@@ -819,9 +824,9 @@ export function Session() {
       },
     },
     {
-      title: "Last message",
+      title: t("session.lastMessage"),
       value: "session.last",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       run: () => {
         scroll.scrollTo(scroll.scrollHeight)
@@ -829,9 +834,9 @@ export function Session() {
       },
     },
     {
-      title: "Jump to last user message",
+      title: t("session.lastUserMessage"),
       value: "session.messages_last_user",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       run: () => {
         const messages = sync.data.message[route.sessionID]
@@ -860,27 +865,27 @@ export function Session() {
       },
     },
     {
-      title: "Next message",
+      title: t("session.nextMessage"),
       value: "session.message.next",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       run: () => scrollToMessage("next", dialog),
     },
     {
-      title: "Previous message",
+      title: t("session.previousMessage"),
       value: "session.message.previous",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       run: () => scrollToMessage("prev", dialog),
     },
     {
-      title: "Copy last assistant message",
+      title: t("session.copyLastAssistant"),
       value: "messages.copy",
-      category: "Session",
+      category: t("command.category.session"),
       run: () => {
         const lastAssistantMessage = messagesBeforeRevert().findLast((message) => message.role === "assistant")
         if (!lastAssistantMessage) {
-          toast.show({ message: "No assistant messages found", variant: "error" })
+          toast.show({ message: t("session.copy.noAssistant"), variant: "error" })
           dialog.clear()
           return
         }
@@ -888,7 +893,7 @@ export function Session() {
         const parts = sync.data.part[lastAssistantMessage.id] ?? []
         const textParts = parts.filter((part) => part.type === "text")
         if (textParts.length === 0) {
-          toast.show({ message: "No text parts found in last assistant message", variant: "error" })
+          toast.show({ message: t("session.copy.noTextParts"), variant: "error" })
           dialog.clear()
           return
         }
@@ -899,7 +904,7 @@ export function Session() {
           .trim()
         if (!text) {
           toast.show({
-            message: "No text content found in last assistant message",
+            message: t("session.copy.noText"),
             variant: "error",
           })
           dialog.clear()
@@ -908,15 +913,15 @@ export function Session() {
 
         clipboard
           .write?.(text)
-          .then(() => toast.show({ message: "Message copied to clipboard!", variant: "success" }))
-          .catch(() => toast.show({ message: "Failed to copy to clipboard", variant: "error" }))
+          .then(() => toast.show({ message: t("session.copy.success"), variant: "success" }))
+          .catch(() => toast.show({ message: t("session.copy.failed"), variant: "error" }))
         dialog.clear()
       },
     },
     {
-      title: "Copy session transcript",
+      title: t("session.transcript.copy"),
       value: "session.copy",
-      category: "Session",
+      category: t("command.category.session"),
       slash: {
         name: "copy",
       },
@@ -936,17 +941,17 @@ export function Session() {
             },
           )
           await clipboard.write?.(transcript)
-          toast.show({ message: "Session transcript copied to clipboard!", variant: "success" })
+          toast.show({ message: t("session.transcript.copied"), variant: "success" })
         } catch {
-          toast.show({ message: "Failed to copy session transcript", variant: "error" })
+          toast.show({ message: t("session.transcript.copyFailed"), variant: "error" })
         }
         dialog.clear()
       },
     },
     {
-      title: "Export session transcript",
+      title: t("session.transcript.export"),
       value: "session.export",
-      category: "Session",
+      category: t("command.category.session"),
       slash: {
         name: "export",
       },
@@ -1010,18 +1015,18 @@ export function Session() {
               await writeExport(filepath, result)
             }
 
-            toast.show({ message: `Session exported to ${filename}`, variant: "success" })
+            toast.show({ message: t("session.transcript.exported", { filename }), variant: "success" })
           }
         } catch {
-          toast.show({ message: "Failed to export session", variant: "error" })
+          toast.show({ message: t("session.transcript.exportFailed"), variant: "error" })
         }
         dialog.clear()
       },
     },
     {
-      title: "Background subagents",
+      title: t("session.background"),
       value: "session.background",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       enabled: foregroundTasks().length > 0,
       run: () => {
@@ -1033,9 +1038,9 @@ export function Session() {
       },
     },
     {
-      title: "Go to child session",
+      title: t("session.child.first"),
       value: "session.child.first",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       run: () => {
         dialog.clear()
@@ -1043,9 +1048,9 @@ export function Session() {
       },
     },
     {
-      title: "Go to parent session",
+      title: t("session.parent"),
       value: "session.parent",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       enabled: !!session()?.parentID,
       run: childSessionHandler(() => {
@@ -1060,9 +1065,9 @@ export function Session() {
       }),
     },
     {
-      title: "Next child session",
+      title: t("session.child.next"),
       value: "session.child.next",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       enabled: !!session()?.parentID,
       run: childSessionHandler(() => {
@@ -1071,9 +1076,9 @@ export function Session() {
       }),
     },
     {
-      title: "Previous child session",
+      title: t("session.child.previous"),
       value: "session.child.previous",
-      category: "Session",
+      category: t("command.category.session"),
       hidden: true,
       enabled: !!session()?.parentID,
       run: childSessionHandler(() => {
@@ -1447,7 +1452,7 @@ function UserMessage(props: {
               }
             >
               <text fg={theme.textMuted}>
-                <span style={{ bg: color(), fg: queuedFg(), bold: true }}> QUEUED </span>
+                  <span style={{ bg: color(), fg: queuedFg(), bold: true }}> {t("session.queued")} </span>
               </text>
             </Show>
           </box>
@@ -1457,7 +1462,7 @@ function UserMessage(props: {
         <box
           marginTop={1}
           border={["top"]}
-          title=" Compaction "
+                    title={` ${t("session.compaction")} `}
           titleAlignment="center"
           borderColor={theme.borderActive}
         />
@@ -1510,7 +1515,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
         <box paddingTop={1} paddingLeft={3}>
           <text fg={theme.text}>
             {childShortcut()}
-            <span style={{ fg: theme.textMuted }}> view subagents</span>
+                  <span style={{ fg: theme.textMuted }}> {t("session.viewSubagents")}</span>
             <Show
               when={
                 sync.data.capabilities.experimentalBackgroundSubagents &&
@@ -1525,7 +1530,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
             >
               <span style={{ fg: theme.textMuted }}> · </span>
               {backgroundShortcut()}
-              <span style={{ fg: theme.textMuted }}> background</span>
+                    <span style={{ fg: theme.textMuted }}> {t("session.backgroundLabel")}</span>
             </Show>
           </text>
         </box>
@@ -1542,7 +1547,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
           customBorderChars={SplitBorder.customBorderChars}
           borderColor={theme.error}
         >
-          <text fg={theme.textMuted}>{errorMessage(props.message.error)}</text>
+          <text fg={theme.textMuted}>{sessionErrorMessage(props.message.error)}</text>
         </box>
       </Show>
       <Switch>
@@ -1671,7 +1676,9 @@ function ReasoningHeader(props: {
     <Switch>
       <Match when={!props.done}>
         <box flexDirection="row">
-          <Spinner color={fg()}>{props.title ? "Thinking: " + props.title : "Thinking"}</Spinner>
+      <Spinner color={fg()}>
+        {props.title ? t("session.thinkingTitle", { title: props.title }) : t("session.thinking")}
+      </Spinner>
         </box>
       </Match>
       <Match when={true}>
@@ -1812,7 +1819,7 @@ function GenericTool(props: ToolProps) {
     <Show
       when={props.output && ctx.showGenericToolOutput()}
       fallback={
-        <InlineTool icon="⚙" pending="Writing command…" complete={true} part={props.part}>
+      <InlineTool icon="⚙" pending={t("tool.pending.command")} complete={true} part={props.part}>
           {props.tool} {input(props.input)}
         </InlineTool>
       }
@@ -2094,7 +2101,7 @@ function Shell(props: ToolProps) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="$" pending="Writing command…" complete={stringValue(props.input.command)} part={props.part}>
+        <InlineTool icon="$" pending={t("tool.pending.command")} complete={stringValue(props.input.command)} part={props.part}>
           {stringValue(props.input.command)}
         </InlineTool>
       </Match>
@@ -2126,7 +2133,7 @@ function Write(props: ToolProps) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="←" pending="Preparing write…" complete={stringValue(props.input.filePath)} part={props.part}>
+        <InlineTool icon="←" pending={t("tool.pending.write")} complete={stringValue(props.input.filePath)} part={props.part}>
           Write {pathFormatter.format(stringValue(props.input.filePath))}
         </InlineTool>
       </Match>
@@ -2137,7 +2144,7 @@ function Write(props: ToolProps) {
 function Glob(props: ToolProps) {
   const pathFormatter = usePathFormatter()
   return (
-    <InlineTool icon="✱" pending="Finding files…" complete={stringValue(props.input.pattern)} part={props.part}>
+    <InlineTool icon="✱" pending={t("tool.pending.glob")} complete={stringValue(props.input.pattern)} part={props.part}>
       Glob "{stringValue(props.input.pattern)}"{" "}
       <Show when={stringValue(props.input.path)}>in {pathFormatter.format(stringValue(props.input.path))} </Show>
       <Show when={numberValue(props.metadata.count)}>
@@ -2162,7 +2169,7 @@ function Read(props: ToolProps) {
     <>
       <InlineTool
         icon="→"
-        pending="Reading file…"
+        pending={t("tool.pending.read")}
         complete={stringValue(props.input.filePath)}
         spinner={isRunning()}
         part={props.part}
@@ -2185,7 +2192,7 @@ function Read(props: ToolProps) {
 function Grep(props: ToolProps) {
   const pathFormatter = usePathFormatter()
   return (
-    <InlineTool icon="✱" pending="Searching content…" complete={stringValue(props.input.pattern)} part={props.part}>
+    <InlineTool icon="✱" pending={t("tool.pending.grep")} complete={stringValue(props.input.pattern)} part={props.part}>
       Grep "{stringValue(props.input.pattern)}"{" "}
       <Show when={stringValue(props.input.path)}>in {pathFormatter.format(stringValue(props.input.path))} </Show>
       <Show when={numberValue(props.metadata.matches)}>
@@ -2197,7 +2204,7 @@ function Grep(props: ToolProps) {
 
 function WebFetch(props: ToolProps) {
   return (
-    <InlineTool icon="%" pending="Fetching from the web…" complete={stringValue(props.input.url)} part={props.part}>
+    <InlineTool icon="%" pending={t("tool.pending.webFetch")} complete={stringValue(props.input.url)} part={props.part}>
       WebFetch {stringValue(props.input.url)}
     </InlineTool>
   )
@@ -2205,7 +2212,7 @@ function WebFetch(props: ToolProps) {
 
 function WebSearch(props: ToolProps) {
   return (
-    <InlineTool icon="◈" pending="Searching web…" complete={stringValue(props.input.query)} part={props.part}>
+    <InlineTool icon="◈" pending={t("tool.pending.webSearch")} complete={stringValue(props.input.query)} part={props.part}>
       {webSearchProviderLabel(props.metadata.provider)} "{stringValue(props.input.query)}"{" "}
       <Show when={numberValue(props.metadata.numResults)}>({numberValue(props.metadata.numResults)} results)</Show>
     </InlineTool>
@@ -2295,7 +2302,7 @@ function Task(props: ToolProps) {
       color={retry() ? theme.error : undefined}
       spinner={isRunning()}
       complete={stringValue(props.input.description)}
-      pending="Delegating…"
+      pending={t("tool.pending.task")}
       part={props.part}
       onClick={() => {
         if (sessionID()) {
@@ -2351,7 +2358,7 @@ function Execute(props: ToolProps) {
   const outputPreview = createMemo(() => collapseToolOutput(output(), 4, 4 * Math.max(20, ctx.width - 6)).output)
   const showOutput = createMemo(() => output() && hasRuntimeError())
   const content = createMemo(() => {
-    const lines = ["execute"]
+    const lines = [t("tool.execute")]
     for (const call of calls()) {
       const args = input(call.input ?? {})
       lines.push(`↳ ${call.tool}${args ? ` ${args}` : ""}${call.status === "error" ? " (failed)" : ""}`)
@@ -2365,7 +2372,7 @@ function Execute(props: ToolProps) {
         icon={hasRuntimeError() ? "✗" : props.part.state.status === "completed" ? "✓" : "│"}
         color={hasRuntimeError() ? theme.error : undefined}
         spinner={isLoading()}
-        pending="execute"
+        pending={t("tool.execute")}
         complete={true}
         part={props.part}
       >
@@ -2432,7 +2439,7 @@ function Edit(props: ToolProps) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="←" pending="Preparing edit…" complete={stringValue(props.input.filePath)} part={props.part}>
+        <InlineTool icon="←" pending={t("tool.pending.edit")} complete={stringValue(props.input.filePath)} part={props.part}>
           Edit {pathFormatter.format(stringValue(props.input.filePath))} {input({ replaceAll: props.input.replaceAll })}
         </InlineTool>
       </Match>
@@ -2508,7 +2515,13 @@ function ApplyPatch(props: ToolProps) {
         </For>
       </Match>
       <Match when={true}>
-        <InlineTool icon="%" pending="Preparing patch…" failure="Patch failed" complete={false} part={props.part}>
+        <InlineTool
+          icon="%"
+          pending={t("tool.pending.patch")}
+          failure={t("tool.patchFailed")}
+          complete={false}
+          part={props.part}
+        >
           Patch
         </InlineTool>
       </Match>
@@ -2521,15 +2534,21 @@ function TodoWrite(props: ToolProps) {
   return (
     <Switch>
       <Match when={parseTodos(props.metadata.todos).length}>
-        <BlockTool title="# Todos" part={props.part}>
+        <BlockTool title={t("tool.todos")} part={props.part}>
           <box>
             <For each={todos()}>{(todo) => <TodoItem status={todo.status} content={todo.content} />}</For>
           </box>
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="⚙" pending="Updating todos…" failure="Todo update failed" complete={false} part={props.part}>
-          Updating todos…
+        <InlineTool
+          icon="⚙"
+          pending={t("tool.pending.todos")}
+          failure={t("tool.todoFailed")}
+          complete={false}
+          part={props.part}
+        >
+          {t("tool.pending.todos")}
         </InlineTool>
       </Match>
     </Switch>
@@ -2543,14 +2562,14 @@ function Question(props: ToolProps) {
   const count = createMemo(() => questions().length)
 
   function format(answer?: ReadonlyArray<string>) {
-    if (!answer?.length) return "(no answer)"
+    if (!answer?.length) return t("tool.question.noAnswer")
     return answer.join(", ")
   }
 
   return (
     <Switch>
       <Match when={answers()}>
-        <BlockTool title="# Questions" part={props.part}>
+        <BlockTool title={t("tool.questions")} part={props.part}>
           <box gap={1}>
             <For each={questions()}>
               {(q, i) => (
@@ -2564,8 +2583,8 @@ function Question(props: ToolProps) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="→" pending="Asking questions…" complete={count()} part={props.part}>
-          Asked {count()} question{count() !== 1 ? "s" : ""}
+        <InlineTool icon="→" pending={t("tool.pending.questions")} complete={count()} part={props.part}>
+          {t("tool.question.asked", { count: count() })}
         </InlineTool>
       </Match>
     </Switch>
@@ -2574,7 +2593,7 @@ function Question(props: ToolProps) {
 
 function Skill(props: ToolProps) {
   return (
-    <InlineTool icon="→" pending="Loading skill…" complete={stringValue(props.input.name)} part={props.part}>
+    <InlineTool icon="→" pending={t("tool.pending.skill")} complete={stringValue(props.input.name)} part={props.part}>
       Skill "{stringValue(props.input.name)}"
     </InlineTool>
   )

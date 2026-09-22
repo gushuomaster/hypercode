@@ -7,7 +7,8 @@ import { describe, test } from "node:test"
 import { generateExpectedLicense, validateLicenseKey } from "../license/licenseAlgorithm"
 import { getMachineId } from "../license/machineId"
 import { resolveLicensePath } from "../license/licensePaths"
-import { validateLicense } from "../license/licenseValidator"
+import { localizedLicenseMessage, validateLicense } from "../license/licenseValidator"
+import { setLocale } from "../i18n"
 
 const machine = "BFEBFBFF000B0671"
 
@@ -69,6 +70,7 @@ describe("license validator", () => {
   }
 
   test("missing file reports missing", async () => {
+    setLocale("en")
     await withTmp(async (file) => {
       const result = await validateLicense({ licensePath: file })
       assert.equal(result.ok, false)
@@ -77,6 +79,7 @@ describe("license validator", () => {
   })
 
   test("default validation rejects invalid key but accepts a signed one", async () => {
+    setLocale("en")
     await withTmp(async (file) => {
       await fs.writeFile(file, "garbage")
       const bad = await validateLicense({ licensePath: file, machineId: machine })
@@ -85,6 +88,15 @@ describe("license validator", () => {
       await fs.writeFile(file, generateExpectedLicense(machine))
       const good = await validateLicense({ licensePath: file, machineId: machine })
       assert.equal(good.ok, true)
+    })
+  })
+
+  test("localizes generated validation reasons only at the user interface boundary", async () => {
+    setLocale("zh")
+    await withTmp(async (file) => {
+      const result = await validateLicense({ licensePath: file })
+      assert.equal(result.ok === false && result.message, "License file does not exist.")
+      assert.equal(result.ok === false && localizedLicenseMessage(result), "授权文件不存在。")
     })
   })
 })

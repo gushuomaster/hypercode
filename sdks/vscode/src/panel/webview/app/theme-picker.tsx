@@ -1,5 +1,6 @@
 import React from "react"
 import type { PanelColorScheme, PanelTheme } from "../../../core/settings"
+import { t } from "../../../i18n"
 
 export type ThemePickerItem = ({
   id: PanelTheme
@@ -18,71 +19,71 @@ export function buildThemePickerItems(currentTheme: PanelTheme, currentColorSche
     {
       id: "classic",
       kind: "theme",
-      label: "Classic",
-      detail: "Use the standard HyperCode panel styling that follows the active VS Code light or dark theme.",
+      label: t("theme.classic.label"),
+      detail: t("theme.classic.detail"),
       selected: currentTheme === "classic",
     },
     {
       id: "codex",
       kind: "theme",
-      label: "Codex",
-      detail: "Use a more tool-like panel preset with stronger framing while still following the active VS Code light or dark theme.",
+      label: t("theme.codex.label"),
+      detail: t("theme.codex.detail"),
       selected: currentTheme === "codex",
     },
     {
       id: "claude",
       kind: "theme",
-      label: "Claude",
-      detail: "Use a softer panel preset with gentler surfaces while still following the active VS Code light or dark theme.",
+      label: t("theme.claude.label"),
+      detail: t("theme.claude.detail"),
       selected: currentTheme === "claude",
     },
     {
       id: "default",
       kind: "color",
-      label: "Default",
-      detail: "Use the color palette designed for the selected panel preset.",
+      label: t("theme.default.label"),
+      detail: t("theme.default.detail"),
       selected: currentColorScheme === "default",
     },
     {
       id: "nocturne",
       kind: "color",
-      label: "Nocturne",
-      detail: "Use a night-focused blue, violet, cyan, and soft amber palette.",
+      label: t("theme.nocturne.label"),
+      detail: t("theme.nocturne.detail"),
       selected: currentColorScheme === "nocturne",
     },
     {
       id: "orchid",
       kind: "color",
-      label: "Orchid",
-      detail: "Use a muted mauve, rose, sage, and apricot palette.",
+      label: t("theme.orchid.label"),
+      detail: t("theme.orchid.detail"),
       selected: currentColorScheme === "orchid",
     },
     {
       id: "verdant",
       kind: "color",
-      label: "Verdant",
-      detail: "Use a sage, teal, lake blue, and wheat palette for long reading sessions.",
+      label: t("theme.verdant.label"),
+      detail: t("theme.verdant.detail"),
       selected: currentColorScheme === "verdant",
     },
     {
       id: "solar",
       kind: "color",
-      label: "Solar",
-      detail: "Use a solarized cyan, blue, olive, and amber palette with low fatigue contrast.",
+      label: t("theme.solar.label"),
+      detail: t("theme.solar.detail"),
       selected: currentColorScheme === "solar",
     },
     {
       id: "graphite",
       kind: "color",
-      label: "Graphite",
-      detail: "Use a neutral blue-gray, teal, brass, and copper palette.",
+      label: t("theme.graphite.label"),
+      detail: t("theme.graphite.detail"),
       selected: currentColorScheme === "graphite",
     },
     {
       id: "ember",
       kind: "color",
-      label: "Ember",
-      detail: "Use a restrained ember, olive, mint, and cyan palette.",
+      label: t("theme.ember.label"),
+      detail: t("theme.ember.detail"),
       selected: currentColorScheme === "ember",
     },
   ]
@@ -182,11 +183,11 @@ export function ThemePicker({
   }, [chooseActive, filteredItems.length, move, onClose])
 
   return (
-    <div className="oc-modelPicker" role="dialog" aria-label="Switch theme" onKeyDown={onKeyDown}>
+    <div className="oc-modelPicker" role="dialog" aria-label={t("theme.switch")} onKeyDown={onKeyDown}>
       <div className="oc-modelPickerTop">
         <div className="oc-modelPickerHeader">
-          <span className="oc-modelPickerTitle">Switch theme</span>
-          <span className="oc-modelPickerMeta">Presets and colors</span>
+          <span className="oc-modelPickerTitle">{t("theme.switch")}</span>
+          <span className="oc-modelPickerMeta">{t("theme.meta")}</span>
         </div>
         <div className="oc-modelPickerToolbar">
           <input
@@ -194,8 +195,8 @@ export function ThemePicker({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className="oc-modelPickerSearch"
-            placeholder="Filter themes"
-            aria-label="Filter themes"
+            placeholder={t("theme.filter")}
+            aria-label={t("theme.filter")}
           />
         </div>
       </div>
@@ -223,7 +224,7 @@ export function ThemePicker({
                           <span className="oc-modelPickerItemLabel">{item.label}</span>
                           <span className="oc-modelPickerItemDetail">{item.detail}</span>
                         </span>
-                        <span className="oc-modelPickerItemKind">{item.kind === "theme" ? "Preset" : "Color"}</span>
+                        <span className="oc-modelPickerItemKind">{item.kind === "theme" ? t("theme.kind.preset") : t("theme.kind.color")}</span>
                       </span>
                     </div>
                   )
@@ -231,7 +232,7 @@ export function ThemePicker({
               </div>
             </div>
           ))
-        ) : <div className="oc-modelPickerEmptyText">No themes match "{query}".</div>}
+        ) : <div className="oc-modelPickerEmptyText">{t("theme.noMatch", { query })}</div>}
       </div>
     </div>
   )
@@ -239,8 +240,8 @@ export function ThemePicker({
 
 function themePickerSections(items: ThemePickerItem[]) {
   return [
-    { kind: "theme" as const, label: "Presets", items: items.filter((item) => item.kind === "theme") },
-    { kind: "color" as const, label: "Colors", items: items.filter((item) => item.kind === "color") },
+    { kind: "theme" as const, label: t("theme.presets"), items: items.filter((item) => item.kind === "theme") },
+    { kind: "color" as const, label: t("theme.colors"), items: items.filter((item) => item.kind === "color") },
   ].filter((section) => section.items.length > 0)
 }
 

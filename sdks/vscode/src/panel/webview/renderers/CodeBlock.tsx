@@ -1,5 +1,6 @@
 import React from "react"
 import hljs from "highlight.js"
+import { t } from "../../../i18n"
 
 export function CodeBlock({ value, filePath }: { value: string; filePath?: string }) {
   const html = React.useMemo(() => highlightCode(value, codeLanguage(filePath)), [filePath, value])
@@ -15,23 +16,23 @@ export function highlightCode(value: string, language: string) {
 
 export function renderMarkdownCodeWindow(value: string, language: string) {
   const lang = normalizeCodeLanguage(language)
-  const title = lang ? capitalize(lang) : "Code"
+  const title = lang ? capitalize(lang) : t("code.label")
   const lines = codeWindowRows(value, lang)
   const gutterDigits = codeWindowGutterDigits(value)
   return [
     '<section class="oc-outputWindow oc-outputWindow-markdownCode">',
     '<div class="oc-outputWindowHead">',
     '<div class="oc-outputWindowTitleRow">',
-    '<span class="oc-outputWindowAction">Code</span>',
+    `<span class="oc-outputWindowAction">${escapeAttribute(t("code.label"))}</span>`,
     `<span class="oc-outputWindowTitle">${escapeAttribute(title)}</span>`,
     '</div>',
-    '<button type="button" class="oc-outputWindowCopyBtn" aria-label="Copy code"',
+    `<button type="button" class="oc-outputWindowCopyBtn" aria-label="${escapeAttribute(t("code.copy"))}"`,
     ` data-copy-code="${escapeAttribute(value)}">`,
     '<svg class="oc-outputWindowCopyIcon" viewBox="0 0 16 16" aria-hidden="true">',
     '<rect x="5" y="3" width="8" height="10" rx="1.5" />',
     '<path d="M3.5 10.5V5.5c0-.828.672-1.5 1.5-1.5h5" />',
     '</svg>',
-    '<span class="oc-outputWindowCopyTip">Copied!</span>',
+    `<span class="oc-outputWindowCopyTip">${escapeAttribute(t("common.copiedNotice"))}</span>`,
     '</button>',
     '</div>',
     '<div class="oc-outputWindowBody">',

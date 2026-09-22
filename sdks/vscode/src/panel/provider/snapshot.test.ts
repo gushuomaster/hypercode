@@ -4,6 +4,7 @@ import { describe, test } from "node:test"
 import { buildSessionSnapshot } from "./snapshot"
 import type { SkillCatalogEntry } from "../../bridge/types"
 import type { SessionInfo, SessionMessage, SessionStatus } from "../../core/sdk"
+import { setLocale } from "../../i18n"
 
 type Runtime = {
   workspaceId: string
@@ -125,7 +126,24 @@ function createSdk(
 }
 
 describe("buildSessionSnapshot session list filtering", () => {
+  test("localizes missing workspace runtime fallback", async () => {
+    setLocale("zh")
+    const build = await buildSessionSnapshot({
+      ref: {
+        workspaceId: "ws-missing",
+        dir: "/workspace",
+        sessionId: "session-missing",
+      },
+      mgr: { get: () => undefined } as any,
+      log() {},
+      isSubmitting: () => false,
+    })
+
+    assert.equal(build.snapshot.message, "此文件夹的工作区运行时不可用。")
+  })
+
   test("does not add child sessions to the root session list", async () => {
+    setLocale("en")
     const root = session("root")
     const child = session("child", root.id)
     const rt: Runtime = {

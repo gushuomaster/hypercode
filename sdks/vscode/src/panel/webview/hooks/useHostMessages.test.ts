@@ -3,6 +3,7 @@ import { describe, test } from "node:test"
 import type { Dispatch, SetStateAction } from "react"
 
 import type { HostMessage } from "../../../bridge/types"
+import { setLocale } from "../../../i18n"
 import { dispatchHostMessage } from "./useHostMessages"
 import { createInitialState, type AppState } from "../app/state"
 
@@ -13,6 +14,27 @@ function applyStateUpdate(update: SetStateAction<AppState>, state: AppState) {
 }
 
 describe("dispatchHostMessage", () => {
+  test("localizes missing host error details", () => {
+    setLocale("zh")
+    const fileRefStatus = new Map<string, boolean>()
+    let error = ""
+
+    dispatchHostMessage({ type: "error", message: "" } satisfies HostMessage, {
+      fileRefStatus,
+      onErrorMessage: (message) => {
+        error = message
+      },
+      onFileSearchResults: () => {},
+      onFocusComposer: () => {},
+      onRestoreComposer: () => {},
+      onShellCommandSucceeded: () => {},
+      setPendingMcpActions: (() => {}) as Dispatch<SetStateAction<Record<string, boolean>>>,
+      setState: (() => {}) as Dispatch<SetStateAction<AppState>>,
+    })
+
+    assert.equal(error, "未知错误")
+  })
+
   test("dispatches shellCommandSucceeded to callback", () => {
     let called = 0
     const fileRefStatus = new Map<string, boolean>()

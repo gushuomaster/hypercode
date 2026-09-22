@@ -2,6 +2,7 @@ import * as fs from "node:fs/promises"
 import { LicenseCheckResult, LicenseValidatorOptions } from "./licenseTypes"
 import { getMachineId } from "./machineId"
 import { validateLicenseKey } from "./licenseAlgorithm"
+import { t } from "../i18n"
 
 export async function validateLicense(options: LicenseValidatorOptions): Promise<LicenseCheckResult> {
   try {
@@ -24,6 +25,14 @@ export async function validateLicense(options: LicenseValidatorOptions): Promise
     }
     return fail("read_error", error instanceof Error ? error.message : String(error), options.licensePath)
   }
+}
+
+export function localizedLicenseMessage(result: Extract<LicenseCheckResult, { ok: false }>) {
+  if (result.reason === "missing") return t("license.fileMissing")
+  if (result.reason === "empty") return t("license.fileEmpty")
+  if (result.reason === "expired") return t("license.expired")
+  if (result.reason === "invalid") return t("license.invalidMachine")
+  return result.message
 }
 
 function fail(

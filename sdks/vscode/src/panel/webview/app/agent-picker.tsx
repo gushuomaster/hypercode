@@ -1,5 +1,6 @@
 import React from "react"
 import type { AgentInfo } from "../../../core/sdk"
+import { t } from "../../../i18n"
 
 export type AgentPickerItem = {
   agent: AgentInfo
@@ -9,30 +10,27 @@ export type AgentPickerItem = {
   selected: boolean
 }
 
-export function buildAgentPickerItems(agents: AgentInfo[], currentAgent?: string, locale = browserLocale()): AgentPickerItem[] {
+export function buildAgentPickerItems(agents: AgentInfo[], currentAgent?: string): AgentPickerItem[] {
   return agents
     .filter((agent) => !agent.hidden)
     .map((agent) => ({
       agent,
       group: agent.mode === "subagent" ? "subagent" as const : "primary" as const,
       label: agent.name,
-      detail: agentDescription(agent, locale),
+      detail: agentDescription(agent),
       selected: agent.mode !== "subagent" && agent.name === currentAgent,
     }))
 }
 
 export function AgentPicker({
   items,
-  locale = browserLocale(),
   onClose,
   onSelect,
 }: {
   items: AgentPickerItem[]
-  locale?: string
   onClose: () => void
   onSelect: (item: AgentPickerItem) => void
 }) {
-  const chinese = isChinese(locale)
   const [query, setQuery] = React.useState("")
   const inputRef = React.useRef<HTMLInputElement | null>(null)
   const listRef = React.useRef<HTMLDivElement | null>(null)
@@ -84,22 +82,22 @@ export function AgentPicker({
   const sections = [
     {
       group: "primary" as const,
-      label: chinese ? "主智能体" : "Primary agents",
+      label: t("agent.group.primary"),
       items: filteredItems.filter((item) => item.group === "primary"),
     },
     {
       group: "subagent" as const,
-      label: chinese ? "子智能体" : "Subagents",
+      label: t("agent.group.subagents"),
       items: filteredItems.filter((item) => item.group === "subagent"),
     },
   ].filter((section) => section.items.length > 0)
 
   return (
-    <div className="oc-modelPicker" role="dialog" aria-label={chinese ? "选择或调用智能体" : "Select or invoke agent"} onKeyDown={onKeyDown}>
+    <div className="oc-modelPicker" role="dialog" aria-label={t("agent.picker.title")} onKeyDown={onKeyDown}>
       <div className="oc-modelPickerTop">
         <div className="oc-modelPickerHeader">
-          <span className="oc-modelPickerTitle">{chinese ? "选择或调用智能体" : "Select or invoke agent"}</span>
-          <span className="oc-modelPickerMeta">{chinese ? "主智能体 / 子智能体" : "Primary / Subagent"}</span>
+          <span className="oc-modelPickerTitle">{t("agent.picker.title")}</span>
+          <span className="oc-modelPickerMeta">{t("agent.picker.meta")}</span>
         </div>
         <div className="oc-modelPickerToolbar">
           <input
@@ -107,8 +105,8 @@ export function AgentPicker({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className="oc-modelPickerSearch"
-            placeholder={chinese ? "筛选智能体" : "Filter agents"}
-            aria-label={chinese ? "筛选智能体" : "Filter agents"}
+            placeholder={t("agent.picker.filter")}
+            aria-label={t("agent.picker.filter")}
           />
         </div>
       </div>
@@ -135,14 +133,14 @@ export function AgentPicker({
                         <span className="oc-modelPickerItemLabel">{item.label}</span>
                         <span className="oc-modelPickerItemDetail" title={item.detail}>{item.detail}</span>
                       </span>
-                      <span className="oc-modelPickerItemKind">{item.group === "primary" ? (chinese ? "切换" : "Switch") : (chinese ? "调用" : "Invoke")}</span>
+                      <span className="oc-modelPickerItemKind">{item.group === "primary" ? t("agent.picker.switch") : t("agent.picker.invoke")}</span>
                     </span>
                   </div>
                 )
               })}
             </div>
           </div>
-        )) : <div className="oc-modelPickerEmptyText">{chinese ? "没有匹配的智能体。" : "No agents match."}</div>}
+        )) : <div className="oc-modelPickerEmptyText">{t("agent.picker.empty")}</div>}
       </div>
     </div>
   )
@@ -154,22 +152,13 @@ function filterAgentPickerItems(items: AgentPickerItem[], query: string) {
   return items.filter((item) => `${item.label} ${item.detail} ${item.group}`.toLowerCase().includes(needle))
 }
 
-function agentDescription(agent: AgentInfo, locale: string) {
-  const chinese = isChinese(locale)
+function agentDescription(agent: AgentInfo) {
   const builtIn = {
-    build: chinese ? "默认开发智能体，负责实现、修改和验证代码。" : "Default development agent for implementing, modifying, and verifying code.",
-    plan: chinese ? "规划智能体，负责分析需求并制定实施方案。" : "Planning agent for analyzing requirements and preparing implementation plans.",
-    general: chinese ? "通用子智能体，处理复杂研究和多步骤任务。" : "General-purpose subagent for complex research and multi-step tasks.",
-    explore: chinese ? "探索子智能体，快速检索和理解代码库。" : "Exploration subagent for quickly searching and understanding the codebase.",
+    build: t("agent.description.build"),
+    plan: t("agent.description.plan"),
+    general: t("agent.description.general"),
+    explore: t("agent.description.explore"),
   }[agent.name]
 
-  return builtIn || agent.description?.trim() || (chinese ? "未配置职责说明。" : "No role description configured.")
-}
-
-function browserLocale() {
-  return typeof navigator === "undefined" ? "en" : navigator.language
-}
-
-function isChinese(locale: string) {
-  return locale.toLowerCase().startsWith("zh")
+  return builtIn || agent.description?.trim() || t("agent.description.missing")
 }

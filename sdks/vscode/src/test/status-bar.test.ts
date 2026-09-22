@@ -1,7 +1,10 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 
 import { deriveStatusBarState, pickPreferredRuntime } from "../core/status-bar"
+import { setLocale } from "../i18n"
+
+beforeEach(() => setLocale("zh"))
 
 describe("status bar", () => {
   test("prefers the active editor workspace runtime before other available runtimes", () => {

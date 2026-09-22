@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import type { AgentInfo, FormatterStatus, ProviderInfo, SessionMessage } from "../../../core/sdk"
+import { setLocale } from "../../../i18n"
 import { composerIdentity, composerMetrics, composerSelection, cycleModelVariant, lastUserSelection, overallFormatterStatus, providerModelById, pushRecentModel, statusItemForMcp, toggleFavoriteModel } from "./session-meta"
 
 const providers: ProviderInfo[] = [{
@@ -289,6 +290,7 @@ describe("session meta composer state", () => {
   })
 
   test("statusItemForMcp maps needs_auth to an explicit authenticate action", () => {
+    setLocale("en")
     assert.deepEqual(statusItemForMcp("docs", { status: "needs_auth" }), {
       name: "docs",
       tone: "orange",
@@ -299,6 +301,7 @@ describe("session meta composer state", () => {
   })
 
   test("overallFormatterStatus collapses formatter results into a single badge tone and item list", () => {
+    setLocale("en")
     const formatters: FormatterStatus[] = [
       { name: "prettier", extensions: [".ts", ".tsx"], enabled: true },
       { name: "rustfmt", extensions: [".rs"], enabled: false },
@@ -310,6 +313,21 @@ describe("session meta composer state", () => {
         { name: "prettier", tone: "green", value: ".ts, .tsx" },
         { name: "rustfmt", tone: "gray", value: "Disabled" },
       ],
+    })
+  })
+
+  test("localizes MCP and formatter status labels while preserving external names", () => {
+    setLocale("zh")
+    assert.deepEqual(statusItemForMcp("docs", { status: "needs_auth" }), {
+      name: "docs",
+      tone: "orange",
+      value: "需要身份验证",
+      action: "authenticate",
+      actionLabel: "验证 docs",
+    })
+    assert.deepEqual(overallFormatterStatus([{ name: "rustfmt", extensions: [".rs"], enabled: false }]), {
+      tone: "gray",
+      items: [{ name: "rustfmt", tone: "gray", value: "已禁用" }],
     })
   })
 

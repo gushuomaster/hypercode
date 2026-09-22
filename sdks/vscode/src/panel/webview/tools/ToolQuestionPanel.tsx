@@ -1,6 +1,7 @@
 import React from "react"
 import type { QuestionRequest } from "../../../core/sdk"
 import type { ToolDetails, ToolPart } from "./types"
+import { t } from "../../../i18n"
 
 export function ToolQuestionPanel({
   QuestionBlock,
@@ -28,7 +29,7 @@ export function ToolQuestionPanel({
     <section className={`oc-part oc-part-tool oc-toolPanel${active ? " is-active" : ""}${status === "completed" ? " is-completed" : ""}`}>
       <div className="oc-partHeader">
         <div className="oc-toolHeaderMain">
-          <span className="oc-kicker">questions</span>
+          <span className="oc-kicker">{t("tool.questions")}</span>
           <span className="oc-toolPanelTitle">{details.title}</span>
         </div>
         <div className="oc-toolHeaderMeta">

@@ -1,10 +1,13 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 import React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 
 import type { SessionInfo } from "../../../core/sdk"
+import { setLocale } from "../../../i18n"
 import { buildSessionPickerView, scrollActiveSessionPickerItemIntoView, SessionPicker } from "./session-picker"
+
+beforeEach(() => setLocale("en"))
 
 function session(id: string, updated: string, title = id, shareUrl?: string): SessionInfo {
   const time = new Date(updated).getTime()

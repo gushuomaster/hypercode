@@ -5,6 +5,7 @@ import { loadSkillCatalog } from "../../core/skills"
 import { getDisplaySettings } from "../../core/settings"
 import type { AgentInfo, Client, CommandInfo, FileDiff, FormatterStatus, LspStatus, McpResource, McpStatus, ProviderAuthMethod, ProviderInfo, SessionInfo, SessionMessage } from "../../core/sdk"
 import { WorkspaceManager } from "../../core/workspace"
+import { t } from "../../i18n"
 import { summarizeSessionSnapshot } from "../shared/session-summary"
 import { filterPermission, filterQuestion, nav, relatedSessionMap, subtreeSessionIds } from "./navigation"
 import { sortMessages } from "./mutations"
@@ -35,7 +36,7 @@ export async function buildSessionSnapshot({ ref, mgr, log, isSubmitting, messag
 
   if (!rt) {
     return {
-      snapshot: fallbackSnapshot(ref, workspaceName, "error", "Workspace runtime is unavailable for this folder.", isSubmitting()),
+      snapshot: fallbackSnapshot(ref, workspaceName, "error", t("panel.workspaceRuntimeUnavailable"), isSubmitting()),
     }
   }
 
@@ -45,7 +46,7 @@ export async function buildSessionSnapshot({ ref, mgr, log, isSubmitting, messag
         ref,
         workspaceName,
         "loading",
-        rt.state === "stopping" ? "Workspace runtime is stopping." : "Workspace runtime is starting.",
+        rt.state === "stopping" ? t("panel.workspaceRuntimeStopping") : t("panel.workspaceRuntimeStarting"),
         isSubmitting(),
       ),
     }
@@ -53,7 +54,7 @@ export async function buildSessionSnapshot({ ref, mgr, log, isSubmitting, messag
 
   if (rt.state !== "ready") {
     return {
-      snapshot: fallbackSnapshot(ref, workspaceName, "error", rt.err || "Workspace runtime is not ready.", isSubmitting()),
+      snapshot: fallbackSnapshot(ref, workspaceName, "error", rt.err || t("panel.workspaceRuntimeNotReady"), isSubmitting()),
     }
   }
 
@@ -89,7 +90,7 @@ export async function buildSessionSnapshot({ ref, mgr, log, isSubmitting, messag
 
     if (!session) {
       return {
-        snapshot: fallbackSnapshot(ref, workspaceName, "error", "Session metadata was not found for this workspace.", isSubmitting()),
+        snapshot: fallbackSnapshot(ref, workspaceName, "error", t("panel.sessionMetadataMissing"), isSubmitting()),
       }
     }
 

@@ -1,4 +1,5 @@
 import React from "react"
+import { t } from "../../../i18n"
 
 interface CollapsibleShellBlockProps {
   ToolStatus: ({ state }: { state?: string }) => React.JSX.Element | null
@@ -26,7 +27,7 @@ export function CollapsibleShellBlock({
         className="oc-shellBlockHeader"
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
-        aria-label={expanded ? "Collapse shell output" : "Expand shell output"}
+        aria-label={expanded ? t("shell.collapse") : t("shell.expand")}
       >
         <div className="oc-shellBlockHeaderMain">
           <span className="oc-shellBlockAction">{action}</span>

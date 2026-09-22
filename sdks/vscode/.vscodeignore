@@ -30,6 +30,7 @@ cache/
 dist-test/
 coverage/
 .vscode-test/
+.vscode-test.mjs
 **/node_modules/**
 dist/**/*.vsix
 dist/**/*.zip
@@ -38,3 +39,5 @@ dist/vsix-inspect/**
 PLAN.md
 AGENTS.md
 bun.lock
+sst-env.d.ts
+script/**

@@ -445,7 +445,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
 
     await clipboard
       .write?.(text)
-      .then(() => toast.show({ message: "Copied to clipboard", variant: "info" }))
+      .then(() => toast.show({ message: t("app.copied"), variant: "info" }))
       .catch(toast.error)
 
     renderer.clearSelection()
@@ -490,7 +490,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         if (!providerID || !modelID)
           return toast.show({
             variant: "warning",
-            message: `Invalid model format: ${args.model}`,
+            message: t("app.invalidModel", { model: args.model }),
             duration: 3000,
           })
         local.model.set({ providerID, modelID }, { recent: true })
@@ -518,7 +518,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
           if (result.data?.id) {
             route.navigate({ type: "session", sessionID: result.data.id })
           } else {
-            toast.show({ message: "Failed to fork session", variant: "error" })
+            toast.show({ message: t("app.forkFailed"), variant: "error" })
           }
         })
       } else {
@@ -538,7 +538,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
       if (result.data?.id) {
         route.navigate({ type: "session", sessionID: result.data.id })
       } else {
-        toast.show({ message: "Failed to fork session", variant: "error" })
+        toast.show({ message: t("app.forkFailed"), variant: "error" })
       }
     })
   })
@@ -777,12 +777,12 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
       },
       {
         name: "opencode.debug",
-        title: "View debug info",
+        title: t("command.system.debugInfo"),
         slashName: "debug",
         run: () => {
           dialog.replace(() => <DialogDebug />)
         },
-        category: "System",
+        category: t("command.category.system"),
       },
       {
         name: "theme.switch",
@@ -962,8 +962,10 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
       {
         name: "permission.mode",
         title:
-          local.permission.mode === "auto" ? "Disable auto-approve permissions" : "Enable auto-approve permissions",
-        category: "System",
+          local.permission.mode === "auto"
+            ? t("command.permission.disableAuto")
+            : t("command.permission.enableAuto"),
+        category: t("command.category.system"),
         run: () => {
           local.permission.toggle()
           dialog.clear()
@@ -1026,7 +1028,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
       route.navigate({ type: "home" })
       toast.show({
         variant: "info",
-        message: "The current session was deleted",
+        message: t("app.sessionDeleted"),
       })
     }
   })

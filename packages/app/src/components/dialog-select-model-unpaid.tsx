@@ -5,12 +5,13 @@ import { List, type ListRef } from "@opencode-ai/ui/list"
 import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { Tag } from "@opencode-ai/ui/tag"
 import { Tooltip } from "@opencode-ai/ui/tooltip"
-import { type Component, Show } from "solid-js"
+import { createMemo, type Component, Show } from "solid-js"
 import { useLocal } from "@/context/local"
 import { popularProviders, useProviders } from "@/hooks/use-providers"
 import { ModelTooltip } from "./model-tooltip"
 import { useLanguage } from "@/context/language"
 import { decode64 } from "@/utils/base64"
+import { describeFreeModel, isFreeModel, sortFreeModels } from "./free-models"
 
 type ModelState = ReturnType<typeof useLocal>["model"]
 
@@ -21,6 +22,7 @@ export const DialogSelectModelUnpaid: Component<{ model?: ModelState }> = (props
   const directory = () => decode64(local.slug())
   const providers = useProviders(directory)
   const language = useLanguage()
+  const freeModels = createMemo(() => sortFreeModels(model.list().filter(isFreeModel)))
 
   const openProviders = (provider?: string) => {
     void import("./dialog-connect-provider").then((x) => {
@@ -49,7 +51,7 @@ export const DialogSelectModelUnpaid: Component<{ model?: ModelState }> = (props
         <List
           class="px-3 [&_[data-slot=list-scroll]]:overflow-visible"
           ref={(ref) => (listRef = ref)}
-          items={model.list}
+          items={freeModels}
           current={model.current()}
           key={(x) => `${x.provider.id}:${x.id}`}
           itemWrapper={(item, node) => (
@@ -61,7 +63,7 @@ export const DialogSelectModelUnpaid: Component<{ model?: ModelState }> = (props
                 <ModelTooltip
                   model={item}
                   latest={item.latest}
-                  free={item.provider.id === "opencode" && (!item.cost || item.cost.input === 0)}
+                  free={isFreeModel(item)}
                 />
               }
             >
@@ -76,12 +78,17 @@ export const DialogSelectModelUnpaid: Component<{ model?: ModelState }> = (props
           }}
         >
           {(i) => (
-            <div class="w-full flex items-center gap-x-2.5">
-              <span>{i.name}</span>
-              <Tag>{language.t("model.tag.free")}</Tag>
-              <Show when={i.latest}>
-                <Tag>{language.t("model.tag.latest")}</Tag>
-              </Show>
+            <div class="w-full flex min-w-0 flex-col items-start gap-0.5">
+              <div class="w-full flex items-center gap-x-2.5">
+                <span class="min-w-0 truncate">{i.name}</span>
+                <Tag>{language.t("model.tag.free")}</Tag>
+                <Show when={i.latest}>
+                  <Tag>{language.t("model.tag.latest")}</Tag>
+                </Show>
+              </div>
+              <span class="w-full truncate text-12-regular text-text-weak">
+                {describeFreeModel(i, language.t)}
+              </span>
             </div>
           )}
         </List>

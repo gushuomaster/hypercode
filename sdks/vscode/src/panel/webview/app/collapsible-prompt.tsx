@@ -1,4 +1,5 @@
 import React from "react"
+import { t } from "../../../i18n"
 
 type CollapsiblePromptProps = {
   content: string
@@ -79,9 +80,9 @@ export function CollapsiblePrompt({ content, maxLines = 3 }: CollapsiblePromptPr
           className="oc-collapsiblePromptToggle"
           onClick={expanded ? handleCollapse : handleExpand}
           aria-expanded={expanded}
-          aria-label={expanded ? "收起" : "展开更多"}
+          aria-label={expanded ? t("common.collapse") : t("common.expandMore")}
         >
-          {expanded ? "收起" : "展开更多"}
+          {expanded ? t("common.collapse") : t("common.expandMore")}
         </button>
       )}
     </div>

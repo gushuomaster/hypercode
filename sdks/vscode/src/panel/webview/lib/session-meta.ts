@@ -1,6 +1,7 @@
 import type { SessionBootstrap } from "../../../bridge/types"
 import type { AgentInfo, FormatterStatus, LspStatus, McpStatus, MessageInfo, ProviderInfo, SessionMessage, SessionStatus } from "../../../core/sdk"
 import { displaySessionTitle } from "../../../core/session-titles"
+import { t } from "../../../i18n"
 
 export type ModelRef = NonNullable<MessageInfo["model"]>
 
@@ -292,7 +293,7 @@ export function overallFormatterStatus(statuses: FormatterStatus[]) {
   const items = statuses.map((status) => ({
     name: status.name,
     tone: status.enabled ? "green" as const : "gray" as const,
-    value: status.enabled ? status.extensions.join(", ") || "Enabled" : "Disabled",
+    value: status.enabled ? status.extensions.join(", ") || t("common.enabled") : t("common.disabled"),
   }))
 
   if (items.length === 0) {
@@ -311,18 +312,18 @@ export function overallFormatterStatus(statuses: FormatterStatus[]) {
 
 export function statusItemForMcp(name: string, status: McpStatus): StatusItem {
   if (status.status === "connected") {
-    return { name, tone: "green", value: "Connected", action: "disconnect", actionLabel: `Disconnect ${name}` }
+    return { name, tone: "green", value: t("status.connected"), action: "disconnect", actionLabel: t("status.disconnect", { name }) }
   }
   if (status.status === "disabled") {
-    return { name, tone: "gray", value: "Disabled", action: "connect", actionLabel: `Connect ${name}` }
+    return { name, tone: "gray", value: t("common.disabled"), action: "connect", actionLabel: t("status.connect", { name }) }
   }
   if (status.status === "needs_auth") {
-    return { name, tone: "orange", value: "Needs authentication", action: "authenticate", actionLabel: `Authenticate ${name}` }
+    return { name, tone: "orange", value: t("status.needsAuthentication"), action: "authenticate", actionLabel: t("status.authenticate", { name }) }
   }
   if (status.status === "needs_client_registration") {
-    return { name, tone: "red", value: status.error || "Client registration required", action: "reconnect", actionLabel: `Reconnect ${name}` }
+    return { name, tone: "red", value: status.error || t("status.clientRegistrationRequired"), action: "reconnect", actionLabel: t("status.reconnect", { name }) }
   }
-  return { name, tone: "red", value: status.error || "Error", action: "reconnect", actionLabel: `Reconnect ${name}` }
+  return { name, tone: "red", value: status.error || t("common.error"), action: "reconnect", actionLabel: t("status.reconnect", { name }) }
 }
 
 export function statusItemForLsp(status: LspStatus): StatusItem {

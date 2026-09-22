@@ -1,9 +1,12 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 
 import type { SessionInfo } from "../core/sdk"
 import { SessionItem, WorkspaceItem } from "../sidebar/item"
 import { SidebarProvider, buildWorkspaceChildren, clearWorkspaceSearchState, getWorkspaceSearchQuery, setWorkspaceSearchError, setWorkspaceSearchLoading, setWorkspaceSearchResult } from "../sidebar/provider"
+import { setLocale } from "../i18n"
+
+beforeEach(() => setLocale("zh"))
 
 function session(id: string, title: string, updated = 1): SessionInfo {
   return {

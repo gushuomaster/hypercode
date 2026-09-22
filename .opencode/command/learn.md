@@ -1,5 +1,8 @@
 ---
-description: Extract non-obvious learnings from session to AGENTS.md files to build codebase understanding
+description: "Extract session learnings into AGENTS.md files"
+description_i18n:
+  zh: "将会话中的经验提取到 AGENTS.md 文件"
+  en: "Extract session learnings into AGENTS.md files"
 ---
 
 Analyze this session and extract non-obvious learnings to add to AGENTS.md files.

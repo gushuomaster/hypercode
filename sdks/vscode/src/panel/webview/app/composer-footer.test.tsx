@@ -1,11 +1,15 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 import React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 
 import { ComposerFooter } from "./composer-footer"
+import { composerRunningState } from "./composer-running-state"
+import { setLocale } from "../../../i18n"
 
 describe("ComposerFooter", () => {
+  beforeEach(() => setLocale("zh"))
+
   test("renders a running status strip before the context ring and badges", () => {
     const html = renderToStaticMarkup(
       <ComposerFooter
@@ -15,14 +19,7 @@ describe("ComposerFooter", () => {
           cost: "$0.5203",
           percent: 68,
         }}
-        status={{
-          label: "Thinking",
-          hint: "Esc to interrupt",
-          tone: "running",
-          icon: "stop",
-          title: "Interrupt running session",
-          ariaLabel: "Interrupt running session",
-        }}
+        status={composerRunningState({ type: "busy" }, false)}
         onOpenContext={() => {}}
         badges={[
           { label: "MCP", tone: "gray", items: [] },

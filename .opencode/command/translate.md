@@ -1,5 +1,8 @@
 ---
-description: translate English to other languages
+description: "Translate changed English documentation and UI copy"
+description_i18n:
+  zh: "翻译已修改的英文文档和 UI 文案"
+  en: "Translate changed English documentation and UI copy"
 model: opencode/gpt-5.6-sol
 ---
 

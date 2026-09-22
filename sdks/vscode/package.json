@@ -1,8 +1,8 @@
 {
   "name": "hypercode",
   "displayName": "HyperCode",
-  "description": "HyperCode workspace sessions and sidebar workflows for VS Code",
-  "version": "1.17.3",
+  "description": "%hypercode.description%",
+  "version": "1.18.30",
   "publisher": "sst-dev",
   "repository": {
     "type": "git",
@@ -83,28 +83,28 @@
       "hypercode": [
         {
           "id": "hypercode.sessions",
-          "name": "Sessions"
+          "name": "%hypercode.view.sessions%"
         },
         {
           "id": "hypercode.todo",
-          "name": "Todo",
+          "name": "%hypercode.view.todo%",
           "type": "webview"
         },
         {
           "id": "hypercode.diff",
-          "name": "Modified Files",
+          "name": "%hypercode.view.modifiedFiles%",
           "type": "webview"
         },
         {
           "id": "hypercode.subagents",
-          "name": "Subagents",
+          "name": "%hypercode.view.subagents%",
           "type": "webview"
         }
       ],
       "hypercode-secondary": [
         {
           "id": "hypercode.sessionView",
-          "name": "Session",
+          "name": "%hypercode.view.session%",
           "type": "webview"
         }
       ]
@@ -112,88 +112,88 @@
     "commands": [
       {
         "command": "hypercode.refresh",
-        "title": "HyperCode: Refresh",
-        "shortTitle": "Refresh",
+        "title": "%hypercode.command.refresh%",
+        "shortTitle": "%hypercode.command.refresh.short%",
         "icon": "$(refresh)"
       },
       {
         "command": "hypercode.newSession",
-        "title": "HyperCode: New Session",
-        "shortTitle": "New",
+        "title": "%hypercode.command.newSession%",
+        "shortTitle": "%hypercode.command.newSession.short%",
         "icon": "$(add)"
       },
       {
         "command": "hypercode.openOutput",
-        "title": "HyperCode: Open Output"
+        "title": "%hypercode.command.openOutput%"
       },
       {
         "command": "hypercode.openLicenseFile",
-        "title": "HyperCode: 打开授权文件"
+        "title": "%hypercode.command.openLicenseFile%"
       },
       {
         "command": "hypercode.openSettings",
-        "title": "HyperCode: Open Settings",
+        "title": "%hypercode.command.openSettings%",
         "icon": "$(gear)"
       },
       {
         "command": "hypercode.checkEnvironment",
-        "title": "HyperCode: Check Environment",
+        "title": "%hypercode.command.checkEnvironment%",
         "icon": "$(debug-alt)"
       },
       {
         "command": "hypercode.copyImagePreview",
-        "title": "Copy Image"
+        "title": "%hypercode.command.copyImage%"
       },
       {
         "command": "hypercode.saveImagePreview",
-        "title": "Save Image"
+        "title": "%hypercode.command.saveImage%"
       },
       {
         "command": "hypercode.refreshWorkspaceSessions",
-        "title": "HyperCode: Refresh Workspace Sessions",
-        "shortTitle": "Refresh",
+        "title": "%hypercode.command.refreshWorkspaceSessions%",
+        "shortTitle": "%hypercode.command.refresh.short%",
         "icon": "$(refresh)"
       },
       {
         "command": "hypercode.openWorkspaceInBrowser",
-        "title": "HyperCode: Open Workspace In Browser",
-        "shortTitle": "Open Web",
+        "title": "%hypercode.command.openWorkspaceInBrowser%",
+        "shortTitle": "%hypercode.command.openWorkspaceInBrowser.short%",
         "icon": "$(globe)"
       },
       {
         "command": "hypercode.openSession",
-        "title": "HyperCode: Open Session",
+        "title": "%hypercode.command.openSession%",
         "icon": "$(arrow-right)"
       },
       {
         "command": "hypercode.renameSession",
-        "title": "HyperCode: Rename Session",
+        "title": "%hypercode.command.renameSession%",
         "icon": "$(edit)"
       },
       {
         "command": "hypercode.archiveSession",
-        "title": "HyperCode: Archive Session",
+        "title": "%hypercode.command.archiveSession%",
         "icon": "$(archive)"
       },
       {
         "command": "hypercode.shareSession",
-        "title": "HyperCode: Share Session",
+        "title": "%hypercode.command.shareSession%",
         "icon": "$(link)"
       },
       {
         "command": "hypercode.unshareSession",
-        "title": "HyperCode: Unshare Session",
+        "title": "%hypercode.command.unshareSession%",
         "icon": "$(unlock)"
       },
       {
         "command": "hypercode.restartWorkspaceServer",
-        "title": "HyperCode: Restart Workspace Server",
-        "shortTitle": "Restart",
+        "title": "%hypercode.command.restartWorkspaceServer%",
+        "shortTitle": "%hypercode.command.restartWorkspaceServer.short%",
         "icon": "$(debug-restart)"
       },
       {
         "command": "hypercode.quickNewSession",
-        "title": "HyperCode: Quick New Session",
+        "title": "%hypercode.command.quickNewSession%",
         "shortTitle": "HyperCode",
         "icon": {
           "light": "images/button-dark.svg",
@@ -202,39 +202,39 @@
       },
       {
         "command": "hypercode.askSelection",
-        "title": "HyperCode: Ask About Selection"
+        "title": "%hypercode.command.askSelection%"
       },
       {
         "command": "hypercode.askCurrentFile",
-        "title": "HyperCode: Ask About Current File"
+        "title": "%hypercode.command.askCurrentFile%"
       },
       {
         "command": "hypercode.askExplorerFiles",
-        "title": "HyperCode: Ask About Selected Files"
+        "title": "%hypercode.command.askExplorerFiles%"
       },
       {
         "command": "hypercode.searchWorkspaceSessions",
-        "title": "HyperCode: Search Sessions",
+        "title": "%hypercode.command.searchWorkspaceSessions%",
         "icon": "$(search)"
       },
       {
         "command": "hypercode.clearWorkspaceSessionSearch",
-        "title": "HyperCode: Clear Session Search",
+        "title": "%hypercode.command.clearWorkspaceSessionSearch%",
         "icon": "$(close)"
       },
       {
         "command": "hypercode.manageSessionTags",
-        "title": "HyperCode: Manage Session Tags",
+        "title": "%hypercode.command.manageSessionTags%",
         "icon": "$(tag)"
       },
       {
         "command": "hypercode.filterWorkspaceSessionsByTag",
-        "title": "HyperCode: Filter Sessions By Tag",
+        "title": "%hypercode.command.filterWorkspaceSessionsByTag%",
         "icon": "$(tag)"
       },
       {
         "command": "hypercode.clearWorkspaceTagFilter",
-        "title": "HyperCode: Clear Session Tag Filter",
+        "title": "%hypercode.command.clearWorkspaceTagFilter%",
         "icon": "$(close)"
       }
     ],
@@ -244,13 +244,13 @@
         "hypercode.showThinking": {
           "type": "boolean",
           "default": true,
-          "description": "Show thinking blocks in the session panel.",
+          "description": "%hypercode.setting.showThinking%",
           "scope": "machine-overridable"
         },
         "hypercode.showInternals": {
           "type": "boolean",
           "default": false,
-          "description": "Show internal transcript blocks in the session panel.",
+          "description": "%hypercode.setting.showInternals%",
           "scope": "machine-overridable"
         },
         "hypercode.diffMode": {
@@ -260,19 +260,19 @@
             "unified",
             "split"
           ],
-          "description": "Choose how diffs are shown in the session panel.",
+          "description": "%hypercode.setting.diffMode%",
           "scope": "machine-overridable"
         },
         "hypercode.compactSkillInvocations": {
           "type": "boolean",
           "default": true,
-          "description": "Render skill invocations in a compact style inside the session panel.",
+          "description": "%hypercode.setting.compactSkillInvocations%",
           "scope": "machine-overridable"
         },
         "hypercode.showSkillsInSlashAutocomplete": {
           "type": "boolean",
           "default": false,
-          "description": "Show skills directly in slash autocomplete instead of routing through a separate picker.",
+          "description": "%hypercode.setting.showSkillsInSlashAutocomplete%",
           "scope": "machine-overridable"
         },
         "hypercode.panelTheme": {
@@ -283,7 +283,7 @@
             "codex",
             "claude"
           ],
-          "description": "Choose the session panel visual preset.",
+          "description": "%hypercode.setting.panelTheme%",
           "scope": "machine-overridable"
         },
         "hypercode.panelColorScheme": {
@@ -298,19 +298,19 @@
             "graphite",
             "ember"
           ],
-          "description": "Choose the color scheme for the session panel.",
+          "description": "%hypercode.setting.panelColorScheme%",
           "scope": "machine-overridable"
         },
         "hypercode.httpProxy": {
           "type": "string",
           "default": "",
-          "description": "HTTP proxy passed to the HyperCode runtime. Leave empty to inherit environment variables or fall back to VS Code's http.proxy.",
+          "description": "%hypercode.setting.httpProxy%",
           "scope": "machine-overridable"
         },
         "hypercode.cliPath": {
           "type": "string",
           "default": "",
-          "description": "Absolute path to the HyperCode CLI executable. Leave empty to auto-detect hypercode or compatible fallback commands from PATH.",
+          "description": "%hypercode.setting.cliPath%",
           "scope": "machine-overridable"
         }
       }
@@ -436,7 +436,7 @@
     "keybindings": [
       {
         "command": "hypercode.quickNewSession",
-        "title": "Run HyperCode",
+        "title": "%hypercode.keybinding.run%",
         "key": "cmd+escape",
         "mac": "cmd+escape",
         "win": "ctrl+escape",
@@ -444,7 +444,7 @@
       },
       {
         "command": "hypercode.newSession",
-        "title": "Run HyperCode",
+        "title": "%hypercode.keybinding.run%",
         "key": "cmd+shift+escape",
         "mac": "cmd+shift+escape",
         "win": "ctrl+shift+escape",
@@ -452,7 +452,7 @@
       },
       {
         "command": "hypercode.askCurrentFile",
-        "title": "HyperCode: Ask About Current File",
+        "title": "%hypercode.command.askCurrentFile%",
         "key": "cmd+alt+k",
         "mac": "cmd+alt+k",
         "win": "ctrl+alt+K",

@@ -16,6 +16,7 @@ import { applySessionSearchCapabilityResult, CapabilityState, CapabilityStore, c
 import { SidebarProvider } from "../sidebar/provider"
 import { buildSessionPickerPayload } from "../panel/provider/actions"
 import { openLicenseFile } from "../license"
+import { t } from "../i18n"
 
 type SessionActionRuntime = Pick<WorkspaceRuntime, "workspaceId" | "dir" | "name" | "state"> & {
   sdk?: {
@@ -87,11 +88,11 @@ export function commands(
       const result = await checkOpencodeAvailable()
 
       if (result.ok) {
-        await vscode.window.showInformationMessage(`HyperCode 运行时在当前 ${host} 主机上可用：${result.output}`)
+        await vscode.window.showInformationMessage(t("runtime.available", { host, output: result.output }))
         return
       }
 
-      await vscode.window.showErrorMessage(`HyperCode 环境检查失败（${host}）：${result.message}`)
+      await vscode.window.showErrorMessage(t("runtime.environmentFailed", { host, message: result.message }))
     }),
     vscode.commands.registerCommand("hypercode.copyImagePreview", async () => {
       await panels.runImagePreviewCommand("copy")
@@ -103,7 +104,7 @@ export function commands(
       const rt = item?.runtime ?? firstRuntime(mgr)
 
       if (!rt) {
-        await vscode.window.showInformationMessage("请先打开一个工作区文件夹。")
+        await vscode.window.showInformationMessage(t("common.openWorkspace"))
         return
       }
 
@@ -118,7 +119,7 @@ export function commands(
       const rt = workspace ? mgr.get(workspace.workspaceId) : firstRuntime(mgr)
 
       if (!rt) {
-        await vscode.window.showInformationMessage("请先打开一个工作区文件夹。")
+        await vscode.window.showInformationMessage(t("common.openWorkspace"))
         return
       }
 
@@ -135,7 +136,7 @@ export function commands(
       const rt = current ? mgr.get(current.workspaceId) : firstRuntime(mgr)
 
       if (!rt) {
-        await vscode.window.showInformationMessage("请先打开一个工作区文件夹。")
+        await vscode.window.showInformationMessage(t("common.openWorkspace"))
         return
       }
 
@@ -159,7 +160,7 @@ export function commands(
       const rt = item?.runtime
 
       if (!rt) {
-        await vscode.window.showInformationMessage("请选择一个工作区项以重启其服务。")
+        await vscode.window.showInformationMessage(t("command.selectWorkspaceRestart"))
         return
       }
 
@@ -171,7 +172,7 @@ export function commands(
       const rt = item?.runtime
 
       if (!rt) {
-        await vscode.window.showInformationMessage("请选择一个工作区项以刷新其会话。")
+        await vscode.window.showInformationMessage(t("command.selectWorkspaceRefresh"))
         return
       }
 
@@ -187,7 +188,7 @@ export function commands(
     }),
     vscode.commands.registerCommand("hypercode.openSession", async (item?: SessionItem) => {
       if (!item) {
-        await vscode.window.showInformationMessage("请先选择一个会话项。")
+        await vscode.window.showInformationMessage(t("common.selectSession"))
         return
       }
 
@@ -211,7 +212,7 @@ export function commands(
       })
 
       if (!res.data) {
-        await vscode.window.showInformationMessage("未找到会话。")
+        await vscode.window.showInformationMessage(t("common.sessionNotFound"))
         return
       }
 
@@ -237,7 +238,7 @@ export function commands(
         })
 
         if (!forked) {
-          await vscode.window.showInformationMessage("所选消息已不可用。")
+          await vscode.window.showInformationMessage(t("command.selectedMessageUnavailable"))
           return
         }
 
@@ -245,7 +246,7 @@ export function commands(
         await tabs.openSession(workspaceRef(rt), forked, resolveNewSessionOpenColumn())
         void sessions.refresh(rt.workspaceId, true)
       } catch (error) {
-        await vscode.window.showErrorMessage(`HyperCode 派生失败（${rt.name}）：${errorMessage(error)}`)
+        await vscode.window.showErrorMessage(t("command.forkFailed", { runtime: rt.name, message: errorMessage(error) }))
       }
     }),
     vscode.commands.registerCommand("hypercode.renameSession", async (item?: SessionItem) => {
@@ -357,7 +358,7 @@ export function commands(
       await sessions.refresh(rt.workspaceId, true)
       const session = sessions.list(rt.workspaceId).find((item) => item.id === sessionID)
       if (!session) {
-        await vscode.window.showInformationMessage("未找到会话。")
+        await vscode.window.showInformationMessage(t("common.sessionNotFound"))
         return
       }
 
@@ -420,7 +421,7 @@ export function commands(
       const rt = runtimeFromActiveEditor(mgr) ?? firstRuntime(mgr)
 
       if (!rt) {
-        await vscode.window.showInformationMessage("请先打开一个工作区文件夹。")
+        await vscode.window.showInformationMessage(t("common.openWorkspace"))
         return
       }
 
@@ -437,7 +438,7 @@ export function commands(
     vscode.commands.registerCommand("hypercode.askSelection", async () => {
       const seed = seedFromActiveEditor("selection")
       if (!seed) {
-        await vscode.window.showInformationMessage("请先在工作区文件中选中一段文本。")
+        await vscode.window.showInformationMessage(t("command.selectText"))
         return
       }
 
@@ -446,7 +447,7 @@ export function commands(
     vscode.commands.registerCommand("hypercode.askCurrentFile", async () => {
       const seed = seedFromActiveEditor("file")
       if (!seed) {
-        await vscode.window.showInformationMessage("请先打开一个工作区文件。")
+        await vscode.window.showInformationMessage(t("command.openWorkspaceFile"))
         return
       }
 
@@ -455,7 +456,7 @@ export function commands(
     vscode.commands.registerCommand("hypercode.askExplorerFiles", async (item?: vscode.Uri, items?: vscode.Uri[]) => {
       const seed = seedFromExplorerSelection(item, items)
       if (!seed) {
-        await vscode.window.showInformationMessage("请先在同一个工作区文件夹中选择一个或多个文件。")
+        await vscode.window.showInformationMessage(t("command.selectExplorerFiles"))
         return
       }
 
@@ -465,7 +466,7 @@ export function commands(
       const rt = item?.runtime
 
       if (!rt) {
-        await vscode.window.showInformationMessage("请选择一个工作区项以搜索其会话。")
+        await vscode.window.showInformationMessage(t("command.selectWorkspaceSearch"))
         return
       }
 
@@ -491,7 +492,7 @@ export function commands(
       const workspaceId = item?.runtime.workspaceId
 
       if (!workspaceId) {
-        await vscode.window.showInformationMessage("请选择要清除搜索的工作区。")
+        await vscode.window.showInformationMessage(t("command.selectWorkspaceClearSearch"))
         return
       }
 
@@ -499,7 +500,7 @@ export function commands(
     }),
     vscode.commands.registerCommand("hypercode.manageSessionTags", async (item?: SessionItem) => {
       if (!item) {
-        await vscode.window.showInformationMessage("请先选择一个会话项。")
+        await vscode.window.showInformationMessage(t("common.selectSession"))
         return
       }
 
@@ -517,21 +518,21 @@ export function commands(
       const rt = item?.runtime
 
       if (!rt) {
-        await vscode.window.showInformationMessage("请选择一个工作区项以筛选其会话。")
+        await vscode.window.showInformationMessage(t("command.selectWorkspaceFilter"))
         return
       }
 
       const available = tags.workspaceTags(rt.workspaceId)
       if (available.length === 0) {
-        await vscode.window.showInformationMessage(`${rt.name} 暂无本地标签。`)
+        await vscode.window.showInformationMessage(t("command.noLocalTags", { runtime: rt.name }))
         return
       }
 
       const choice = await vscode.window.showQuickPick(
         available.map((tag) => ({ label: tag })),
         {
-          title: `筛选 ${rt.name} 的会话`,
-          placeHolder: "选择一个标签",
+          title: t("command.filterTitle", { runtime: rt.name }),
+          placeHolder: t("command.filterPlaceholder"),
           ignoreFocusOut: true,
         },
       )
@@ -546,7 +547,7 @@ export function commands(
       const workspaceId = item?.runtime.workspaceId
 
       if (!workspaceId) {
-        await vscode.window.showInformationMessage("请选择要清除标签筛选的工作区。")
+        await vscode.window.showInformationMessage(t("command.selectWorkspaceClearTag"))
         return
       }
 
@@ -665,8 +666,8 @@ type OpenWorkspaceInBrowserInput = {
 
 export function buildWorkspaceSearchInputOptions(runtimeName: string, previousQuery?: string): vscode.InputBoxOptions {
   return {
-    prompt: `在 ${runtimeName} 中搜索会话`,
-    placeHolder: "输入会话标题或关键词",
+    prompt: t("command.searchPrompt", { runtime: runtimeName }),
+    placeHolder: t("command.searchPlaceholder"),
     ignoreFocusOut: true,
     value: previousQuery,
   }
@@ -674,7 +675,7 @@ export function buildWorkspaceSearchInputOptions(runtimeName: string, previousQu
 
 export async function openWorkspaceInBrowser(input: OpenWorkspaceInBrowserInput) {
   if (!input.runtime) {
-    await input.showInformationMessage("请选择要在浏览器中打开的工作区。")
+    await input.showInformationMessage(t("command.selectWorkspaceBrowser"))
     return
   }
 
@@ -693,7 +694,7 @@ export async function runWorkspaceSessionSearch(input: WorkspaceSessionSearchInp
   }
 
   if (input.capability === "unsupported") {
-    await input.showInformationMessage(`HyperCode 服务（${input.runtime.name}）不支持会话搜索。`)
+    await input.showInformationMessage(t("command.searchUnsupported", { runtime: input.runtime.name }))
     return
   }
 
@@ -724,13 +725,13 @@ export async function runWorkspaceSessionSearch(input: WorkspaceSessionSearchInp
         input.runtime.workspaceId,
         applySessionSearchCapabilityResult(input.snapshot ?? createEmptyCapabilities(), "unsupported"),
       )
-      await input.showInformationMessage(`HyperCode 服务（${input.runtime.name}）不支持会话搜索。`)
+      await input.showInformationMessage(t("command.searchUnsupported", { runtime: input.runtime.name }))
       return
     }
 
     const message = errorMessage(error)
     input.sidebar.setSearchError(input.runtime.workspaceId, query, message)
-    await input.showErrorMessage(`HyperCode 会话搜索失败（${input.runtime.name}）：${message}`)
+    await input.showErrorMessage(t("command.searchFailed", { runtime: input.runtime.name, message }))
   }
 }
 
@@ -743,8 +744,8 @@ export async function renameSession(input: SessionActionInput & {
 
   const label = displaySessionTitle(input.target.session.title, input.target.session.id.slice(0, 8))
   const title = await input.showInputBox({
-    prompt: `重命名会话 "${label}"`,
-    placeHolder: "会话标题",
+    prompt: t("command.renamePrompt", { title: label }),
+    placeHolder: t("command.renamePlaceholder"),
     value: input.target.session.title,
     ignoreFocusOut: true,
   })
@@ -762,7 +763,7 @@ export async function renameSession(input: SessionActionInput & {
     })
     await input.sessions.refresh(input.target.runtime.workspaceId, true)
   } catch (error) {
-    await input.showErrorMessage(`HyperCode 重命名失败（${input.target.runtime.name}）：${errorMessage(error)}`)
+    await input.showErrorMessage(t("command.renameFailed", { runtime: input.target.runtime.name, message: errorMessage(error) }))
   }
 }
 
@@ -773,8 +774,8 @@ export async function manageSessionTags(input: {
 }) {
   const current = input.tags.tags(input.target.runtime.workspaceId, input.target.session.id)
   const value = await input.showInputBox({
-    prompt: `管理 ${displaySessionTitle(input.target.session.title, input.target.session.id.slice(0, 8))} 的标签`,
-    placeHolder: "标签 A, 标签 B",
+    prompt: t("command.tagsPrompt", { title: displaySessionTitle(input.target.session.title, input.target.session.id.slice(0, 8)) }),
+    placeHolder: t("command.tagsPlaceholder"),
     value: current.join(", "),
     ignoreFocusOut: true,
   })
@@ -800,13 +801,14 @@ export async function archiveSession(input: SessionActionInput & {
   }
 
   const label = displaySessionTitle(input.target.session.title, input.target.session.id.slice(0, 8))
+  const archive = t("command.archiveAction")
   const confirmed = await input.showWarningMessage(
-    `归档会话 "${label}"？归档后会话将从默认列表中隐藏。`,
+    t("command.archiveConfirm", { title: label }),
     { modal: true },
-    "归档会话",
+    archive,
   )
 
-  if (confirmed !== "归档会话") {
+  if (confirmed !== archive) {
     return
   }
 
@@ -820,9 +822,9 @@ export async function archiveSession(input: SessionActionInput & {
     })
     await input.sessions.refresh(input.target.runtime.workspaceId, true)
     await input.closeSession?.()
-    await input.showInformationMessage(`已归档会话 "${label}"。`)
+    await input.showInformationMessage(t("command.archiveSuccess", { title: label }))
   } catch (error) {
-    await input.showErrorMessage(`HyperCode 归档失败（${input.target.runtime.name}）：${errorMessage(error)}`)
+    await input.showErrorMessage(t("command.archiveFailed", { runtime: input.target.runtime.name, message: errorMessage(error) }))
   }
 }
 
@@ -840,15 +842,15 @@ export async function shareSession(input: SessionActionInput & {
     })
     const url = result.data?.share?.url
     if (!url) {
-      await input.showErrorMessage(`HyperCode 分享失败（${input.target.runtime.name}）：缺少分享链接。`)
+      await input.showErrorMessage(t("command.shareMissing", { runtime: input.target.runtime.name }))
       return
     }
 
     await input.copyText(url)
     await input.sessions.refresh(input.target.runtime.workspaceId, true)
-    await input.showInformationMessage("分享链接已复制到剪贴板。")
+    await input.showInformationMessage(t("command.shareCopied"))
   } catch (error) {
-    await input.showErrorMessage(`HyperCode 分享失败（${input.target.runtime.name}）：${errorMessage(error)}`)
+    await input.showErrorMessage(t("command.shareFailed", { runtime: input.target.runtime.name, message: errorMessage(error) }))
   }
 }
 
@@ -863,9 +865,9 @@ export async function unshareSession(input: SessionActionInput) {
       directory: input.target.runtime.dir,
     })
     await input.sessions.refresh(input.target.runtime.workspaceId, true)
-    await input.showInformationMessage("已取消会话分享。")
+    await input.showInformationMessage(t("command.unshareSuccess"))
   } catch (error) {
-    await input.showErrorMessage(`HyperCode 取消分享失败（${input.target.runtime.name}）：${errorMessage(error)}`)
+    await input.showErrorMessage(t("command.unshareFailed", { runtime: input.target.runtime.name, message: errorMessage(error) }))
   }
 }
 
@@ -897,7 +899,7 @@ function workspaceRef(runtime: { workspaceId: string; dir: string }): WorkspaceR
 
 async function resolveSessionActionTarget(item: SessionItem | undefined, mgr: WorkspaceManager) {
   if (!item) {
-    await vscode.window.showInformationMessage("请先选择一个会话项。")
+    await vscode.window.showInformationMessage(t("common.selectSession"))
     return undefined
   }
 
@@ -1013,7 +1015,7 @@ async function openSeededSession(
   const rt = mgr.get(seed.workspaceId)
 
   if (!rt) {
-    await vscode.window.showInformationMessage("请先打开一个工作区文件夹。")
+    await vscode.window.showInformationMessage(t("common.openWorkspace"))
     return
   }
 

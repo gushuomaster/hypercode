@@ -2,11 +2,14 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 import React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 
 import type { ProviderInfo, SessionInfo, SessionMessage } from "../../../core/sdk"
+import { setLocale } from "../../../i18n"
+
+beforeEach(() => setLocale("en"))
 
 function session(): SessionInfo {
   return {

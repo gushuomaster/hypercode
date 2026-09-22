@@ -1,6 +1,7 @@
 import React from "react"
 import { summarizeSubagentBody } from "../../../core/subagent-summary"
 import type { MessagePart, SessionInfo, SessionMessage } from "../../../core/sdk"
+import { t } from "../../../i18n"
 import { displayWorkspacePath, fileLabel, numberValue, recordValue, stringList, stringValue } from "../lib/part-utils"
 import { isMcpTool, lspRendersInline, mcpDisplayTitle, toolDetails, toolLabel } from "../lib/tool-meta"
 import type { ToolDetails } from "../tools/types"
@@ -119,7 +120,7 @@ export function renderToolRowSubtitle(part: ToolPart, details: ToolDetails, opti
     if (!relPath) {
       return null
     }
-    return <span className="oc-partMeta">in <FileRefText value={rawPath} display={relPath} tone="muted" /></span>
+    return <span className="oc-partMeta">{t("tool.in")}<FileRefText value={rawPath} display={relPath} tone="muted" /></span>
   }
   if (part.tool === "list") {
     const value = stringValue(input.path) || details.subtitle
@@ -143,25 +144,25 @@ export function toolRowSummary(part: ToolPart) {
   if (part.tool === "glob") {
     const count = numberValue(metadata.count)
     if (count > 0) {
-      return `${count} ${count === 1 ? "match" : "matches"}`
+      return t(count === 1 ? "tool.match" : "tool.matches", { count })
     }
   }
   if (part.tool === "grep") {
     const count = numberValue(metadata.matches)
     if (count > 0) {
-      return `${count} ${count === 1 ? "match" : "matches"}`
+      return t(count === 1 ? "tool.match" : "tool.matches", { count })
     }
   }
   if (part.tool === "websearch") {
     const count = numberValue(metadata.numResults) || numberValue(metadata.results)
     if (count > 0) {
-      return `${count} results`
+      return t("tool.results", { count })
     }
   }
   if (part.tool === "codesearch") {
     const count = numberValue(metadata.results) || numberValue(metadata.numResults)
     if (count > 0) {
-      return `${count} results`
+      return t("tool.results", { count })
     }
   }
   return ""
@@ -173,15 +174,15 @@ export function toolRowExtras(part: ToolPart) {
     return [] as string[]
   }
   if (part.tool === "read") {
-    return stringList(metadata.loaded).map((item) => `Loaded ${item}`)
+    return stringList(metadata.loaded).map((item) => `${t("tool.loaded")}${item}`)
   }
   return [] as string[]
 }
 
 export function renderToolRowExtra(part: ToolPart, item: string, FileRefText: ({ value, display, tone }: { value: string; display?: string; tone?: "default" | "muted" }) => React.JSX.Element) {
-  if (part.tool === "read" && item.startsWith("Loaded ")) {
-    const value = item.slice(7)
-    return <><span>Loaded </span><FileRefText value={value} display={value} /></>
+  if (part.tool === "read" && item.startsWith(t("tool.loaded"))) {
+    const value = item.slice(t("tool.loaded").length)
+    return <><span>{t("tool.loaded")}</span><FileRefText value={value} display={value} /></>
   }
   return item
 }

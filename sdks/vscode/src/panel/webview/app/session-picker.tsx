@@ -1,6 +1,7 @@
 import React from "react"
 import type { SessionPickerPayload as SessionPickerPayloadData } from "../../../bridge/types"
 import type { SessionInfo } from "../../../core/sdk"
+import { t } from "../../../i18n"
 
 export type SessionPickerItem = {
   session: SessionInfo
@@ -131,17 +132,17 @@ export function SessionPicker({
     }
   }, [activeItem, flatItems.length, onClose, onSwitch])
 
-  const emptyTitle = query ? "No matching sessions" : "No workspace sessions"
+  const emptyTitle = query ? t("session.noMatch") : t("session.none")
   const emptyHint = query
-    ? "Try a different search."
-    : "Start another session in this workspace to see it here."
+    ? t("session.searchHint")
+    : t("session.emptyHint")
 
   return (
-    <div className="oc-modelPicker oc-sessionPicker" role="dialog" aria-label="Switch session" onKeyDown={onKeyDown}>
+    <div className="oc-modelPicker oc-sessionPicker" role="dialog" aria-label={t("session.switch")} onKeyDown={onKeyDown}>
       <div className="oc-modelPickerTop">
         <div className="oc-modelPickerHeader">
-          <span className="oc-modelPickerTitle">Switch session</span>
-          <span className="oc-modelPickerMeta">{payload.workspaceName || "Current workspace"}</span>
+          <span className="oc-modelPickerTitle">{t("session.switch")}</span>
+          <span className="oc-modelPickerMeta">{payload.workspaceName || t("session.currentWorkspace")}</span>
         </div>
         <div className="oc-modelPickerToolbar">
           <input
@@ -150,8 +151,8 @@ export function SessionPicker({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className="oc-modelPickerSearch"
-            placeholder="Filter sessions"
-            aria-label="Filter sessions"
+            placeholder={t("session.filter")}
+            aria-label={t("session.filter")}
           />
         </div>
       </div>
@@ -240,10 +241,10 @@ function groupSections(items: SessionPickerItem[], now: number): SessionPickerSe
 function dayLabel(timestamp: number, now: number) {
   const diff = dayDiff(timestamp, now)
   if (diff === 0) {
-    return "Today"
+    return t("session.today")
   }
   if (diff === 1) {
-    return "Yesterday"
+    return t("session.yesterday")
   }
   return localDateKey(timestamp)
 }

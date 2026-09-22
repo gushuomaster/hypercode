@@ -1,5 +1,8 @@
 ---
-description: "Bump AI sdk dependencies minor / patch versions only"
+description: "Bump AI SDK dependencies (minor and patch versions only)"
+description_i18n:
+  zh: "升级 AI SDK 依赖（仅限次版本和补丁版本）"
+  en: "Bump AI SDK dependencies (minor and patch versions only)"
 ---
 
 Please read @package.json and @packages/opencode/package.json.

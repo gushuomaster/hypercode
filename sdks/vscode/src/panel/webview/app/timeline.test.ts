@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 import type { FilePart, MessageInfo, MessagePart, SessionMessage, TextPart, ToolPart } from "../../../core/sdk"
+import { setLocale } from "../../../i18n"
 import { assistantCopyText, attachmentOpenPath, attachmentPreviewSource, createTimelineDerivationCache, findSkillLocation, reconcileTimelineBlocks } from "./timeline"
 
 function messageInfo(id: string, role: "user" | "assistant", extras?: Partial<MessageInfo>): MessageInfo {
@@ -75,6 +76,8 @@ const defaultOptions = {
 }
 
 describe("timeline block reconciliation", () => {
+  beforeEach(() => setLocale("en"))
+
   test("delta-like updates rebuild only affected assistant blocks", () => {
     const user = sessionMessage(messageInfo("m1", "user"), [textPart("p1", "m1", "hello")])
     const assistantText = textPart("p2", "m2", "before")
@@ -172,6 +175,23 @@ describe("timeline block reconciliation", () => {
     assert.equal(blocks[0]?.kind === "assistant-activity" ? blocks[0].summary : undefined, "Explored 2 files, 2 searches, Ran 1 command")
     assert.equal(blocks[0]?.kind === "assistant-activity" ? blocks[0].parts.length : undefined, 5)
     assert.equal(blocks[1]?.kind, "assistant-meta")
+  })
+
+  test("localizes codex activity summaries while preserving MCP names", () => {
+    setLocale("zh")
+    const assistant = sessionMessage(messageInfo("m2", "assistant", { agent: "build" }), [
+      toolPartWithState("p1", "m2", "read", { input: { filePath: "src/a.ts" } }),
+      toolPartWithState("p2", "m2", "grep", { input: { pattern: "foo" } }),
+      toolPartWithState("p3", "m2", "bash", { input: { command: "echo hi" } }),
+      toolPart("p4", "m2", "docs_search"),
+    ])
+
+    const blocks = reconcileTimelineBlocks(createTimelineDerivationCache(), [assistant], {
+      ...defaultOptions,
+      panelTheme: "codex",
+    })
+
+    assert.equal(blocks[0]?.kind === "assistant-activity" ? blocks[0].summary : undefined, "浏览了 1 个文件，搜索 1 次，运行了 1 条命令，docs：调用 1 次")
   })
 
   test("keeps codex activity expanded until text arrives", () => {

@@ -1,4 +1,5 @@
 import type { MessagePart } from "../../../core/sdk"
+import { t } from "../../../i18n"
 import type { ToolDetails, ToolFileSummary } from "../tools/types"
 import { capitalize, diffSummary, formatDiagnostic, formatToolName, numberValue, parentDir, recordValue, stringList, stringValue } from "./part-utils"
 
@@ -36,15 +37,15 @@ export function toolLabel(tool: string) {
     return "mcp"
   }
   if (tool === "bash") {
-    return "shell"
+    return t("tool.label.shell")
   }
   if (tool === "todowrite") {
-    return "to-dos"
+    return t("tool.label.todos")
   }
   if (tool === "lsp" || tool.startsWith("lsp_")) {
     return "lsp"
   }
-  return tool || "tool"
+  return tool || t("part.tool")
 }
 
 export function toolDetails(part: Extract<MessagePart, { type: "tool" }>): ToolDetails {
@@ -60,48 +61,48 @@ export function toolDetails(part: Extract<MessagePart, { type: "tool" }>): ToolD
 
 export function defaultToolTitle(tool: string, input: Record<string, unknown>, metadata: Record<string, unknown>) {
   if (tool === "bash") {
-    return stringValue(input.description) || "Shell command"
+    return stringValue(input.description) || t("tool.title.shellCommand")
   }
   if (tool === "task") {
-    return stringValue(input.description) || `${capitalize(stringValue(input.subagent_type) || "task")} task`
+    return stringValue(input.description) || t("tool.title.task", { name: capitalize(stringValue(input.subagent_type) || "task") })
   }
   if (tool === "lsp_diagnostics") {
-    return "LSP diagnostics"
+    return t("tool.title.lspDiagnostics")
   }
   if (tool === "lsp" || tool.startsWith("lsp_")) {
     return formatToolName(tool)
   }
   if (tool === "webfetch") {
-    return stringValue(input.url) || "Web fetch"
+    return stringValue(input.url) || t("tool.title.webFetch")
   }
   if (tool === "websearch" || tool === "codesearch") {
     return stringValue(input.query) || capitalize(tool)
   }
   if (tool === "read") {
-    return stringValue(input.filePath) || stringValue(input.path) || "Read"
+    return stringValue(input.filePath) || stringValue(input.path) || t("tool.title.read")
   }
   if (tool === "list") {
-    return stringValue(input.path) || "List directory"
+    return stringValue(input.path) || t("tool.title.listDirectory")
   }
   if (tool === "glob" || tool === "grep") {
     return stringValue(input.path) || capitalize(tool)
   }
   if (tool === "apply_patch") {
-    return "Patch"
+    return t("tool.title.patch")
   }
   if (tool === "write" || tool === "edit") {
     return stringValue(input.filePath) || stringValue(input.path) || stringValue(metadata.filepath) || capitalize(tool)
   }
   if (tool === "todowrite") {
     const todos = toolTodosFromMetadata(metadata)
-    return todos.length > 0 ? `${todos.filter((item) => item.status === "completed").length}/${todos.length}` : "Updating todos"
+    return todos.length > 0 ? `${todos.filter((item) => item.status === "completed").length}/${todos.length}` : t("tool.title.updatingTodos")
   }
   if (tool === "question") {
     const questions = numberValue(metadata.count) || stringList(metadata.questions).length
-    return questions > 0 ? `${questions} question${questions === 1 ? "" : "s"}` : "Questions"
+    return questions > 0 ? t(questions === 1 ? "tool.title.question" : "tool.title.questions", { count: questions }) : t("tool.title.questionsFallback")
   }
   if (tool === "skill") {
-    return stringValue(input.name) || "Skill"
+    return stringValue(input.name) || t("tool.title.skill")
   }
   return capitalize(tool)
 }
@@ -230,7 +231,7 @@ export function toolFiles(part: Extract<MessagePart, { type: "tool" }>): ToolFil
   const metadata = recordValue(part.state?.metadata)
   if (part.tool === "apply_patch") {
     const files = stringList(metadata.files)
-    return files.map((file) => ({ path: file, summary: "patched" }))
+    return files.map((file) => ({ path: file, summary: t("tool.file.patched") }))
   }
   const path = stringValue(input.filePath) || stringValue(input.path) || stringValue(metadata.filepath)
   if (!path) {
@@ -239,8 +240,8 @@ export function toolFiles(part: Extract<MessagePart, { type: "tool" }>): ToolFil
   const summary = part.tool === "edit"
     ? diffSummary(stringValue(metadata.diff))
     : part.tool === "write"
-      ? "written"
-      : "updated"
+      ? t("tool.file.written")
+      : t("tool.file.updated")
   return [{ path, summary }]
 }
 
@@ -252,7 +253,7 @@ export function toolWriteContent(part: Extract<MessagePart, { type: "tool" }>) {
 export function toolWriteDiff(part: Extract<MessagePart, { type: "tool" }>) {
   const input = recordValue(part.state?.input)
   const metadata = recordValue(part.state?.metadata)
-  const path = stringValue(input.filePath) || stringValue(input.path) || stringValue(metadata.filepath) || "untitled"
+  const path = stringValue(input.filePath) || stringValue(input.path) || stringValue(metadata.filepath) || t("tool.file.untitled")
   const content = toolWriteContent(part)
   const normalized = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
   const hasTrailingNewline = normalized.endsWith("\n")
@@ -321,18 +322,18 @@ export function patchFiles(part: Extract<MessagePart, { type: "tool" }>) {
 
 export function patchSummary(type: string, additions: number, deletions: number, movePath: string, filePath: string) {
   if (type === "delete") {
-    return deletions > 0 ? `-${deletions}` : "deleted"
+    return deletions > 0 ? `-${deletions}` : t("tool.file.deleted")
   }
   if (type === "add") {
-    return additions > 0 ? `+${additions}` : "created"
+    return additions > 0 ? `+${additions}` : t("tool.file.created")
   }
   if (type === "move") {
-    return movePath && filePath ? `${filePath} → ${movePath}` : "moved"
+    return movePath && filePath ? `${filePath} → ${movePath}` : t("tool.file.moved")
   }
   if (additions > 0 || deletions > 0) {
     return `+${additions} / -${deletions}`
   }
-  return "patched"
+  return t("tool.file.patched")
 }
 
 export function toolTodos(part: Extract<MessagePart, { type: "tool" }>) {

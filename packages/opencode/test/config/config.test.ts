@@ -1203,6 +1203,9 @@ it.instance("loads commands from .opencode/command (singular)", () =>
       path.join(test.directory, ".opencode", "command", "hello.md"),
       `---
 description: Test command
+description_i18n:
+  zh: 测试命令
+  en: Test command
 ---
 Hello from singular command`,
     )
@@ -1219,6 +1222,10 @@ Nested command template`,
 
     expect(config.command?.["hello"]).toEqual({
       description: "Test command",
+      description_i18n: {
+        zh: "测试命令",
+        en: "Test command",
+      },
       template: "Hello from singular command",
     })
 

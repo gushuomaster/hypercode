@@ -92,9 +92,9 @@ Options:
                                           [string] [choices: "default", "json"] [default: "default"]
   -f, --file         file(s) to attach to message                                            [array]
       --title        title for the session (uses truncated prompt if no value provided)     [string]
-      --attach       attach to a running HyperCode server (e.g., http://localhost:4096)      [string]
+      --attach       attach to a running HyperCode server (e.g., http://localhost:4096)     [string]
   -p, --password     basic auth password (defaults to OPENCODE_SERVER_PASSWORD)             [string]
-      -u, --username     basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'opencode')
+  -u, --username     basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'opencode')
                                                                                             [string]
       --dir          directory to run in, path on remote server if attaching                [string]
       --port         port for the local server (defaults to random port if no value provided)
@@ -388,8 +388,8 @@ exports[`hypercode CLI help-text snapshots every documented command emits stable
 database tools
 
 Commands:
-  hypercode db [query]     open an interactive sqlite3 shell or run a query                [default]
-  hypercode db path        print the database path
+  hypercode [query]     open an interactive sqlite3 shell or run a query                   [default]
+  hypercode path        print the database path
 
 Positionals:
   query  SQL query to execute                                                               [string]

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { errorData, errorFormat, errorMessage } from "../../src/util/error"
+import { errorData, errorFormat, errorMessage, sessionErrorMessage } from "../../src/util/error"
 
 describe("util.error", () => {
   test("formats native Error instances", () => {
@@ -45,5 +45,59 @@ describe("util.error", () => {
     const data = errorData(err)
     expect(data.message).toBe("ResolveMessage: Cannot resolve module")
     expect(String(data.formatted)).toContain("ResolveMessage")
+  })
+
+  test("formats exhausted free usage with the reset duration in Chinese", () => {
+    const error = {
+      name: "APIError",
+      data: {
+        message: "Free usage exceeded",
+        responseHeaders: { "retry-after": "73680" },
+        responseBody: JSON.stringify({
+          type: "error",
+          error: { type: "FreeUsageLimitError", message: "Free usage exceeded" },
+        }),
+      },
+    }
+
+    expect(sessionErrorMessage(error, "zh")).toBe(
+      "免费额度已用完，将在 20 小时 28 分钟后恢复。你可以切换到其他 Provider，或升级 HyperCode Go。",
+    )
+  })
+
+  test("formats exhausted free usage in English", () => {
+    const error = {
+      name: "APIError",
+      data: {
+        message: "Free usage exceeded",
+        responseHeaders: { "retry-after": "900" },
+        responseBody: JSON.stringify({
+          type: "error",
+          error: { type: "FreeUsageLimitError", message: "Free usage exceeded" },
+        }),
+      },
+    }
+
+    expect(sessionErrorMessage(error, "en")).toBe(
+      "Free usage is exhausted and will reset in 15 minutes. Switch to another provider or upgrade to HyperCode Go.",
+    )
+  })
+
+  test("formats exhausted free usage without a valid reset duration", () => {
+    const error = {
+      name: "APIError",
+      data: {
+        message: "Free usage exceeded",
+        responseHeaders: { "retry-after": "invalid" },
+        responseBody: JSON.stringify({
+          type: "error",
+          error: { type: "FreeUsageLimitError", message: "Free usage exceeded" },
+        }),
+      },
+    }
+
+    expect(sessionErrorMessage(error, "zh")).toBe(
+      "免费额度已用完。你可以切换到其他 Provider，或升级 HyperCode Go。",
+    )
   })
 })

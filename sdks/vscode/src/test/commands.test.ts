@@ -1,10 +1,13 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 import * as vscode from "vscode"
 
 import type { SessionPanelRef } from "../bridge/types"
 import type { SessionInfo, SessionStatus } from "../core/sdk"
 import { forkSessionMessage, manageSessionTags, openWorkspaceInBrowser, renameSession, resolveNewSessionOpenColumn, resolveReusableNewSession, resolveSeedSessionTarget } from "../core/commands"
+import { setLocale } from "../i18n"
+
+beforeEach(() => setLocale("en"))
 
 function session(id: string, updated: number, title = `New session - ${id}`): SessionInfo {
   return {
@@ -181,7 +184,7 @@ describe("openWorkspaceInBrowser", () => {
       showErrorMessage: async () => undefined,
     })
 
-    assert.deepEqual(messages, ["Pick a workspace item to open in the browser."])
+    assert.deepEqual(messages, ["Select a workspace item to open in the browser."])
   })
 })
 

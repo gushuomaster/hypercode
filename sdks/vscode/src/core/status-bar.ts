@@ -3,6 +3,7 @@ import type { RuntimeState } from "./server"
 import { displaySessionTitle } from "./session-titles"
 import { WorkspaceManager } from "./workspace"
 import { SessionPanelManager } from "../panel/provider"
+import { t } from "../i18n"
 
 type RuntimeChoice = {
   workspaceId: string
@@ -17,7 +18,9 @@ export function deriveStatusBarState(input: {
   if (input.activeSessionTitle) {
     return {
       text: `${input.activeSessionBusy ? "$(loading~spin)" : "$(comment-discussion)"} HyperCode ${input.activeSessionTitle}`,
-      tooltip: input.activeSessionBusy ? `打开当前会话：${input.activeSessionTitle}（忙碌中）` : `打开当前会话：${input.activeSessionTitle}`,
+      tooltip: input.activeSessionBusy
+        ? t("status.openSessionBusy", { title: input.activeSessionTitle })
+        : t("status.openSession", { title: input.activeSessionTitle }),
       command: "hypercode.statusBarAction",
       busy: !!input.activeSessionBusy,
     }
@@ -25,8 +28,8 @@ export function deriveStatusBarState(input: {
 
   if (input.runtimeState === "starting") {
     return {
-      text: "$(sync) HyperCode 启动中",
-      tooltip: "HyperCode 运行时正在启动",
+      text: t("status.starting.text"),
+      tooltip: t("status.starting.tooltip"),
       command: "hypercode.statusBarAction",
       busy: false,
     }
@@ -34,8 +37,8 @@ export function deriveStatusBarState(input: {
 
   if (input.runtimeState === "error") {
     return {
-      text: "$(warning) HyperCode 不可用",
-      tooltip: "HyperCode 运行时需要处理",
+      text: t("status.unavailable.text"),
+      tooltip: t("status.unavailable.tooltip"),
       command: "hypercode.statusBarAction",
       busy: false,
     }
@@ -43,7 +46,7 @@ export function deriveStatusBarState(input: {
 
   return {
     text: "$(comment-discussion) HyperCode",
-    tooltip: "打开 HyperCode",
+    tooltip: t("status.open"),
     command: "hypercode.statusBarAction",
     busy: false,
   }

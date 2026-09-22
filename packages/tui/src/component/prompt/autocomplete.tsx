@@ -2,7 +2,6 @@ import type { BoxRenderable, TextareaRenderable, ScrollBoxRenderable } from "@op
 import { pathToFileURL } from "bun"
 import fuzzysort from "fuzzysort"
 import path from "path"
-import { firstBy } from "remeda"
 import { createMemo, createResource, createEffect, onMount, onCleanup, Index, Show, createSignal } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useEditorContext } from "../../context/editor"
@@ -24,6 +23,7 @@ import { useFrecency } from "../../prompt/frecency"
 import { useBindings, useCommandSlashes, useOpencodeModeStack } from "../../keymap"
 import { displayCharAt, mentionTriggerIndex } from "../../prompt/display"
 import type { FileSystemEntry } from "@opencode-ai/sdk/v2"
+import { localizedDescription } from "../../i18n"
 
 function removeLineRange(input: string) {
   const hashIndex = input.lastIndexOf("#")
@@ -73,6 +73,29 @@ export type AutocompleteOption = {
   path?: string
 }
 
+type ServerCommand = Parameters<typeof localizedDescription>[0] & {
+  name: string
+}
+
+export function commandAutocompleteCopy(
+  command: ServerCommand,
+  locale: NonNullable<Parameters<typeof localizedDescription>[1]>,
+) {
+  return {
+    display: `/${command.name}`,
+    description: localizedDescription(command, locale),
+  }
+}
+
+export function alignAutocompleteOptions(options: AutocompleteOption[]) {
+  const max = Math.max(0, ...options.map((item) => Bun.stringWidth(item.display)))
+  if (!max) return options
+  return options.map((item) => ({
+    ...item,
+    display: item.display + " ".repeat(max - Bun.stringWidth(item.display) + 2),
+  }))
+}
+
 export function Autocomplete(props: {
   value: string
   sessionID?: string
@@ -93,7 +116,8 @@ export function Autocomplete(props: {
   const slashes = useCommandSlashes()
   const modeStack = useOpencodeModeStack()
   const { theme } = useTheme()
-  const t = useLanguage().t
+  const language = useLanguage()
+  const t = language.t
   const dimensions = useTerminalDimensions()
   const frecency = useFrecency()
   const tuiConfig = useTuiConfig()
@@ -437,10 +461,9 @@ export function Autocomplete(props: {
 
     for (const serverCommand of sync.data.command) {
       if (serverCommand.source === "skill") continue
-      const label = serverCommand.source === "mcp" ? ":mcp" : ""
+      const locale = language.locale()
       results.push({
-        display: "/" + serverCommand.name + label,
-        description: serverCommand.description,
+        ...commandAutocompleteCopy(serverCommand, locale),
         onSelect: () => {
           const newText = "/" + serverCommand.name + " "
           const cursor = props.input().logicalCursor
@@ -452,13 +475,7 @@ export function Autocomplete(props: {
     }
 
     results.sort((a, b) => a.display.localeCompare(b.display))
-
-    const max = firstBy(results, [(x) => x.display.length, "desc"])?.display.length
-    if (!max) return results
-    return results.map((item) => ({
-      ...item,
-      display: item.display.padEnd(max + 2),
-    }))
+    return alignAutocompleteOptions(results)
   })
 
   const options = createMemo((prev: AutocompleteOption[] | undefined) => {

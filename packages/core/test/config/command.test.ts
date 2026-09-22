@@ -32,6 +32,9 @@ describe("ConfigCommandPlugin.Plugin", () => {
               path.join(tmp.path, "commands", "review.md"),
               `---
 description: File review
+description_i18n:
+  zh: 审查文件
+  en: File review
 agent: reviewer
 model: anthropic/claude
 variant: high
@@ -60,11 +63,20 @@ Review files`,
             ),
           )
 
-          expect(yield* command.list()).toEqual([
+          const commands = yield* command.list()
+          expect(commands[0]).toHaveProperty("description_i18n", {
+            zh: "审查文件",
+            en: "File review",
+          })
+          expect(commands).toEqual([
             CommandV2.Info.make({
               name: "review",
               template: "Review files",
               description: "File review",
+              description_i18n: {
+                zh: "审查文件",
+                en: "File review",
+              },
               agent: "reviewer",
               model: {
                 providerID: ProviderV2.ID.make("anthropic"),

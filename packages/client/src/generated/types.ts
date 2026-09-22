@@ -2511,6 +2511,7 @@ export type CommandsListOutput = {
     readonly name: string
     readonly template: string
     readonly description?: string
+    readonly description_i18n?: { readonly zh?: string; readonly en?: string }
     readonly agent?: string
     readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string }
     readonly subtask?: boolean

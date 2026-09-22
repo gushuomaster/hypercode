@@ -18,6 +18,7 @@ import { useDialog, type DialogContext } from "./dialog"
 import { Locale } from "../util/locale"
 import { getScrollAcceleration } from "../util/scroll"
 import { useTuiConfig } from "../config"
+import { useLanguage } from "../context/language"
 import { formatKeyBindings, useBindings, useKeymapSelector } from "../keymap"
 
 export interface DialogSelectProps<T> {
@@ -85,6 +86,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   const dialog = useDialog()
   const { theme } = useTheme()
   const tuiConfig = useTuiConfig()
+  const language = useLanguage()
   const scrollAcceleration = createMemo(() => getScrollAcceleration(tuiConfig))
 
   const [store, setStore] = createStore({
@@ -373,8 +375,8 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
       commands: [
         {
           name: "dialog.select.prev",
-          title: "Previous item",
-          category: "Dialog",
+          title: language.t("dialog.select.previous"),
+          category: language.t("dialog.category"),
           run() {
             setStore("input", "keyboard")
             move(-1)
@@ -382,8 +384,8 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
         },
         {
           name: "dialog.select.next",
-          title: "Next item",
-          category: "Dialog",
+          title: language.t("dialog.select.next"),
+          category: language.t("dialog.category"),
           run() {
             setStore("input", "keyboard")
             move(1)
@@ -391,8 +393,8 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
         },
         {
           name: "dialog.select.page_up",
-          title: "Page up",
-          category: "Dialog",
+          title: language.t("dialog.select.pageUp"),
+          category: language.t("dialog.category"),
           run() {
             setStore("input", "keyboard")
             move(-10)
@@ -400,8 +402,8 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
         },
         {
           name: "dialog.select.page_down",
-          title: "Page down",
-          category: "Dialog",
+          title: language.t("dialog.select.pageDown"),
+          category: language.t("dialog.category"),
           run() {
             setStore("input", "keyboard")
             move(10)
@@ -409,8 +411,8 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
         },
         {
           name: "dialog.select.home",
-          title: "First item",
-          category: "Dialog",
+          title: language.t("dialog.select.first"),
+          category: language.t("dialog.category"),
           run() {
             if (props.locked) return
             setStore("input", "keyboard")
@@ -419,8 +421,8 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
         },
         {
           name: "dialog.select.end",
-          title: "Last item",
-          category: "Dialog",
+          title: language.t("dialog.select.last"),
+          category: language.t("dialog.category"),
           run() {
             if (props.locked) return
             setStore("input", "keyboard")
@@ -429,14 +431,14 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
         },
         {
           name: "dialog.select.submit",
-          title: "Select item",
-          category: "Dialog",
+          title: language.t("dialog.select.submit"),
+          category: language.t("dialog.category"),
           run: submit,
         },
         ...visible.map((item) => ({
           name: item.command,
           title: item.title,
-          category: "Dialog",
+          category: language.t("dialog.category"),
           run() {
             if (props.locked) return
             if (isActionDisabled(item)) return
@@ -462,14 +464,14 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
           ? [
               {
                 key: "tab",
-                desc: "Next dialog action",
-                group: "Dialog",
+                desc: language.t("dialog.select.nextAction"),
+                group: language.t("dialog.category"),
                 cmd: () => moveAction(1),
               },
               {
                 key: "shift+tab",
-                desc: "Previous dialog action",
-                group: "Dialog",
+                desc: language.t("dialog.select.previousAction"),
+                group: language.t("dialog.category"),
                 cmd: () => moveAction(-1),
               },
             ]
@@ -590,7 +592,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
                   input.focus()
                 }, 1)
               }}
-              placeholder={props.placeholder ?? "Search"}
+              placeholder={props.placeholder ?? language.t("dialog.select.search")}
               placeholderColor={theme.textMuted}
             />
           </box>
@@ -602,7 +604,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
           fallback={
             props.emptyView ?? (
               <box paddingLeft={4} paddingRight={4} paddingTop={1}>
-                <text fg={theme.textMuted}>No results found</text>
+                <text fg={theme.textMuted}>{language.t("dialog.select.noResults")}</text>
               </box>
             )
           }

@@ -1,6 +1,7 @@
 import React from "react"
 import type { PermissionRequest, QuestionInfo, QuestionRequest, SessionStatus } from "../../../core/sdk"
 import type { AppState, FormState } from "./state"
+import { t } from "../../../i18n"
 
 type FileRefTextComponent = ({ value, display, tone }: { value: string; display?: string; tone?: "default" | "muted" }) => React.JSX.Element
 
@@ -31,10 +32,10 @@ export function PermissionDock(props: {
   return (
     <section className="oc-dock oc-dock-warning">
       <div className="oc-dockHeader">
-        <span className="oc-kicker">权限</span>
-        <span className="oc-dockTitle">{info.label || "需要审批"}</span>
+        <span className="oc-kicker">{t("permission.kicker")}</span>
+        <span className="oc-dockTitle">{info.label || t("permission.approvalNeeded")}</span>
       </div>
-      <div className="oc-dockText">{info.intro || "HyperCode 等待确认后再继续。"}</div>
+      <div className="oc-dockText">{info.intro || t("permission.approvalIntro")}</div>
       <div className="oc-inlineValue">{renderPermissionLine(info.title, FileRefText)}</div>
       {info.details.length > 0 ? (
         <div className="oc-detailList">
@@ -57,13 +58,13 @@ export function PermissionDock(props: {
             const value = event.currentTarget.value
             onRejectMessage(value)
           }}
-          placeholder="拒绝时给子会话的可选指令"
+          placeholder={t("permission.rejectPlaceholder")}
         />
       ) : null}
       <div className="oc-actionRow">
-        <button type="button" className="oc-btn" onClick={() => onReply("reject", childRequest ? rejectMessage.trim() || undefined : undefined)}>拒绝</button>
-        <button type="button" className="oc-btn" onClick={() => onReply("once")}>仅本次允许</button>
-        <button type="button" className="oc-btn oc-btn-primary" onClick={() => onReply("always")}>始终允许</button>
+        <button type="button" className="oc-btn" onClick={() => onReply("reject", childRequest ? rejectMessage.trim() || undefined : undefined)}>{t("permission.reject")}</button>
+        <button type="button" className="oc-btn" onClick={() => onReply("once")}>{t("permission.allowOnce")}</button>
+        <button type="button" className="oc-btn oc-btn-primary" onClick={() => onReply("always")}>{t("permission.allowAlways")}</button>
       </div>
     </section>
   )
@@ -103,7 +104,7 @@ export function QuestionDock(props: {
   return (
     <section className="oc-dock oc-dock-warning">
       <div className="oc-dockHeader">
-        <span className="oc-kicker">问题</span>
+        <span className="oc-kicker">{t("question.kicker")}</span>
         <span className="oc-dockTitle">{meta.title}</span>
       </div>
       <div className="oc-dockText">{meta.text}</div>
@@ -117,10 +118,10 @@ export function QuestionDock(props: {
         onCustom={onCustom}
       />
       <div className="oc-actionRow">
-        <button type="button" className="oc-btn" onClick={onReject}>拒绝</button>
+        <button type="button" className="oc-btn" onClick={onReject}>{t("permission.reject")}</button>
         <div className="oc-actionRow">
-          {tab > 0 ? <button type="button" className="oc-btn" onClick={() => setTab((current) => Math.max(0, current - 1))}>上一题</button> : null}
-          <button type="button" className="oc-btn oc-btn-primary" onClick={next}>{last ? "提交回答" : "下一题"}</button>
+          {tab > 0 ? <button type="button" className="oc-btn" onClick={() => setTab((current) => Math.max(0, current - 1))}>{t("question.previous")}</button> : null}
+          <button type="button" className="oc-btn oc-btn-primary" onClick={next}>{last ? t("question.submit") : t("question.next")}</button>
         </div>
       </div>
     </section>
@@ -145,7 +146,7 @@ export function QuestionBlock(props: {
   return (
     <div className={`oc-question oc-question-${mode}`}>
       {mode === "active" && request.questions.length > 1 ? (
-        <div className="oc-questionProgress" role="tablist" aria-label="问题进度">
+        <div className="oc-questionProgress" role="tablist" aria-label={t("question.progress")}>
           {request.questions.map((_item, index) => {
             const done = questionAnswers(request, index, form, answers).length > 0
             const active = index === tab
@@ -155,7 +156,7 @@ export function QuestionBlock(props: {
                 type="button"
                 className={`oc-questionProgressItem${active ? " is-active" : ""}${done ? " is-done" : ""}`}
                 onClick={() => onTab?.(index)}
-                aria-label={`第 ${index + 1} 题`}
+                aria-label={t("question.number", { number: index + 1 })}
               />
             )
           })}
@@ -233,7 +234,7 @@ function QuestionItem(props: {
         <div className="oc-questionOption oc-questionOption-custom is-selected">
           <span className="oc-questionMark" aria-hidden="true">{marker(true)}</span>
           <span className="oc-questionOptionBody">
-            <span className="oc-questionOptionLabel">自定义回答</span>
+            <span className="oc-questionOptionLabel">{t("question.custom")}</span>
             <span className="oc-questionAnswerText">{customValue}</span>
           </span>
         </div>
@@ -274,7 +275,7 @@ function QuestionItem(props: {
             <div className="oc-questionOption oc-questionOption-custom is-selected">
               <span className="oc-questionMark" aria-hidden="true">{marker(true)}</span>
               <span className="oc-questionOptionBody">
-                <span className="oc-questionOptionLabel">自定义回答</span>
+                <span className="oc-questionOptionLabel">{t("question.custom")}</span>
                 <span className="oc-questionAnswerText">{customValue}</span>
               </span>
             </div>
@@ -283,7 +284,7 @@ function QuestionItem(props: {
           <label className={`oc-questionOption oc-questionOption-custom${customPicked ? " is-selected" : ""}`}>
             <span className="oc-questionMark" aria-hidden="true">{marker(customPicked)}</span>
             <span className="oc-questionOptionBody">
-              <span className="oc-questionOptionLabel">输入你自己的回答</span>
+              <span className="oc-questionOptionLabel">{t("question.customPrompt")}</span>
               <textarea
                 className="oc-answerInput oc-questionInput"
                 value={custom}
@@ -291,38 +292,38 @@ function QuestionItem(props: {
                   const value = event.currentTarget.value
                   onCustom?.(index, value)
                 }}
-                placeholder="可选的自定义回答"
+                placeholder={t("question.customPlaceholder")}
                 rows={Math.max(2, custom.split("\n").length || 2)}
               />
             </span>
           </label>
         )}
       </div>
-      {answered && selected.length === 0 ? <div className="oc-questionAnswerEmpty">未记录回答。</div> : null}
+      {answered && selected.length === 0 ? <div className="oc-questionAnswerEmpty">{t("question.noAnswer")}</div> : null}
     </>
   )
 
   return (
     <section className="oc-questionCard">
       <div className="oc-questionItemHead">
-        <div className="oc-inlineValue">{item.header || "问题"}</div>
+        <div className="oc-inlineValue">{item.header || t("question.fallback")}</div>
         {answered ? (
           <div className="oc-questionItemHeadMeta">
-            <span className="oc-questionState">{selected.length > 0 ? "已回答" : "未回答"}</span>
+            <span className="oc-questionState">{selected.length > 0 ? t("question.answered") : t("question.unanswered")}</span>
             {selected.length > 0 ? (
               <button
                 type="button"
                 className="oc-questionSummaryAction"
                 onClick={() => setExpanded((current) => !current)}
               >
-                {expanded ? "隐藏选项" : "显示选项"}
+                {expanded ? t("question.hideOptions") : t("question.showOptions")}
               </button>
             ) : null}
           </div>
         ) : null}
       </div>
       <div className="oc-questionPrompt">{item.question || ""}</div>
-      {mode === "active" ? <div className="oc-questionHint">{multiple ? "可选择一个或多个回答。" : "请选择一个回答。"}</div> : null}
+      {mode === "active" ? <div className="oc-questionHint">{multiple ? t("question.multipleHint") : t("question.singleHint")}</div> : null}
       {showSummary ? (
         <div className="oc-questionDetails">
           {summary}
@@ -357,11 +358,11 @@ export function RetryStatus({ status }: { status?: SessionStatus }) {
   return (
     <section className="oc-dock oc-dock-error">
       <div className="oc-dockHeader">
-        <span className="oc-kicker">重试</span>
-        <span className="oc-dockTitle">第 {retry.attempt} 次尝试</span>
+        <span className="oc-kicker">{t("retry.kicker")}</span>
+        <span className="oc-dockTitle">{t("retry.attempt", { attempt: retry.attempt })}</span>
       </div>
       <div className="oc-dockText">{retry.message}</div>
-      <div className="oc-help">{seconds > 0 ? `${formatDuration(seconds)} 后` : ""}重试第 {retry.attempt} 次</div>
+      <div className="oc-help">{t("retry.message", { attempt: retry.attempt, delay: seconds > 0 ? t("retry.after", { duration: formatDuration(seconds) }) : "" })}</div>
     </section>
   )
 }
@@ -376,11 +377,11 @@ export function SubagentNavigation(props: {
   }
 
   return (
-    <nav className="oc-dock oc-subagentNavDock" aria-label="子代理导航">
+    <nav className="oc-dock oc-subagentNavDock" aria-label={t("subagent.navigation")}>
       <div className="oc-subagentNavActions">
-        {navigation.parent ? <button type="button" className="oc-btn" onClick={() => onNavigate(navigation.parent!.id)}>父级</button> : null}
-        {navigation.prev ? <button type="button" className="oc-btn" onClick={() => onNavigate(navigation.prev!.id)}>上一个</button> : null}
-        {navigation.next ? <button type="button" className="oc-btn" onClick={() => onNavigate(navigation.next!.id)}>下一个</button> : null}
+        {navigation.parent ? <button type="button" className="oc-btn" onClick={() => onNavigate(navigation.parent!.id)}>{t("subagent.parent")}</button> : null}
+        {navigation.prev ? <button type="button" className="oc-btn" onClick={() => onNavigate(navigation.prev!.id)}>{t("subagent.previous")}</button> : null}
+        {navigation.next ? <button type="button" className="oc-btn" onClick={() => onNavigate(navigation.next!.id)}>{t("subagent.next")}</button> : null}
       </div>
     </nav>
   )
@@ -393,9 +394,9 @@ export function SubagentFooter(props: {
 
   return (
     <section className="oc-dock oc-subagentDock">
-      <div className="oc-subagentDockHeader" title="子会话隐藏输入框。">
-        <span className="oc-kicker">子代理</span>
-        <span className="oc-subagentReadonly">只读会话</span>
+      <div className="oc-subagentDockHeader" title={t("subagent.hiddenComposer")}>
+        <span className="oc-kicker">{t("subagent.kicker")}</span>
+        <span className="oc-subagentReadonly">{t("subagent.readOnly")}</span>
       </div>
       {children ? <div className="oc-subagentDockStatus">{children}</div> : null}
     </section>
@@ -418,14 +419,14 @@ function permissionInfo(request: PermissionRequest): PermissionInfo {
   const input = permissionInput(request)
   const details: PermissionLine[] = []
   const base = {
-    label: "需要审批",
-    intro: "HyperCode 等待确认后再继续。",
+    label: t("permission.approvalNeeded"),
+    intro: t("permission.approvalIntro"),
   }
 
   if (request.permission === "edit") {
     const filepath = stringValue(request.metadata?.filepath)
     if (filepath) {
-      details.push({ type: "path", prefix: "路径：", path: filepath })
+      details.push({ type: "path", prefix: t("permission.path"), path: filepath })
     }
     const diff = stringValue(request.metadata?.diff)
     if (diff) {
@@ -434,8 +435,8 @@ function permissionInfo(request: PermissionRequest): PermissionInfo {
     return {
       ...base,
       title: filepath
-        ? { type: "path", prefix: "编辑 ", path: filepath }
-        : { type: "text", text: "编辑文件" },
+        ? { type: "path", prefix: t("permission.edit"), path: filepath }
+        : { type: "text", text: t("permission.editFile") },
       details,
     }
   }
@@ -445,9 +446,9 @@ function permissionInfo(request: PermissionRequest): PermissionInfo {
     return {
       ...base,
       title: filePath
-        ? { type: "path", prefix: "读取 ", path: filePath }
-        : { type: "text", text: "读取文件" },
-      details: filePath ? [{ type: "path", prefix: "路径：", path: filePath }] : details,
+        ? { type: "path", prefix: t("permission.read"), path: filePath }
+        : { type: "text", text: t("permission.readFile") },
+      details: filePath ? [{ type: "path", prefix: t("permission.path"), path: filePath }] : details,
     }
   }
 
@@ -455,8 +456,8 @@ function permissionInfo(request: PermissionRequest): PermissionInfo {
     const pattern = stringValue(input.pattern)
     return {
       ...base,
-      title: { type: "text", text: `${capitalize(request.permission)} ${pattern ? `"${pattern}"` : "请求"}` },
-      details: pattern ? [{ type: "text", text: `匹配模式：${pattern}` }] : details,
+      title: { type: "text", text: `${capitalize(request.permission)} ${pattern ? `"${pattern}"` : t("permission.request")}` },
+      details: pattern ? [{ type: "text", text: t("permission.pattern", { pattern }) }] : details,
     }
   }
 
@@ -465,14 +466,14 @@ function permissionInfo(request: PermissionRequest): PermissionInfo {
     return {
       ...base,
       title: dir
-        ? { type: "path", prefix: "列出 ", path: dir }
-        : { type: "text", text: "列出目录" },
-      details: dir ? [{ type: "path", prefix: "路径：", path: dir }] : details,
+        ? { type: "path", prefix: t("permission.list"), path: dir }
+        : { type: "text", text: t("permission.listDirectory") },
+      details: dir ? [{ type: "path", prefix: t("permission.path"), path: dir }] : details,
     }
   }
 
   if (request.permission === "bash") {
-    const title = stringValue(input.description) || "Shell 命令"
+    const title = stringValue(input.description) || t("permission.shell")
     const command = stringValue(input.command)
     return {
       ...base,
@@ -482,11 +483,11 @@ function permissionInfo(request: PermissionRequest): PermissionInfo {
   }
 
   if (request.permission === "task") {
-    const type = stringValue(input.subagent_type) || "未知"
+    const type = stringValue(input.subagent_type) || t("permission.unknown")
     const description = stringValue(input.description)
     return {
       ...base,
-      title: { type: "text", text: `${capitalize(type)} 任务` },
+      title: { type: "text", text: t("permission.task", { type: capitalize(type) }) },
       details: description ? [{ type: "text", text: description }] : details,
     }
   }
@@ -495,7 +496,7 @@ function permissionInfo(request: PermissionRequest): PermissionInfo {
     const url = stringValue(input.url)
     return {
       ...base,
-      title: { type: "text", text: `WebFetch ${url || "请求"}` },
+      title: { type: "text", text: `WebFetch ${url || t("permission.request")}` },
       details: url ? [{ type: "text", text: `URL：${url}` }] : details,
     }
   }
@@ -504,8 +505,8 @@ function permissionInfo(request: PermissionRequest): PermissionInfo {
     const query = stringValue(input.query)
     return {
       ...base,
-      title: { type: "text", text: `${capitalize(request.permission)} ${query ? `"${query}"` : "请求"}` },
-      details: query ? [{ type: "text", text: `查询：${query}` }] : details,
+      title: { type: "text", text: `${capitalize(request.permission)} ${query ? `"${query}"` : t("permission.request")}` },
+      details: query ? [{ type: "text", text: t("permission.query", { query }) }] : details,
     }
   }
 
@@ -513,28 +514,28 @@ function permissionInfo(request: PermissionRequest): PermissionInfo {
     const filepath = stringValue(request.metadata?.filepath)
     const parentDir = stringValue(request.metadata?.parentDir)
     const pattern = stringValue(request.patterns?.[0])
-    const target = parentDir || filepath || pattern || "请求"
+    const target = parentDir || filepath || pattern || t("permission.request")
     return {
-      label: "需要权限",
-      intro: "HyperCode 想要访问当前工作区之外的位置后再继续。",
-      title: { type: "text", text: `访问外部目录 ${target}` },
-      details: parentDir && filepath && parentDir !== filepath ? [{ type: "path", prefix: "路径：", path: filepath }] : [],
-      patternTitle: request.patterns?.length ? "匹配模式" : undefined,
+      label: t("permission.required"),
+      intro: t("permission.externalIntro"),
+      title: { type: "text", text: t("permission.externalTitle", { target }) },
+      details: parentDir && filepath && parentDir !== filepath ? [{ type: "path", prefix: t("permission.path"), path: filepath }] : [],
+      patternTitle: request.patterns?.length ? t("permission.patterns") : undefined,
     }
   }
 
   if (request.permission === "doom_loop") {
     return {
-      label: "需要权限",
-      intro: "HyperCode 因相同的故障反复出现而暂停。",
-      title: { type: "text", text: "在反复失败后继续" },
-      details: [{ type: "text", text: "这将允许会话在反复失败时继续运行。" }],
+      label: t("permission.required"),
+      intro: t("permission.loopIntro"),
+      title: { type: "text", text: t("permission.loopTitle") },
+      details: [{ type: "text", text: t("permission.loopDetail") }],
     }
   }
 
   return {
     ...base,
-    title: { type: "text", text: `调用工具 ${request.permission || "permission"}` },
+    title: { type: "text", text: t("permission.toolTitle", { tool: request.permission || "permission" }) },
     details,
   }
 }
@@ -565,13 +566,13 @@ function questionPromptInfo(request: QuestionRequest) {
   const first = request.questions[0]
   if (request.questions.length === 1 && first && isPlanExitQuestion(first)) {
     return {
-      title: "构建代理",
-      text: "计划已就绪。请确认 HyperCode 是否切回构建模式开始实施。",
+      title: t("dock.buildAgent"),
+      text: t("dock.buildAgentText"),
     }
   }
   return {
-    title: "需要回答",
-    text: "HyperCode 需要你的回答后才能继续。",
+    title: t("dock.answerNeeded"),
+    text: t("dock.answerNeededText"),
   }
 }
 

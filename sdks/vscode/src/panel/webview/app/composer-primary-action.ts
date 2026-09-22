@@ -1,4 +1,5 @@
 import type { ComposerRunningState } from "./composer-running-state"
+import { t } from "../../../i18n"
 
 type ComposerPrimaryActionInput = {
   draft: string
@@ -33,8 +34,8 @@ export function composerPrimaryAction(input: ComposerPrimaryActionInput): Compos
       kind: "interrupt",
       disabled: false,
       icon: input.escPending ? "stop-confirm" : "stop",
-      title: input.escPending ? "再次按下以中断" : "中断当前会话",
-      ariaLabel: input.escPending ? "立即中断当前会话" : "中断当前会话",
+      title: input.escPending ? t("composer.interruptAgain") : t("composer.interrupt"),
+      ariaLabel: input.escPending ? t("composer.interruptNow") : t("composer.interrupt"),
     }
   }
 
@@ -43,8 +44,8 @@ export function composerPrimaryAction(input: ComposerPrimaryActionInput): Compos
       kind: "submit",
       disabled: true,
       icon: "send",
-      title: "提交不可用",
-      ariaLabel: "提交提示词",
+      title: t("composer.submitUnavailable"),
+      ariaLabel: t("composer.submitPrompt"),
     }
   }
 
@@ -53,7 +54,7 @@ export function composerPrimaryAction(input: ComposerPrimaryActionInput): Compos
     kind: "submit",
     disabled: !hasContent,
     icon: "send",
-    title: "回车键发送",
-    ariaLabel: "提交提示词",
+    title: t("composer.sendEnter"),
+    ariaLabel: t("composer.submitPrompt"),
   }
 }

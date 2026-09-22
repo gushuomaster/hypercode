@@ -2,6 +2,7 @@ import React from "react"
 import type { ProviderAuthMethod, ProviderInfo } from "../../../core/sdk"
 import type { ComposerModelRef } from "./state"
 import { isValidModelRef, modelKey, modelVariants, providerById, providerModelById, sameModelRef } from "../lib/session-meta"
+import { t } from "../../../i18n"
 
 export type ModelPickerItem = {
   id: string
@@ -85,8 +86,8 @@ export function buildModelPickerSections({
     }
   }
 
-  pushSection("favorites", "Favorites", favorites)
-  pushSection("recent", "Recent", recents)
+  pushSection("favorites", t("model.favorites"), favorites)
+  pushSection("recent", t("model.recent"), recents)
 
   for (const provider of providers) {
     const models = Object.values(provider.models ?? {}).map((model) => ({ providerID: provider.id, modelID: model.id }))
@@ -112,7 +113,7 @@ export function buildModelPickerRecoveryActions({
     return [{
       providerID: provider.id,
       label: provider.name || provider.id,
-      actionLabel: oauth.label || `Connect ${provider.name || provider.id}`,
+      actionLabel: oauth.label || t("model.connect", { provider: provider.name || provider.id }),
     }]
   })
 }
@@ -252,30 +253,30 @@ export function ModelPicker({
 
   if (sections.length === 0) {
     return (
-      <div className="oc-modelPicker" role="dialog" aria-label="Switch model" onKeyDown={onKeyDown}>
+      <div className="oc-modelPicker" role="dialog" aria-label={t("model.switch")} onKeyDown={onKeyDown}>
         <div className="oc-modelPickerHeader">
-          <span className="oc-modelPickerTitle">Switch model</span>
-          <span className="oc-modelPickerMeta">No models available</span>
+          <span className="oc-modelPickerTitle">{t("model.switch")}</span>
+          <span className="oc-modelPickerMeta">{t("model.noneAvailable")}</span>
         </div>
         <div className="oc-modelPickerEmptyActions">
-          <div className="oc-modelPickerEmptyText">Configure or connect a provider to start switching models in this session.</div>
+          <div className="oc-modelPickerEmptyText">{t("model.configureProvider")}</div>
           {recoveryActions.map((action) => (
             <button key={action.providerID} type="button" className="oc-modelPickerAction" onClick={() => onStartProviderAuth?.(action.providerID)}>
               {action.actionLabel}
             </button>
           ))}
-          <button type="button" className="oc-modelPickerAction" onClick={onOpenProviderDocs}>Open HyperCode docs</button>
+          <button type="button" className="oc-modelPickerAction" onClick={onOpenProviderDocs}>{t("model.openDocs")}</button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="oc-modelPicker" role="dialog" aria-label="Switch model" onKeyDown={onKeyDown}>
+    <div className="oc-modelPicker" role="dialog" aria-label={t("model.switch")} onKeyDown={onKeyDown}>
       <div className="oc-modelPickerTop">
         <div className="oc-modelPickerHeader">
-          <span className="oc-modelPickerTitle">Switch model</span>
-          <span className="oc-modelPickerMeta">{currentAgent || "No agent"}</span>
+          <span className="oc-modelPickerTitle">{t("model.switch")}</span>
+          <span className="oc-modelPickerMeta">{currentAgent || t("model.noAgent")}</span>
         </div>
         <div className="oc-modelPickerToolbar">
           <input
@@ -283,8 +284,8 @@ export function ModelPicker({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className="oc-modelPickerSearch"
-            placeholder="Filter models"
-            aria-label="Filter models"
+            placeholder={t("model.filter")}
+            aria-label={t("model.filter")}
           />
         </div>
       </div>
@@ -317,7 +318,7 @@ export function ModelPicker({
                           <button
                             type="button"
                             className={`oc-modelPickerFavoriteToggle${item.favorite ? " is-favorite" : ""}`}
-                            aria-label={item.favorite ? "Remove favorite" : "Add favorite"}
+                            aria-label={item.favorite ? t("model.removeFavorite") : t("model.addFavorite")}
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={(event) => {
                               event.preventDefault()
@@ -329,14 +330,14 @@ export function ModelPicker({
                           </button>
                         </span>
                       </span>
-                      {item.variantOptions.length > 0 ? <span className="oc-modelPickerItemHint">Ctrl+T cycles variant</span> : null}
+                      {item.variantOptions.length > 0 ? <span className="oc-modelPickerItemHint">{t("model.cycleVariant")}</span> : null}
                     </div>
                   )
                 })}
               </div>
             </div>
           )
-        }) : <div className="oc-modelPickerEmptyText">No models match "{query}".</div>}
+        }) : <div className="oc-modelPickerEmptyText">{t("model.noMatch", { query })}</div>}
       </div>
     </div>
   )

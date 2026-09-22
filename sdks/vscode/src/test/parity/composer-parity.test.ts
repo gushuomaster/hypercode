@@ -1,9 +1,12 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
+import { setLocale } from "../../i18n"
 import { composerParityFixtures } from "./composer-parity-fixtures"
 import { runComposerParity } from "./composer-parity"
 
 describe("composer autocomplete parity fixtures", () => {
+  beforeEach(() => setLocale("en"))
+
   for (const fix of composerParityFixtures) {
     test(fix.name, () => {
       const result = runComposerParity(fix)

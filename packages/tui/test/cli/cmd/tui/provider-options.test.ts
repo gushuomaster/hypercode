@@ -14,6 +14,13 @@ describe("providerOptions", () => {
     expect(providerOptions([{ id: "mistral", name: "Mistral" }])[0]?.category).toBe("Providers")
   })
 
+  test("localizes product-owned provider labels", () => {
+    expect(providerOptions([{ id: "openai", name: "OpenAI" }], "zh")).toEqual([
+      expect.objectContaining({ title: "OpenAI", category: "热门 Provider" }),
+      expect.objectContaining({ title: "其他", description: "自定义 Provider", category: "Provider" }),
+    ])
+  })
+
   test("keeps popular providers first and sorts the rest alphabetically", () => {
     expect(
       providerOptions([

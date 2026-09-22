@@ -17,10 +17,12 @@ import { SidebarProvider } from "./sidebar/provider"
 import { syncTreeSelectionToActiveSession } from "./sidebar/tree-sync"
 import { SidebarViewProvider } from "./sidebar/view-provider"
 import { SessionViewProvider } from "./sidebar/session-view-provider"
+import { setLocale, t } from "./i18n"
 
 let mgr: WorkspaceManager | undefined
 
 export async function activate(ctx: vscode.ExtensionContext) {
+  setLocale(vscode.env.language)
   const out = vscode.window.createOutputChannel("HyperCode")
   out.appendLine(`HyperCode activating (remote=${vscode.env.remoteName || "local"}, uiKind=${vscode.UIKind[vscode.env.uiKind]})`)
   const workspaceMgr = new WorkspaceManager(out)
@@ -108,8 +110,9 @@ export async function activate(ctx: vscode.ExtensionContext) {
         return
       }
 
-      const action = await vscode.window.showInformationMessage(proxyRestartMessage(), "Reload Window")
-      if (action === "Reload Window") {
+      const reload = t("common.reloadWindow")
+      const action = await vscode.window.showInformationMessage(proxyRestartMessage(), reload)
+      if (action === reload) {
         await vscode.commands.executeCommand("workbench.action.reloadWindow")
       }
     }),

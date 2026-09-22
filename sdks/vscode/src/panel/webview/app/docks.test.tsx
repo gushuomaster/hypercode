@@ -1,10 +1,13 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 import React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 
 import type { PermissionRequest, QuestionRequest } from "../../../core/sdk"
+import { setLocale } from "../../../i18n"
 import { PermissionDock, QuestionBlock, SubagentFooter, SubagentNavigation } from "./docks"
+
+beforeEach(() => setLocale("en"))
 
 function questionRequest(): Pick<QuestionRequest, "id" | "questions"> {
   return {

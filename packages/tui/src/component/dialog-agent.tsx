@@ -5,12 +5,14 @@ import { useDialog } from "../ui/dialog"
 import { useLanguage } from "../context/language"
 import { useToast } from "../ui/toast"
 import type { PromptRef } from "./prompt"
+import { agentDisplayName } from "../i18n"
 
 export function DialogAgent(props: { prompt: () => PromptRef | undefined }) {
   const local = useLocal()
   const dialog = useDialog()
   const toast = useToast()
-  const t = useLanguage().t
+  const language = useLanguage()
+  const t = language.t
 
   function description(item: ReturnType<typeof local.agent.visible>[number]) {
     if (item.name === "build") return t("dialog.agent.description.build")
@@ -25,7 +27,7 @@ export function DialogAgent(props: { prompt: () => PromptRef | undefined }) {
       const subagent = item.mode === "subagent"
       return {
         value: item.name,
-        title: item.name,
+        title: agentDisplayName(item.name, language.locale()),
         details: [description(item)],
         category: subagent ? t("dialog.agent.category.subagent") : t("dialog.agent.category.primary"),
         footer: subagent ? t("dialog.agent.action.invoke") : t("dialog.agent.action.switch"),

@@ -1,9 +1,12 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 
 import { composerPrimaryAction } from "./composer-primary-action"
+import { setLocale } from "../../../i18n"
 
 describe("composerPrimaryAction", () => {
+  beforeEach(() => setLocale("zh"))
+
   test("disables submit when the composer has no text or image attachments", () => {
     assert.deepEqual(composerPrimaryAction({
       draft: "   ",

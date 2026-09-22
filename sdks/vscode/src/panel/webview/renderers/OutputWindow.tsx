@@ -1,4 +1,5 @@
 import React from "react"
+import { t } from "../../../i18n"
 
 const OUTPUT_WINDOW_COLLAPSED_LINES = 10
 const OUTPUT_WINDOW_EXPANDED_LINES = 100
@@ -78,7 +79,7 @@ export function OutputWindow({ ToolStatus, action, title, running = false, lineC
         <div ref={contentRef} className="oc-outputWindowBodyInner">{children}</div>
       </div>
       {collapsible ? (
-        <button ref={toggleRef} type="button" className="oc-outputWindowToggle" aria-expanded={expanded} aria-label={expanded ? "Collapse output" : "Expand output"} onClick={(event) => {
+        <button ref={toggleRef} type="button" className="oc-outputWindowToggle" aria-expanded={expanded} aria-label={expanded ? t("output.collapse") : t("output.expand")} onClick={(event) => {
           const toggleNode = event.currentTarget
           if (expanded) {
             const scrollNode = toggleNode.closest(".oc-transcript")
@@ -115,5 +116,5 @@ function outputWindowBodyHeight(lines: number) {
 }
 
 function formatLineCount(value: number) {
-  return `${value} ${value === 1 ? "line" : "lines"}`
+  return t(value === 1 ? "output.line" : "output.lines", { count: value })
 }

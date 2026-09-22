@@ -33,6 +33,7 @@ import { ContextPanel } from "./context-panel"
 import { SessionPicker } from "./session-picker"
 import { composerRunningState } from "./composer-running-state"
 import { copyImageToClipboard, ImagePreviewOverlay, saveImageFromPreview, type PreviewImage } from "./image-preview"
+import { t } from "../../../i18n"
 import { buildThemePickerItems, ThemePicker, type ThemePickerItem } from "./theme-picker"
 import { resolveTranscriptHistoryMode, shouldAutoLoadEarlierMessages, transcriptHistoryScrollThreshold } from "./transcript-history"
 import { AgentPicker, buildAgentPickerItems, type AgentPickerItem } from "./agent-picker"
@@ -905,7 +906,7 @@ export function App() {
     if (hostMessage.type === "submit" && !selection.model) {
       setState((current) => ({
         ...current,
-        error: current.snapshot.providers.length > 0 ? "发送消息前请先选择一个模型。" : "发送消息前请先配置一个服务提供商。",
+        error: current.snapshot.providers.length > 0 ? t("composer.error.selectModel") : t("composer.error.configureProvider"),
       }))
       setThemePickerOpen(false)
       setModelPickerOpen(true)
@@ -931,12 +932,12 @@ export function App() {
   }, [blocked, composerMode, currentSelection, exitShellMode, openAgentPicker, openSkillPicker, openThemePicker, state.composerParts, state.imageAttachments, state.snapshot.commands])
 
   const composerPlaceholder = composerMode === "shell"
-    ? "在此工作区中输入要运行的 shell 命令。"
-    : "让 HyperCode 检查、解释或修改此工作区。"
+    ? t("composer.help.shell")
+    : t("composer.help.prompt")
 
   const composerAriaLabel = composerMode === "shell"
-    ? "在此工作区中输入要运行的 shell 命令"
-    : "让 HyperCode 检查、解释或修改此工作区"
+    ? t("composer.placeholder.shell")
+    : t("composer.placeholder.prompt")
 
   const composerRunningStatus = React.useMemo(() => composerRunningState(state.snapshot.sessionStatus, escPending), [escPending, state.snapshot.sessionStatus])
   const composerRunning = isSessionRunning(state.snapshot.sessionStatus)
@@ -1764,8 +1765,8 @@ export function App() {
                 type="button"
                 className="oc-scrollToBottom"
                 onClick={timelineScroll.scrollToBottom}
-                aria-label="Scroll to bottom"
-                title="Scroll to bottom"
+                aria-label={t("composer.scrollBottom")}
+                title={t("composer.scrollBottom")}
               >
                 <svg viewBox="0 0 16 16" aria-hidden="true">
                   <path d="M8 3v9M4.5 8.5 8 12l3.5-3.5" />
@@ -1898,7 +1899,7 @@ export function App() {
                   onDrop={onComposerDrop}
                 >
                   <div className="oc-composerBody">
-                    {composerDrag ? <div className="oc-composerDropOverlay">Drop to @mention file</div> : null}
+                    {composerDrag ? <div className="oc-composerDropOverlay">{t("composer.dropMention")}</div> : null}
                     {state.imageAttachments.length > 0 ? (
                       <div className="oc-composerImageStrip">
                         {state.imageAttachments.map((img) => (
@@ -1912,7 +1913,7 @@ export function App() {
                             <button
                               type="button"
                               className="oc-composerImageThumbClose"
-                              aria-label={`Remove ${img.name}`}
+                              aria-label={t("composer.removeImage", { name: img.name })}
                               onClick={() => setState((current) => ({
                                 ...current,
                                 imageAttachments: current.imageAttachments.filter((a) => a.id !== img.id),
@@ -1925,7 +1926,7 @@ export function App() {
                       </div>
                     ) : null}
                     <div className="oc-composerInputWrap">
-                      {leaderPending ? <div className="oc-composerLeaderOverlay"><span className="oc-composerLeaderOverlayText">Ctrl + X Pressed</span></div> : null}
+                      {leaderPending ? <div className="oc-composerLeaderOverlay"><span className="oc-composerLeaderOverlayText">{t("composer.leaderPressed")}</span></div> : null}
                       <div
                           ref={composerRef}
                           className={`oc-composerInput${composerMode === "shell" ? " is-shell" : ""}`}
@@ -2279,9 +2280,9 @@ export function App() {
               </footer>
             {contextPanelOpen ? (
               <div className={`oc-sidePanelOverlay${contextPanelClosing ? " is-closing" : ""}`} onClick={closeContextPanel}>
-                <aside className="oc-sidePanel" role="dialog" aria-modal="true" aria-label="Session context" onClick={(event) => event.stopPropagation()} onAnimationEnd={finishContextPanelClose}>
+                <aside className="oc-sidePanel" role="dialog" aria-modal="true" aria-label={t("composer.sessionContext")} onClick={(event) => event.stopPropagation()} onAnimationEnd={finishContextPanelClose}>
                   <div className="oc-sidePanelHeader">
-                    <button type="button" className="oc-sidePanelHandle" onClick={closeContextPanel} aria-label="Close context" />
+                    <button type="button" className="oc-sidePanelHandle" onClick={closeContextPanel} aria-label={t("composer.closeContext")} />
                   </div>
                   <div className="oc-sidePanelBody">
                     <ContextPanel
@@ -2394,7 +2395,7 @@ function ComposerAutocompletePopup({ state, fileSearch, onSelect }: { state: Com
   }, [state.selectedIndex, state.items])
 
   return (
-    <div className="oc-composerAutocomplete" role="listbox" aria-label={`${state.trigger} suggestions`}>
+    <div className="oc-composerAutocomplete" role="listbox" aria-label={t("composer.suggestions", { type: state.trigger })}>
       <div className="oc-composerAutocompleteHeader">
         <span className="oc-composerAutocompleteTrigger">{state.trigger === "mention" ? "@" : "/"}</span>
         <span>{popupHeaderText(state, fileSearch)}</span>
@@ -2445,44 +2446,44 @@ function highlightAutocompleteText(value: string, indexes?: number[]) {
 
 function popupHeaderText(state: ComposerAutocompleteState, fileSearch: { status: "idle" | "searching" | "done"; query: string }) {
   if (state.trigger === "slash") {
-    return state.query ? `筛选: ${state.query}` : "输入内容以筛选"
+    return state.query ? t("autocomplete.filter", { query: state.query }) : t("autocomplete.filterEmpty")
   }
 
   if (state.trigger === "skill") {
-    return state.query ? `技能筛选: ${state.query}` : "搜索技能"
+    return state.query ? t("autocomplete.skillFilter", { query: state.query }) : t("autocomplete.skillSearch")
   }
 
   const query = parseComposerFileQuery(state.query).baseQuery.trim()
   if (!state.query) {
-    return "代理、资源和项目路径"
+    return t("autocomplete.mentionTitle")
   }
 
   if (fileSearch.status === "searching" && fileSearch.query === query) {
-    return `正在搜索 \"${state.query}\" 的路径...`
+    return t("autocomplete.pathSearching", { query: state.query })
   }
 
-  return `筛选: ${state.query}`
+  return t("autocomplete.filter", { query: state.query })
 }
 
 function popupEmptyText(state: ComposerAutocompleteState, fileSearch: { status: "idle" | "searching" | "done"; query: string }) {
   if (state.trigger === "slash") {
-    return state.query ? `没有与 \"${state.query}\" 匹配的 slash 操作` : "输入内容以筛选"
+    return state.query ? t("autocomplete.slashEmpty", { query: state.query }) : t("autocomplete.filterEmpty")
   }
 
   if (state.trigger === "skill") {
-    return state.query ? `没有与 \"${state.query}\" 匹配的技能` : "输入技能名称"
+    return state.query ? t("autocomplete.skillEmpty", { query: state.query }) : t("autocomplete.skillPrompt")
   }
 
   const query = parseComposerFileQuery(state.query).baseQuery.trim()
   if (!state.query) {
-    return "输入代理、资源、路径或 path#12-20"
+    return t("autocomplete.mentionPrompt")
   }
 
   if (fileSearch.status === "searching" && fileSearch.query === query) {
-    return `正在搜索 \"${state.query}\" 的路径...`
+    return t("autocomplete.pathSearching", { query: state.query })
   }
 
-  return `没有与 \"${state.query}\" 匹配的代理或路径`
+  return t("autocomplete.mentionEmpty", { query: state.query })
 }
 
 function ComposerInfo({
@@ -2518,7 +2519,7 @@ function ComposerInfo({
           <button
             type="button"
             className={`oc-composerModelTrigger${modelPickerOpen ? " is-open" : ""}`}
-            aria-label="Switch model"
+            aria-label={t("model.switch")}
             aria-expanded={modelPickerOpen}
             onClick={onToggleModelPicker}
           >
@@ -2527,7 +2528,7 @@ function ComposerInfo({
           </button>
         ) : null}
         {variantOptions.length > 0 ? (
-          <button type="button" className="oc-composerVariantTrigger" onClick={onCycleVariant} title="Cycle variant">
+          <button type="button" className="oc-composerVariantTrigger" onClick={onCycleVariant} title={t("composer.cycleVariant")}>
             {info.variant || "default"}
           </button>
         ) : null}

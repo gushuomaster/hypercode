@@ -2,6 +2,7 @@ import * as cp from "node:child_process"
 import * as vscode from "vscode"
 import { resolveOpencodeCommand, shouldUseShell, type WorkspaceRuntime } from "./server"
 import { getCliPath } from "./settings"
+import { t } from "../i18n"
 
 const MISSING_OPENCODE_MARKERS = [
   "was not found on the current host PATH",
@@ -23,13 +24,13 @@ export function isMissingOpencodeError(message?: string) {
 
 export function missingOpencodeMessage(rt?: Pick<WorkspaceRuntime, "name">) {
   const host = vscode.env.remoteName || "local"
-  const target = rt?.name ? `（${rt.name}）` : ""
-  return `HyperCode 无法启动 CLI 运行时${target}。请在当前 ${host} 主机上安装 HyperCode，或将 "hypercode.cliPath" 指向 PATH 中可用的兼容 CLI。`
+  const target = rt?.name ? ` (${rt.name})` : ""
+  return t("runtime.missing", { target, host })
 }
 
 export function runtimeNotReadyMessage(rt?: Pick<WorkspaceRuntime, "name" | "err">) {
   if (!rt) {
-    return "工作区服务不可用。"
+    return t("runtime.serviceUnavailable")
   }
 
   if (isMissingOpencodeError(rt.err)) {
@@ -37,10 +38,10 @@ export function runtimeNotReadyMessage(rt?: Pick<WorkspaceRuntime, "name" | "err
   }
 
   if (rt.err) {
-    return `工作区服务尚未就绪：${rt.err}`
+    return t("runtime.serviceError", { message: rt.err })
   }
 
-  return "请等待工作区服务就绪后再试。"
+  return t("runtime.waitReady")
 }
 
 export async function checkOpencodeAvailable() {
@@ -94,12 +95,12 @@ export async function checkOpencodeAvailable() {
 
     proc.once("exit", (code, signal) => {
       if (code === 0) {
-        const output = stdout.trim() || stderr.trim() || `${command} 可用`
+        const output = stdout.trim() || stderr.trim() || t("runtime.commandAvailable", { command })
         finish({ ok: true, output })
         return
       }
 
-      const detail = stderr.trim() || stdout.trim() || `退出码=${code ?? "unknown"} 信号=${signal ?? "none"}`
+      const detail = stderr.trim() || stdout.trim() || t("runtime.exitDetail", { code: code ?? "unknown", signal: signal ?? "none" })
       finish({ ok: false, message: detail })
     })
 
@@ -108,7 +109,7 @@ export async function checkOpencodeAvailable() {
         proc.kill("SIGTERM")
       } catch {}
 
-      finish({ ok: false, message: "检查 HyperCode 运行时可用性超时" })
+      finish({ ok: false, message: t("runtime.checkTimeout") })
     }, 5000)
   })
 }

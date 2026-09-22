@@ -18,6 +18,7 @@ import { Spinner } from "./spinner"
 import { DialogWorkspaceFileChanges } from "./dialog-workspace-file-changes"
 import type { ProjectDirectories } from "@opencode-ai/sdk/v2"
 import { useRoute } from "../context/route"
+import { translate as t } from "../context/language"
 
 export type MoveSessionSelection = { type: "directory"; directory: string; subdirectory: boolean } | { type: "new" }
 type ProjectDirectory = ProjectDirectories[number]
@@ -113,7 +114,7 @@ export function DialogMoveSession(props: DialogMoveSessionProps) {
     if (showError()) return []
     const data = directoryData()
     const current = currentRoot()?.directory
-    if (directories.loading && !data && !current) return [{ title: "Loading project directories…", value: undefined }]
+    if (directories.loading && !data && !current) return [{ title: t("dialog.moveSession.loading"), value: undefined }]
     const roots = [...(data ?? [])]
     if (current && !roots.some((item) => item.directory === current)) roots.unshift({ directory: current })
     roots.sort((a, b) => {
@@ -123,7 +124,7 @@ export function DialogMoveSession(props: DialogMoveSessionProps) {
       if (!a.strategy && !b.strategy) return a.directory.length - b.directory.length
       return 0
     })
-    if (roots.length === 0) return [{ title: "No project directories found", value: undefined }]
+    if (roots.length === 0) return [{ title: t("dialog.moveSession.empty"), value: undefined }]
 
     const subdirectories = sync.data.session
       .filter((session) => session.projectID === props.projectID && session.path && ![".", "/"].includes(session.path))
@@ -161,9 +162,9 @@ export function DialogMoveSession(props: DialogMoveSessionProps) {
       return {
         title,
         titleView: isRemoving ? (
-          <span style={{ fg: theme.error }}>Deleting {item.location}</span>
+          <span style={{ fg: theme.error }}>{t("dialog.moveSession.deleting", { directory: item.location })}</span>
         ) : deleting ? (
-          <span style={{ fg: theme.text }}>Press {deleteHint()} again to confirm</span>
+          <span style={{ fg: theme.text }}>{t("dialog.moveSession.confirmDelete", { key: deleteHint() })}</span>
         ) : suffix ? (
           <>
             {visible.slice(0, split)}
@@ -176,7 +177,7 @@ export function DialogMoveSession(props: DialogMoveSessionProps) {
           directory: item.location,
           subdirectory: item.location !== item.root.directory,
         } as const,
-        category: item.root.directory === current ? "Current" : "Other",
+        category: item.root.directory === current ? t("dialog.moveSession.current") : t("dialog.moveSession.other"),
         titleWidth,
         truncateTitle: "left" as const,
       }
@@ -235,8 +236,8 @@ export function DialogMoveSession(props: DialogMoveSessionProps) {
       if ("data" in result.error && result.error.data.forceRequired) {
         const status = await sdk.client.vcs.status({ directory: selected.directory }).catch(() => undefined)
         const choice = await DialogWorkspaceFileChanges.show(dialog, status?.data ?? [], {
-          title: "Delete working copy?",
-          message: "This working copy has file changes. Do you want to delete it anyway?",
+          title: t("dialog.moveSession.deleteWorkingCopy"),
+          message: t("dialog.moveSession.deleteWorkingCopyMessage"),
         })
         if (choice !== "yes") {
           reopen()
@@ -254,7 +255,7 @@ export function DialogMoveSession(props: DialogMoveSessionProps) {
         if (forced.error) {
           toast.show({
             variant: "error",
-            title: "Failed to delete project copy",
+            title: t("dialog.moveSession.deleteFailed"),
             message: errorMessage(forced.error),
           })
           reopen()
@@ -268,7 +269,7 @@ export function DialogMoveSession(props: DialogMoveSessionProps) {
       }
       toast.show({
         variant: "error",
-        title: "Failed to delete project copy",
+        title: t("dialog.moveSession.deleteFailed"),
         message: errorMessage(result.error),
       })
       return
@@ -286,11 +287,11 @@ export function DialogMoveSession(props: DialogMoveSessionProps) {
   return (
     <box minHeight={showError() ? 5 : fullHeight()}>
       <DialogSelect
-        title="Move session"
+        title={t("dialog.moveSession.title")}
         titleView={
           <box flexDirection="row" gap={1}>
             <text fg={theme.text} attributes={TextAttributes.BOLD}>
-              Move session
+              {t("dialog.moveSession.title")}
             </text>
             <Show when={working() || directories.loading || loadedProject.loading}>
               <Spinner />
@@ -303,7 +304,7 @@ export function DialogMoveSession(props: DialogMoveSessionProps) {
           showError() ? (
             <box paddingLeft={4} paddingRight={4}>
               <text fg={theme.error} attributes={TextAttributes.BOLD}>
-                Could not load project directories
+                {t("dialog.moveSession.loadError")}
               </text>
               <text fg={theme.textMuted}>{errorMessage(loadError())}</text>
             </box>
@@ -321,12 +322,12 @@ export function DialogMoveSession(props: DialogMoveSessionProps) {
             : [
                 {
                   command: "dialog.move_session.new",
-                  title: "new",
+                  title: t("dialog.moveSession.new"),
                   onTrigger: () => props.onSelect({ type: "new" }),
                 },
                 {
                   command: "dialog.move_session.delete",
-                  title: "delete",
+                  title: t("dialog.moveSession.delete"),
                   disabled: (option) => {
                     const value = option?.value
                     if (!value || value.type !== "directory" || value.subdirectory) return true
@@ -336,7 +337,7 @@ export function DialogMoveSession(props: DialogMoveSessionProps) {
                 },
                 {
                   command: "dialog.move_session.refresh",
-                  title: "refresh",
+                  title: t("dialog.moveSession.refresh"),
                   onTrigger: () => void refetch(),
                 },
               ]

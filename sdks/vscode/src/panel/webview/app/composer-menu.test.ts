@@ -3,8 +3,32 @@ import { describe, test } from "node:test"
 
 import { autocompleteItemView, buildComposerMenuItems } from "./composer-menu"
 import { createInitialState } from "./state"
+import { setLocale } from "../../../i18n"
 
 describe("buildComposerMenuItems", () => {
+  test("uses the current locale for server command descriptions", () => {
+    const state = createInitialState({
+      workspaceId: "file:///workspace",
+      dir: "/workspace",
+      sessionId: "session-1",
+    })
+    state.snapshot.commands = [{
+      name: "review",
+      description: "Legacy description",
+      description_i18n: {
+        zh: "审查当前变更",
+        en: "Review current changes",
+      },
+      hints: [],
+      source: "command",
+    }]
+
+    setLocale("zh")
+    assert.equal(buildComposerMenuItems(state, []).find((item) => item.id === "command:review")?.detail, "审查当前变更")
+    setLocale("en")
+    assert.equal(buildComposerMenuItems(state, []).find((item) => item.id === "command:review")?.detail, "Review current changes")
+  })
+
   test("includes a local slash action for agents", () => {
     const state = createInitialState({
       workspaceId: "file:///workspace",

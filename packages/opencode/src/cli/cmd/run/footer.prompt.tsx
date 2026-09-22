@@ -9,6 +9,7 @@ import { pathToFileURL } from "bun"
 import { StyledText, fg, type ColorInput, type KeyEvent, type TextareaRenderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { normalizePromptContent } from "@opencode-ai/tui/editor"
+import { localizedDescription, t } from "@opencode-ai/tui/i18n"
 import fuzzysort from "fuzzysort"
 import path from "path"
 import { createEffect, createMemo, createResource, createSignal, onCleanup, onMount, type Accessor } from "solid-js"
@@ -283,14 +284,16 @@ export function createPromptState(input: PromptInput): PromptState {
   const [shell, setShell] = createSignal(false)
   const placeholder = createMemo(() => {
     if (shell()) {
-      return new StyledText([fg(input.theme().muted)('Run a command... "git status"')])
+      return new StyledText([fg(input.theme().muted)(t("prompt.placeholder.shell", { example: "git status" }))])
     }
 
     if (!input.state().first) {
       return ""
     }
 
-    return new StyledText([fg(input.theme().muted)('Ask anything... "Fix a TODO in the codebase"')])
+    return new StyledText([
+      fg(input.theme().muted)(t("prompt.placeholder.ask", { example: t("prompt.example.todo") })),
+    ])
   })
 
   let history = createPromptHistory(input.history)
@@ -414,10 +417,15 @@ export function createPromptState(input: PromptInput): PromptState {
         action: "editor" as const,
         name: "editor",
         display: "/editor",
-        description: "compose in your external editor",
+        description: t("run.prompt.editorDescription"),
       } satisfies SlashOption,
-      { kind: "slash", name: "new", display: "/new", description: "start a new session" } satisfies SlashOption,
-      { kind: "slash", name: "exit", display: "/exit", description: "close HyperCode" } satisfies SlashOption,
+      { kind: "slash", name: "new", display: "/new", description: t("run.prompt.newDescription") } satisfies SlashOption,
+      {
+        kind: "slash",
+        name: "exit",
+        display: "/exit",
+        description: t("run.prompt.exitDescription"),
+      } satisfies SlashOption,
     ]
     const hidden = new Set(builtins.map((item) => item.name))
     const showSkillMenu = !shell() && skillCommands().length > 0 && !hasSkillsCommand()
@@ -433,7 +441,7 @@ export function createPromptState(input: PromptInput): PromptState {
               action: "skill-menu" as const,
               name: "skills",
               display: "/skills",
-              description: "browse available skills",
+              description: t("run.prompt.skillsDescription"),
             } satisfies SlashOption,
           ]
         : []),
@@ -445,7 +453,7 @@ export function createPromptState(input: PromptInput): PromptState {
               kind: "slash",
               name: item.name,
               display: `/${item.name}${item.source === "mcp" ? ":mcp" : ""}`,
-              description: item.description,
+              description: localizedDescription(item),
             }) satisfies SlashOption,
         ),
       ...builtins,
@@ -835,7 +843,7 @@ export function createPromptState(input: PromptInput): PromptState {
       })
     } catch {
       restore(current)
-      input.onStatus("failed to open editor")
+      input.onStatus(t("run.prompt.failedEditor"))
     }
   }
 
@@ -981,8 +989,8 @@ export function createPromptState(input: PromptInput): PromptState {
     commands: [
       {
         name: "prompt.clear",
-        title: "Clear prompt or exit",
-        category: "Prompt",
+        title: t("command.prompt.clear"),
+        category: t("command.category.prompt"),
         run() {
           if (requestExit()) return
           return false
@@ -998,8 +1006,8 @@ export function createPromptState(input: PromptInput): PromptState {
     commands: [
       {
         name: "session.interrupt",
-        title: "Interrupt session",
-        category: "Session",
+        title: t("command.session.interrupt"),
+        category: t("command.category.session"),
         run() {
           if (input.onInterrupt()) return
           return false
@@ -1015,8 +1023,8 @@ export function createPromptState(input: PromptInput): PromptState {
     commands: [
       {
         name: "prompt.editor",
-        title: "Open editor",
-        category: "Prompt",
+        title: t("run.command.openEditor"),
+        category: t("command.category.prompt"),
         run() {
           void openEditor()
         },
@@ -1031,16 +1039,16 @@ export function createPromptState(input: PromptInput): PromptState {
     commands: [
       {
         name: "prompt.history.previous",
-        title: "Previous prompt history",
-        category: "Prompt",
+        title: t("command.prompt.historyPrev"),
+        category: t("command.category.prompt"),
         run(ctx: { event: KeyEvent }) {
           return historyCommand(-1, ctx.event)
         },
       },
       {
         name: "prompt.history.next",
-        title: "Next prompt history",
-        category: "Prompt",
+        title: t("command.prompt.historyNext"),
+        category: t("command.category.prompt"),
         run(ctx: { event: KeyEvent }) {
           return historyCommand(1, ctx.event)
         },
@@ -1058,8 +1066,8 @@ export function createPromptState(input: PromptInput): PromptState {
     bindings: [
       {
         key: "!",
-        desc: "Shell mode",
-        group: "Prompt",
+        desc: t("command.prompt.shellMode"),
+        group: t("command.category.prompt"),
         cmd() {
           if (shell()) return false
           if (!area || area.isDestroyed) return false
@@ -1076,14 +1084,14 @@ export function createPromptState(input: PromptInput): PromptState {
     bindings: [
       {
         key: "escape",
-        desc: "Exit shell mode",
-        group: "Prompt",
+            desc: t("command.prompt.exitShellMode"),
+            group: t("command.category.prompt"),
         cmd: () => setShellMode(false),
       },
       {
         key: "backspace",
-        desc: "Exit shell mode",
-        group: "Prompt",
+            desc: t("command.prompt.exitShellMode"),
+            group: t("command.category.prompt"),
         cmd() {
           if (!area || area.isDestroyed) return false
           if (area.cursorOffset !== 0) return false
@@ -1099,26 +1107,26 @@ export function createPromptState(input: PromptInput): PromptState {
     commands: [
       {
         name: "prompt.autocomplete.prev",
-        title: "Previous autocomplete item",
-        category: "Autocomplete",
+        title: t("command.autocomplete.prev"),
+        category: t("command.category.autocomplete"),
         run: () => menu.move(-1),
       },
       {
         name: "prompt.autocomplete.next",
-        title: "Next autocomplete item",
-        category: "Autocomplete",
+        title: t("command.autocomplete.next"),
+        category: t("command.category.autocomplete"),
         run: () => menu.move(1),
       },
       {
         name: "prompt.autocomplete.hide",
-        title: "Hide autocomplete",
-        category: "Autocomplete",
+        title: t("command.autocomplete.hide"),
+        category: t("command.category.autocomplete"),
         run: cancelAutocomplete,
       },
       {
         name: "prompt.autocomplete.select",
-        title: "Select autocomplete item",
-        category: "Autocomplete",
+        title: t("command.autocomplete.select"),
+        category: t("command.category.autocomplete"),
         run() {
           if (mode() === "slash" && options().length === 0) {
             hide()
@@ -1129,8 +1137,8 @@ export function createPromptState(input: PromptInput): PromptState {
       },
       {
         name: "prompt.autocomplete.complete",
-        title: "Complete autocomplete item",
-        category: "Autocomplete",
+        title: t("command.autocomplete.complete"),
+        category: t("command.category.autocomplete"),
         run() {
           if (mode() === "slash" && options().length === 0) {
             hide()
@@ -1175,7 +1183,9 @@ export function createPromptState(input: PromptInput): PromptState {
     }
 
     if (!next.text.trim()) {
-      input.onStatus(input.state().phase === "running" ? "waiting for current response" : "empty prompt ignored")
+      input.onStatus(
+        input.state().phase === "running" ? t("run.prompt.waitingResponse") : t("run.prompt.emptyIgnored"),
+      )
       return
     }
 
@@ -1190,7 +1200,7 @@ export function createPromptState(input: PromptInput): PromptState {
         ? undefined
         : parseSlashCommand(next.text, input.commands())
     if (parsed?.type === "pending") {
-      input.onStatus("loading commands")
+      input.onStatus(t("run.prompt.loadingCommands"))
       return
     }
 

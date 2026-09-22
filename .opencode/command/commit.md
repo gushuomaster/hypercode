@@ -1,5 +1,8 @@
 ---
-description: git commit and push
+description: "Commit and push Git changes"
+description_i18n:
+  zh: "提交并推送 Git 更改"
+  en: "Commit and push Git changes"
 model: opencode/kimi-k2.5
 subtask: true
 ---

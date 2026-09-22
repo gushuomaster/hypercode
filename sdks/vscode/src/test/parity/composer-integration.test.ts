@@ -1,6 +1,9 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 import { runComposerIntegration } from "./composer-integration"
+import { setLocale } from "../../i18n"
+
+beforeEach(() => setLocale("en"))
 
 const serverCommands = [
   { name: "review", description: "review changes [commit|branch|pr]", source: "command" as const, hints: [] },

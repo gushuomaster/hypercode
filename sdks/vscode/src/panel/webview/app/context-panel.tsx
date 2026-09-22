@@ -2,6 +2,7 @@ import React from "react"
 
 import type { MessageInfo, MessagePart, ProviderInfo, SessionInfo, SessionMessage } from "../../../core/sdk"
 import { displayModelRef, displayProviderRef, lastAssistantWithOutput, modelContextLimitForRef, sessionCost, totalTokens } from "../lib/session-meta"
+import { t } from "../../../i18n"
 
 type ContextMetrics = {
   totalCost: number
@@ -40,20 +41,16 @@ type ContextBreakdown = {
   tools: ContextToolBreakdownSegment[]
 }
 
-const BREAKDOWN_LABELS: Record<ContextBreakdownKey, string> = {
-  system: "System",
-  user: "User",
-  assistant: "Assistant",
-  tool: "Tool",
-  other: "Other",
-}
-
 type JsonToken =
   | { kind: "punctuation"; text: string }
   | { kind: "key"; text: string }
   | { kind: "string"; text: string }
   | { kind: "number"; text: string }
   | { kind: "literal"; text: string }
+
+function breakdownLabel(key: ContextBreakdownKey) {
+  return t(`context.${key}`)
+}
 
 export function ContextPanel({
   session,
@@ -76,30 +73,30 @@ export function ContextPanel({
   return (
     <div className="oc-contextPanel">
       <div className="oc-contextGrid">
-        <ContextStat label="Session" value={session?.title || session?.id || "—"} />
-        <ContextStat label="Messages" value={formatNumber(counts.all)} />
-        <ContextStat label="Provider" value={metrics.context?.providerLabel || "—"} />
-        <ContextStat label="Model" value={metrics.context?.modelLabel || "—"} />
-        <ContextStat label="Context limit" value={formatMaybeNumber(metrics.context?.limit)} />
-        <ContextStat label="Total token" value={formatMaybeNumber(metrics.context?.total)} />
-        <ContextStat label="Usage" value={formatPercent(metrics.context?.usage)} />
-        <ContextStat label="Input token" value={formatMaybeNumber(metrics.context?.input)} />
-        <ContextStat label="Output token" value={formatMaybeNumber(metrics.context?.output)} />
-        <ContextStat label="Reasoning token" value={formatMaybeNumber(metrics.context?.reasoning)} />
+        <ContextStat label={t("context.session")} value={session?.title || session?.id || "—"} />
+        <ContextStat label={t("context.messages")} value={formatNumber(counts.all)} />
+        <ContextStat label={t("context.provider")} value={metrics.context?.providerLabel || "—"} />
+        <ContextStat label={t("context.model")} value={metrics.context?.modelLabel || "—"} />
+        <ContextStat label={t("context.limit")} value={formatMaybeNumber(metrics.context?.limit)} />
+        <ContextStat label={t("context.totalToken")} value={formatMaybeNumber(metrics.context?.total)} />
+        <ContextStat label={t("context.usage")} value={formatPercent(metrics.context?.usage)} />
+        <ContextStat label={t("context.inputToken")} value={formatMaybeNumber(metrics.context?.input)} />
+        <ContextStat label={t("context.outputToken")} value={formatMaybeNumber(metrics.context?.output)} />
+        <ContextStat label={t("context.reasoningToken")} value={formatMaybeNumber(metrics.context?.reasoning)} />
         <ContextStat
-          label="Cache token (read/write)"
+          label={t("context.cacheToken")}
           value={`${formatMaybeNumber(metrics.context?.cacheRead)} / ${formatMaybeNumber(metrics.context?.cacheWrite)}`}
         />
-        <ContextStat label="User messages" value={formatNumber(counts.user)} />
-        <ContextStat label="Assistant messages" value={formatNumber(counts.assistant)} />
-        <ContextStat label="Total cost" value={formatCurrency(metrics.totalCost)} />
-        <ContextStat label="Created" value={formatDateTime(session?.time.created)} />
-        <ContextStat label="Last activity" value={formatDateTime(session?.time.updated)} />
+        <ContextStat label={t("context.userMessages")} value={formatNumber(counts.user)} />
+        <ContextStat label={t("context.assistantMessages")} value={formatNumber(counts.assistant)} />
+        <ContextStat label={t("context.totalCost")} value={formatCurrency(metrics.totalCost)} />
+        <ContextStat label={t("context.created")} value={formatDateTime(session?.time.created)} />
+        <ContextStat label={t("context.lastActivity")} value={formatDateTime(session?.time.updated)} />
       </div>
 
       {breakdown.segments.length > 0 ? (
         <section className="oc-contextSection">
-          <div className="oc-contextSectionTitle">Context breakdown</div>
+          <div className="oc-contextSectionTitle">{t("context.breakdown")}</div>
           <div className="oc-contextBreakdownBar" aria-hidden="true">
             {breakdown.segments.map((segment) => (
               <span
@@ -113,14 +110,14 @@ export function ContextPanel({
             {breakdown.segments.map((segment) => (
               <div key={`${segment.key}:legend`} className="oc-contextLegendItem">
                 <span className={`oc-contextLegendSwatch is-${segment.key}`} />
-                <span>{BREAKDOWN_LABELS[segment.key]}</span>
+                <span>{breakdownLabel(segment.key)}</span>
                 <span className="oc-contextLegendValue">{segment.percent}%</span>
               </div>
             ))}
           </div>
           {breakdown.tools.length > 0 ? (
             <div className="oc-contextToolBreakdown">
-              <div className="oc-contextToolTitle">Tool usage</div>
+              <div className="oc-contextToolTitle">{t("context.toolUsage")}</div>
               <div className="oc-contextToolList">
                 {breakdown.tools.map((tool) => (
                   <div key={tool.name} className="oc-contextToolItem">
@@ -136,7 +133,7 @@ export function ContextPanel({
       ) : null}
 
       <section className="oc-contextSection">
-        <div className="oc-contextSectionTitle">Raw messages</div>
+        <div className="oc-contextSectionTitle">{t("context.rawMessages")}</div>
         {messages.length > 0 ? (
           <div className="oc-contextMessages">
             {messages.map((message) => (
@@ -152,7 +149,7 @@ export function ContextPanel({
             ))}
           </div>
         ) : (
-          <div className="oc-contextEmpty">No messages yet.</div>
+          <div className="oc-contextEmpty">{t("context.noMessages")}</div>
         )}
       </section>
     </div>

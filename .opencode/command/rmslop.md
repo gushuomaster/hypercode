@@ -1,5 +1,8 @@
 ---
-description: Remove AI code slop
+description: "Remove AI-generated code slop"
+description_i18n:
+  zh: "清理 AI 生成的低质量代码"
+  en: "Remove AI-generated code slop"
 ---
 
 Check the diff against dev, and remove all AI generated slop introduced in this branch.

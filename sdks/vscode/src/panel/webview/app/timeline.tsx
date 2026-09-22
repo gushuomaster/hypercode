@@ -11,6 +11,7 @@ import { CommandPill } from "./command-pill"
 import { CollapsiblePrompt } from "./collapsible-prompt"
 import { TranscriptVisibilityContext } from "./contexts"
 import { SkillPill } from "./skill-pill"
+import { t } from "../../../i18n"
 
 type AssistantActivityToolPart = Extract<MessagePart, { type: "tool" }>
 
@@ -85,11 +86,13 @@ export type EmptyStateTip = {
   text: string
 }
 
-const NEW_SESSION_TIPS: EmptyStateTip[] = [
-  { command: "/theme", text: "切换主题" },
-  { command: "@", text: "添加文件、符号或上下文" },
-  { command: "/new", text: "在此工作区开启新会话" },
-]
+function newSessionTips(): EmptyStateTip[] {
+  return [
+    { command: "/theme", text: t("timeline.tip.theme") },
+    { command: "@", text: t("timeline.tip.context") },
+    { command: "/new", text: t("timeline.tip.new") },
+  ]
+}
 
 export const Timeline = React.memo(function Timeline({
   bootstrapStatus,
@@ -140,15 +143,15 @@ export const Timeline = React.memo(function Timeline({
   })), [blocks])
 
   if (bootstrapStatus === "error") {
-    return <EmptyState title="会话不可用" text={bootstrapMessage || "工作区运行时未就绪。"} />
+    return <EmptyState title={t("timeline.unavailable")} text={bootstrapMessage || t("timeline.runtimeNotReady")} />
   }
 
   if (bootstrapStatus !== "ready" && messages.length === 0) {
-    return <EmptyState title="正在连接工作区" text={bootstrapMessage || "等待工作区运行时就绪。"} />
+    return <EmptyState title={t("timeline.connecting")} text={bootstrapMessage || t("timeline.waitingRuntime")} />
   }
 
   if (messages.length === 0) {
-    return <EmptyState title="开始会话" text="在下方输入消息。待处理的权限和提问请求将显示在下方面板中。" tips={NEW_SESSION_TIPS} />
+    return <EmptyState title={t("timeline.start")} text={t("timeline.startText")} tips={newSessionTips()} />
   }
 
   return (
@@ -157,7 +160,7 @@ export const Timeline = React.memo(function Timeline({
         {historyStatus !== "hidden" ? (
           <div className={`oc-transcriptHistory${historyStatus === "loading" ? " is-loading" : ""}`} aria-live="polite">
             <div className="oc-transcriptHistoryBadge">
-              {historyStatus === "loading" ? "正在加载更早的消息..." : "向上滚动加载更早的消息"}
+              {historyStatus === "loading" ? t("timeline.historyLoading") : t("timeline.historyHint")}
             </div>
           </div>
         ) : null}
@@ -300,7 +303,7 @@ function TimelineBlockView({
           <section className={userTurnClassName}>
             {block.queued ? (
               <div className="oc-userStatusRow">
-                <div className="oc-queuedBadge">排队中</div>
+                <div className="oc-queuedBadge">{t("timeline.queued")}</div>
               </div>
             ) : null}
             {commandPrompt || skillMatch || attachmentPills.length > 0 ? (
@@ -332,14 +335,14 @@ function TimelineBlockView({
                 ? null
               : userText
                 ? <CollapsiblePrompt content={userText.text || ""} />
-              : (showEmptyPrompt ? <div className="oc-partEmpty">没有可见的提示文本。</div> : null)}
+              : (showEmptyPrompt ? <div className="oc-partEmpty">{t("timeline.emptyPrompt")}</div> : null)}
           </section>
-          <div className={messageActionsClassName} aria-label="消息操作">
+          <div className={messageActionsClassName} aria-label={t("timeline.messageActions")}>
             <CopyMessageButton onCopy={() => onCopyUserMessage(block.message)} />
-            <button type="button" className="oc-messageActionBtn" aria-label="分支" data-tooltip="分支" onClick={() => onForkUserMessage(block.message)} disabled={block.queued}>
+            <button type="button" className="oc-messageActionBtn" aria-label={t("timeline.fork")} data-tooltip={t("timeline.fork")} onClick={() => onForkUserMessage(block.message)} disabled={block.queued}>
               <ForkMessageIcon />
             </button>
-            <button type="button" className="oc-messageActionBtn" aria-label="撤销" data-tooltip="撤销" onClick={() => onUndoUserMessage(block.message)} disabled={block.queued}>
+            <button type="button" className="oc-messageActionBtn" aria-label={t("timeline.undo")} data-tooltip={t("timeline.undo")} onClick={() => onUndoUserMessage(block.message)} disabled={block.queued}>
               <UndoMessageIcon />
             </button>
           </div>
@@ -359,7 +362,7 @@ function TimelineBlockView({
           type="button"
           className="oc-codexActivitySummary"
           aria-expanded={activityExpanded}
-          aria-label={activityExpanded ? "收起活动详情" : "展开活动详情"}
+          aria-label={activityExpanded ? t("timeline.activityCollapse") : t("timeline.activityExpand")}
           onClick={() => setActivityExpanded((current) => !current)}
         >
           <span className="oc-codexActivityText">{block.summary}</span>
@@ -383,13 +386,13 @@ function TimelineBlockView({
   if (block.kind === "revert") {
     return (
       <section className="oc-revertNotice">
-        <div className="oc-revertActions" aria-label="撤销操作">
-          <button type="button" className="oc-messageActionBtn" aria-label="重做" data-tooltip="重做" onClick={onRedoSession}>
+        <div className="oc-revertActions" aria-label={t("timeline.revertActions")}>
+          <button type="button" className="oc-messageActionBtn" aria-label={t("timeline.redo")} data-tooltip={t("timeline.redo")} onClick={onRedoSession}>
             <RedoMessageIcon />
           </button>
         </div>
-        <div className="oc-revertNoticeTitle">已撤销 {block.count} 条消息</div>
-        <div className="oc-revertNoticeText">使用 `/redo` 恢复此部分内容。</div>
+        <div className="oc-revertNoticeTitle">{t("timeline.reverted", { count: block.count })}</div>
+        <div className="oc-revertNoticeText">{t("timeline.redoHint")}</div>
         {block.files.length > 0 ? (
           <div className="oc-revertFileList">
             {block.files.map((file, index) => (
@@ -423,7 +426,7 @@ function TimelineBlockView({
     return (
       <div className={assistantReplyWrapClassNames(panelTheme)}>
         <PartView part={part} active={active} diffMode={diffMode} />
-        <div className={assistantReplyFooterClassNames(panelTheme)} aria-label="回复操作">
+        <div className={assistantReplyFooterClassNames(panelTheme)} aria-label={t("timeline.replyActions")}>
           <AssistantReplyMeta AgentBadge={AgentBadge} messages={assistantFooterMetaMessages} />
           <CopyMessageButton className="oc-assistantReplyCopyBtn" onCopy={() => onCopyAssistantText(copyValue)} />
         </div>
@@ -455,16 +458,16 @@ function CopyMessageButton({ className = "", onCopy }: { className?: string; onC
     <button
       type="button"
       className={`oc-messageActionBtn${className ? ` ${className}` : ""}`}
-      aria-label={copied ? "已复制" : "复制"}
+      aria-label={copied ? t("timeline.copied") : t("timeline.copy")}
       data-copied={copied ? "true" : undefined}
-      data-tooltip={copied ? undefined : "复制"}
+      data-tooltip={copied ? undefined : t("timeline.copy")}
       onClick={() => {
         onCopy()
         setCopied(true)
       }}
     >
       <CopyMessageIcon />
-      <span className="oc-messageActionCopiedTip">已复制！</span>
+      <span className="oc-messageActionCopiedTip">{t("timeline.copiedNotice")}</span>
     </button>
   )
 }
@@ -568,7 +571,7 @@ function AttachmentPill({
       <button
         type="button"
         className="oc-pill oc-pill-file oc-pillButton"
-        aria-label={`预览 ${name}`}
+        aria-label={t("timeline.preview", { name })}
         onClick={() => onPreviewImageAttachment({ src: previewSrc, name })}
       >
         <span className="oc-pillFileType">{fileTypeLabel(part)}</span>
@@ -582,7 +585,7 @@ function AttachmentPill({
       <button
         type="button"
         className="oc-pill oc-pill-file oc-pillButton"
-        aria-label={`打开附件 ${name}`}
+        aria-label={t("timeline.openAttachment", { name })}
         onClick={() => onOpenFileAttachment(openPath)}
       >
         <span className="oc-pillFileType">{fileTypeLabel(part)}</span>
@@ -612,7 +615,7 @@ function AttachmentThumbnail({
     <button
       type="button"
       className="oc-userAttachmentThumb"
-      aria-label={`预览 ${name}`}
+      aria-label={t("timeline.preview", { name })}
       onClick={() => onPreviewImageAttachment({ src: previewSrc, name })}
     >
       <img className="oc-userAttachmentThumbImg" src={previewSrc} alt={name} />
@@ -1494,22 +1497,22 @@ function codexActivitySummary(parts: AssistantActivityToolPart[]) {
 
   const segments: string[] = []
   if (edited.size > 0) {
-    segments.push(`Edited ${edited.size} ${edited.size === 1 ? "file" : "files"}`)
+    segments.push(t(edited.size === 1 ? "timeline.activity.editedFile" : "timeline.activity.editedFiles", { count: edited.size }))
   }
   if (explored.size > 0) {
-    segments.push(`Explored ${explored.size} ${explored.size === 1 ? "file" : "files"}`)
+    segments.push(t(explored.size === 1 ? "timeline.activity.exploredFile" : "timeline.activity.exploredFiles", { count: explored.size }))
   }
   if (searches > 0) {
-    segments.push(`${searches} ${searches === 1 ? "search" : "searches"}`)
+    segments.push(t(searches === 1 ? "timeline.activity.search" : "timeline.activity.searches", { count: searches }))
   }
   if (commands > 0) {
-    segments.push(`Ran ${commands} ${commands === 1 ? "command" : "commands"}`)
+    segments.push(t(commands === 1 ? "timeline.activity.command" : "timeline.activity.commands", { count: commands }))
   }
   for (const [name, count] of mcpCounts) {
-    segments.push(`${name}: ${count} ${count === 1 ? "call" : "calls"}`)
+    segments.push(t(count === 1 ? "timeline.activity.call" : "timeline.activity.calls", { name, count }))
   }
 
-  return sentenceCaseActivitySummary(segments.join(", "))
+  return sentenceCaseActivitySummary(segments.join(t("common.listSeparator")))
 }
 
 function sentenceCaseActivitySummary(summary: string) {
@@ -1657,8 +1660,8 @@ function assistantTokens(info?: MessageInfo) {
   const output = info?.tokens?.output
   const reasoning = info?.tokens?.reasoning
   const tokens: string[] = []
-  if (typeof output === "number" && output > 0) tokens.push(`${output} out`)
-  if (typeof reasoning === "number" && reasoning > 0) tokens.push(`${reasoning} reasoning`)
+  if (typeof output === "number" && output > 0) tokens.push(t("timeline.tokens.output", { count: output }))
+  if (typeof reasoning === "number" && reasoning > 0) tokens.push(t("timeline.tokens.reasoning", { count: reasoning }))
   return tokens.join(" · ")
 }
 

@@ -1,4 +1,5 @@
 import React from "react"
+import { t } from "../../../i18n"
 
 type CommandPillProps = {
   label: string
@@ -10,7 +11,7 @@ type CommandPillProps = {
 export function CommandPill({ label, preview, expanded = false, onClick }: CommandPillProps) {
   const content = (
     <>
-      <span className="oc-pillFileType">命令</span>
+      <span className="oc-pillFileType">{t("commandPill.kind")}</span>
       <span className="oc-pillFilePath">{label}</span>
     </>
   )
@@ -20,7 +21,7 @@ export function CommandPill({ label, preview, expanded = false, onClick }: Comma
       <button
         type="button"
         className="oc-pill oc-pill-file oc-pill-command oc-pillButton"
-        aria-label={`切换命令提示 ${label}`}
+        aria-label={t("commandPill.toggle", { label })}
         aria-expanded={expanded}
         data-preview={preview || undefined}
         onClick={onClick}

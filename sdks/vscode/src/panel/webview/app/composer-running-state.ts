@@ -1,4 +1,5 @@
 import type { SessionStatus } from "../../../core/sdk"
+import { t } from "../../../i18n"
 
 export type ComposerRunningState = {
   label: string
@@ -14,24 +15,24 @@ export function composerRunningState(status: SessionStatus | undefined, escPendi
     return undefined
   }
 
-  const label = status.type === "retry" ? "重试中" : "思考中"
+  const label = status.type === "retry" ? t("composer.retrying") : t("composer.thinking")
   if (escPending) {
     return {
       label,
-      hint: "再按 Esc 键中断",
+      hint: t("composer.escAgain"),
       tone: "armed",
       icon: "stop-confirm",
-      title: "再次按下以中断",
-      ariaLabel: "立即中断当前会话",
+      title: t("composer.interruptAgain"),
+      ariaLabel: t("composer.interruptNow"),
     }
   }
 
   return {
     label,
-    hint: "按 Esc 键中断",
+    hint: t("composer.escHint"),
     tone: status.type === "retry" ? "retry" : "running",
     icon: "stop",
-    title: "中断当前会话",
-    ariaLabel: "中断当前会话",
+    title: t("composer.interrupt"),
+    ariaLabel: t("composer.interrupt"),
   }
 }

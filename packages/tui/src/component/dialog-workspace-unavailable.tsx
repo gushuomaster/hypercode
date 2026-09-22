@@ -4,6 +4,7 @@ import { For } from "solid-js"
 import { useTheme } from "../context/theme"
 import { useDialog } from "../ui/dialog"
 import { useBindings } from "../keymap"
+import { translate as t } from "../context/language"
 
 export function DialogWorkspaceUnavailable(props: { onRestore?: () => boolean | void | Promise<boolean | void> }) {
   const dialog = useDialog()
@@ -25,9 +26,9 @@ export function DialogWorkspaceUnavailable(props: { onRestore?: () => boolean | 
 
   useBindings(() => ({
     bindings: [
-      { key: "return", desc: "Confirm workspace option", group: "Dialog", cmd: () => void confirm() },
-      { key: "left", desc: "Cancel workspace restore", group: "Dialog", cmd: () => setStore("active", "cancel") },
-      { key: "right", desc: "Restore workspace", group: "Dialog", cmd: () => setStore("active", "restore") },
+      { key: "return", desc: t("dialog.workspaceUnavailable.confirm"), group: t("dialog.category"), cmd: () => void confirm() },
+      { key: "left", desc: t("dialog.workspaceUnavailable.cancel"), group: t("dialog.category"), cmd: () => setStore("active", "cancel") },
+      { key: "right", desc: t("dialog.workspaceUnavailable.restore"), group: t("dialog.category"), cmd: () => setStore("active", "restore") },
     ],
   }))
 
@@ -35,17 +36,17 @@ export function DialogWorkspaceUnavailable(props: { onRestore?: () => boolean | 
     <box paddingLeft={2} paddingRight={2} gap={1}>
       <box flexDirection="row" justifyContent="space-between">
         <text attributes={TextAttributes.BOLD} fg={theme.text}>
-          Workspace Unavailable
+          {t("dialog.workspaceUnavailable.title")}
         </text>
         <text fg={theme.textMuted} onMouseUp={() => dialog.clear()}>
           esc
         </text>
       </box>
       <text fg={theme.textMuted} wrapMode="word">
-        This session is attached to a workspace that is no longer available.
+        {t("dialog.workspaceUnavailable.message")}
       </text>
       <text fg={theme.textMuted} wrapMode="word">
-        Would you like to restore this session into a new workspace?
+        {t("dialog.workspaceUnavailable.restoreQuestion")}
       </text>
       <box flexDirection="row" justifyContent="flex-end" paddingBottom={1} gap={1}>
         <For each={options}>
@@ -59,7 +60,9 @@ export function DialogWorkspaceUnavailable(props: { onRestore?: () => boolean | 
                 void confirm()
               }}
             >
-              <text fg={item === store.active ? theme.selectedListItemText : theme.textMuted}>{item}</text>
+              <text fg={item === store.active ? theme.selectedListItemText : theme.textMuted}>
+                {item === "cancel" ? t("dialog.action.cancel") : t("dialog.action.restore")}
+              </text>
             </box>
           )}
         </For>

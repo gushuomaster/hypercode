@@ -1,5 +1,6 @@
 import React from "react"
 import type { ToolDetails, ToolPart } from "./types"
+import { t } from "../../../i18n"
 
 type TodoItem = {
   content: string
@@ -31,7 +32,7 @@ export function ToolTodosPanel({
   const headerContent = (
     <>
       <span className="oc-toolHeaderMain">
-        <span className="oc-kicker">to-dos</span>
+        <span className="oc-kicker">{t("tool.todos")}</span>
         <span className="oc-toolPanelTitle">{details.title}</span>
         {summary ? <span className="oc-toolTodoSummary">{summary}</span> : null}
       </span>
@@ -52,7 +53,7 @@ export function ToolTodosPanel({
   return (
     <section className={`oc-part oc-part-tool oc-toolPanel oc-toolPanel-todos${active ? " is-active" : ""}${status === "completed" ? " is-completed" : ""}${collapsed ? " is-collapsed" : ""}`}>
       {collapsible ? (
-        <button type="button" className="oc-partHeader oc-toolTodoHeader" aria-expanded={expanded} aria-label={expanded ? "Collapse todo list" : "Expand todo list"} onClick={() => setExpanded((current) => !current)}>
+        <button type="button" className="oc-partHeader oc-toolTodoHeader" aria-expanded={expanded} aria-label={expanded ? t("tool.todosCollapse") : t("tool.todosExpand")} onClick={() => setExpanded((current) => !current)}>
           {headerContent}
         </button>
       ) : (
@@ -68,7 +69,7 @@ export function ToolTodosPanel({
             </div>
           </div>
         </div>
-      ) : status === "running" || status === "pending" ? <div className="oc-partEmpty">Updating todos...</div> : null}
+      ) : status === "running" || status === "pending" ? <div className="oc-partEmpty">{t("tool.todosUpdating")}</div> : null}
     </section>
   )
 }
@@ -76,13 +77,13 @@ export function ToolTodosPanel({
 function todoSummary(todos: TodoItem[]) {
   const active = todos.find((item) => item.status === "in_progress")
   if (active) {
-    return `In progress: ${active.content}`
+    return t("tool.todosInProgress", { task: active.content })
   }
 
   const done = todos.filter((item) => item.status === "completed" || item.status === "cancelled").length
   const open = todos.length - done
   if (open > 0 || done > 0) {
-    return `${open} open, ${done} done`
+    return t("tool.todosSummary", { open, done })
   }
   return ""
 }

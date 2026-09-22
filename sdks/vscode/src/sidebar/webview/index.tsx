@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client"
 import type { SidebarHostMessage, SidebarSubagent, SidebarViewMode, SidebarViewState, SidebarWebviewMessage, TaskFilter } from "../view-types"
 import type { SessionPanelRef } from "../../bridge/types"
 import type { Todo } from "../../core/sdk"
+import { setLocale, t } from "../../i18n"
 import "./styles.css"
 
 declare global {
@@ -22,6 +23,10 @@ type GlobalWithVsCodeApi = typeof globalThis & {
 }
 
 const vscodeGlobal = globalThis as GlobalWithVsCodeApi
+
+if (typeof document !== "undefined") {
+  setLocale(document.documentElement.lang)
+}
 
 const vscode: VsCodeApi = typeof vscodeGlobal.acquireVsCodeApi === "function"
   ? vscodeGlobal.acquireVsCodeApi()
@@ -57,9 +62,9 @@ function App() {
 
   return (
     <div className="sv-shell">
-      {state.status === "idle" ? <Empty title="未选择会话" text={idleText(mode)} /> : null}
-      {state.status === "loading" ? <Empty title={loadingTitle(mode)} text="来自所选会话" /> : null}
-      {state.status === "error" ? <Empty title="不可用" text={state.error || "加载视图失败"} /> : null}
+      {state.status === "idle" ? <Empty title={t("sideview.noSelection")} text={idleText(mode)} /> : null}
+      {state.status === "loading" ? <Empty title={loadingTitle(mode)} text={t("sideview.fromSelection")} /> : null}
+      {state.status === "error" ? <Empty title={t("sideview.unavailable")} text={state.error || t("sideview.loadFailed")} /> : null}
       {state.status === "ready" && mode === "todo" ? <TodoList state={state} /> : null}
       {state.status === "ready" && mode === "diff" ? <DiffList state={state} /> : null}
       {state.status === "ready" && mode === "subagents" ? <SubagentsList state={state} /> : null}
@@ -75,19 +80,19 @@ export function TodoList({ state }: { state: SidebarViewState }) {
   })
 
   if (state.todos.length === 0) {
-    return <Empty title="暂无待办" text="所选会话的任务将显示在这里" />
+    return <Empty title={t("sideview.todo.empty")} text={t("sideview.todo.emptyText")} />
   }
 
   return (
     <section className="sv-group">
       <div className="sv-taskSummary">
         <div className="sv-taskSummaryCounts">
-          <span>共 {view.summary.total} 项</span>
-          <span>{view.summary.open} 待处理</span>
-          <span>{view.summary.inProgress} 进行中</span>
-          <span>{view.summary.completed} 已完成</span>
+          <span>{t("sideview.summary.total", { count: view.summary.total })}</span>
+          <span>{t("sideview.summary.open", { count: view.summary.open })}</span>
+          <span>{t("sideview.summary.inProgress", { count: view.summary.inProgress })}</span>
+          <span>{t("sideview.summary.completed", { count: view.summary.completed })}</span>
         </div>
-        <div className="sv-taskFilters" role="tablist" aria-label="任务过滤">
+        <div className="sv-taskFilters" role="tablist" aria-label={t("sideview.todo.filter")}>
           {(["all", "open", "completed"] as const).map((item) => (
             <button
               key={item}
@@ -100,7 +105,7 @@ export function TodoList({ state }: { state: SidebarViewState }) {
           ))}
         </div>
       </div>
-      {view.sections.length === 0 ? <Empty title="无匹配的任务" text="尝试切换过滤条件" /> : null}
+      {view.sections.length === 0 ? <Empty title={t("sideview.todo.noMatch")} text={t("sideview.filterHint")} /> : null}
       {view.sections.map((section) => (
         <div key={section.id} className="sv-taskSection">
           <div className="sv-taskSectionTitle">{section.label}</div>
@@ -120,7 +125,7 @@ export function TodoList({ state }: { state: SidebarViewState }) {
               >
                 <span className="sv-todoPrefix">{todoPrefix(item.status)}</span>
                 <span className="sv-todoBody">
-                  <span className="sv-todoText">{item.content || "未命名任务"}</span>
+                  <span className="sv-todoText">{item.content || t("sideview.todo.unnamed")}</span>
                 </span>
               </button>
             ))}
@@ -138,7 +143,7 @@ function DiffList({ state }: { state: SidebarViewState }) {
   })
 
   if (view.items.length === 0) {
-    return <Empty title="无修改的文件" text="所选会话修改的文件将显示在这里" />
+    return <Empty title={t("sideview.diff.empty")} text={t("sideview.diff.emptyText")} />
   }
 
   return (
@@ -147,9 +152,9 @@ function DiffList({ state }: { state: SidebarViewState }) {
         <div className="sv-taskSummary">
           <div className="sv-taskSummaryCounts">
             {view.summary.branch ? <span>{view.summary.branch}</span> : null}
-            <span>{view.summary.counts.added} 新增</span>
-            <span>{view.summary.counts.modified} 修改</span>
-            <span>{view.summary.counts.deleted} 删除</span>
+            <span>{t("sideview.diff.added", { count: view.summary.counts.added })}</span>
+            <span>{t("sideview.diff.modified", { count: view.summary.counts.modified })}</span>
+            <span>{t("sideview.diff.deleted", { count: view.summary.counts.deleted })}</span>
           </div>
         </div>
       ) : null}
@@ -175,18 +180,18 @@ export function SubagentsList({ state }: { state: SidebarViewState }) {
   })
 
   if (state.subagents.length === 0) {
-    return <Empty title="暂无子代理" text="所选会话的子代理将显示在这里" />
+    return <Empty title={t("sideview.subagents.empty")} text={t("sideview.subagents.emptyText")} />
   }
 
   return (
     <section className="sv-group">
       <div className="sv-taskSummary">
         <div className="sv-taskSummaryCounts">
-          <span>共 {view.summary.total} 项</span>
-          <span>{view.summary.inProgress} 进行中</span>
-          <span>{view.summary.done} 已完成</span>
+          <span>{t("sideview.summary.total", { count: view.summary.total })}</span>
+          <span>{t("sideview.summary.inProgress", { count: view.summary.inProgress })}</span>
+          <span>{t("sideview.summary.completed", { count: view.summary.done })}</span>
         </div>
-        <div className="sv-taskFilters" role="tablist" aria-label="子代理过滤">
+        <div className="sv-taskFilters" role="tablist" aria-label={t("sideview.subagents.filter")}>
           {(["all", "in_progress", "done"] as const).map((item) => (
             <button
               key={item}
@@ -199,7 +204,7 @@ export function SubagentsList({ state }: { state: SidebarViewState }) {
           ))}
         </div>
       </div>
-      {view.items.length === 0 ? <Empty title="无匹配的子代理" text="尝试切换过滤条件" /> : null}
+      {view.items.length === 0 ? <Empty title={t("sideview.subagents.noMatch")} text={t("sideview.filterHint")} /> : null}
       <div className="sv-list">
         {view.items.map((item) => <SubagentRow key={item.session.id} state={state} item={item} />)}
       </div>
@@ -385,26 +390,26 @@ const taskStatusOrder = ["in_progress", "pending", "completed"] as const
 
 function taskStatusLabel(status: string) {
   if (status === "in_progress") {
-    return "进行中"
+    return t("sideview.status.inProgress")
   }
 
   if (status === "completed") {
-    return "已完成"
+    return t("sideview.status.completed")
   }
 
-  return "待处理"
+  return t("sideview.status.open")
 }
 
 function taskFilterLabel(filter: TaskFilter) {
   if (filter === "open") {
-    return "待处理"
+    return t("sideview.status.open")
   }
 
   if (filter === "completed") {
-    return "已完成"
+    return t("sideview.status.completed")
   }
 
-  return "全部"
+  return t("sideview.filter.all")
 }
 
 function subagentPrefix(status: SidebarSubagent["status"]["type"]) {
@@ -429,38 +434,38 @@ function subagentStatusRank(status: SidebarSubagent["status"]["type"]) {
 
 function subagentFilterLabel(filter: SubagentFilter) {
   if (filter === "in_progress") {
-    return "进行中"
+    return t("sideview.status.inProgress")
   }
 
   if (filter === "done") {
-    return "已完成"
+    return t("sideview.status.completed")
   }
 
-  return "全部"
+  return t("sideview.filter.all")
 }
 
 function idleText(mode: SidebarViewMode) {
   if (mode === "diff") {
-    return "选择或聚焦一个 HyperCode 会话以查看修改的文件"
+    return t("sideview.idle.diff")
   }
 
   if (mode === "subagents") {
-    return "选择或聚焦一个 HyperCode 会话以查看子代理"
+    return t("sideview.idle.subagents")
   }
 
-  return "选择或聚焦一个 HyperCode 会话以查看待办"
+  return t("sideview.idle.todo")
 }
 
 function loadingTitle(mode: SidebarViewMode) {
   if (mode === "diff") {
-    return "正在加载修改的文件..."
+    return t("sideview.loading.diff")
   }
 
   if (mode === "subagents") {
-    return "正在加载子代理..."
+    return t("sideview.loading.subagents")
   }
 
-  return "正在加载待办..."
+  return t("sideview.loading.todo")
 }
 
 function normalizedTaskStatus(status: string) {

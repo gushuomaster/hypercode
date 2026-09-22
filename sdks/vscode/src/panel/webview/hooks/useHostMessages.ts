@@ -1,5 +1,6 @@
 import React from "react"
 import type { ComposerPathResult, HostMessage, SessionSnapshot } from "../../../bridge/types"
+import { t } from "../../../i18n"
 import { reduceSessionSnapshot } from "../../shared/session-reducer"
 import { summarizeSessionSnapshot } from "../../shared/session-summary"
 import { bootstrapFromSnapshot, normalizeSessionPickerPayload, normalizeSnapshotPayload, resetSessionScopedComposerState, sameSessionRef, type AppState, type VsCodeApi } from "../app/state"
@@ -104,8 +105,8 @@ export function dispatchHostMessage(message: HostMessage, handlers: {
   }
 
   if (message?.type === "error") {
-    handlers.onErrorMessage?.(message.message || "Unknown error")
-    handlers.setState((current) => ({ ...current, error: message.message || "Unknown error" }))
+    handlers.onErrorMessage?.(message.message || t("common.unknownError"))
+    handlers.setState((current) => ({ ...current, error: message.message || t("common.unknownError") }))
     return
   }
 

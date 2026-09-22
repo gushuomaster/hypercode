@@ -1,5 +1,6 @@
 import * as vscode from "vscode"
 import type { SidebarViewMode } from "./view-types"
+import { getLocale, t } from "../i18n"
 
 export function sidebarViewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, mode: SidebarViewMode) {
   const nonce = nonceText()
@@ -7,12 +8,12 @@ export function sidebarViewHtml(webview: vscode.Webview, extensionUri: vscode.Ur
   const styleUri = assetUri(webview, extensionUri, "sidebar-webview.css")
 
   return /* html */ `<!DOCTYPE html>
-<html lang="en">
+<html lang="${getLocale()}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: data:; style-src ${webview.cspSource}; script-src 'nonce-${nonce}' ${webview.cspSource}; font-src ${webview.cspSource};" />
-    <title>${mode === "todo" ? "Todo" : "Modified Files"}</title>
+    <title>${t(`sidebar.title.${mode}`)}</title>
     <link rel="stylesheet" href="${styleUri}" />
   </head>
   <body>

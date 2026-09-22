@@ -1,4 +1,5 @@
 import type { MessagePart, QuestionInfo } from "../../../core/sdk"
+import { t } from "../../../i18n"
 
 export function textValue(value: unknown) {
   return typeof value === "string" ? value : ""
@@ -43,7 +44,7 @@ export function capitalize(value: string) {
 
 export function formatToolName(value: string) {
   if (!value) {
-    return "Tool"
+    return t("part.tool")
   }
   if (value === "lsp") {
     return "LSP"
@@ -79,7 +80,7 @@ export function retryText(value: unknown) {
     }
   }
 
-  return "Retry requested."
+  return t("part.retryRequested")
 }
 
 export function cleanReasoning(value: string) {
@@ -112,12 +113,12 @@ export function parentDir(value: string) {
 
 export function diffSummary(value: string) {
   if (!value) {
-    return "modified"
+    return t("tool.file.modified")
   }
   const additions = (value.match(/^\+/gm) || []).length
   const deletions = (value.match(/^-/gm) || []).length
   if (!additions && !deletions) {
-    return "modified"
+    return t("tool.file.modified")
   }
   return `+${additions} / -${deletions}`
 }
@@ -166,47 +167,50 @@ export function formatDiagnostic(item: Record<string, unknown>) {
 
 export function partTitle(part: MessagePart) {
   if (part.type === "text") {
-    return part.synthetic ? "context" : "text"
+    return part.synthetic ? t("part.context") : t("part.text")
   }
   if (part.type === "reasoning") {
-    return "reasoning"
+    return t("part.reasoning")
   }
   if (part.type === "tool") {
-    return part.tool || "tool"
+    return part.tool || t("part.tool")
   }
   if (part.type === "file") {
-    return part.filename || "attachment"
+    return part.filename || t("part.attachment")
   }
   if (part.type === "step-start") {
-    return "step started"
+    return t("part.stepStarted")
   }
   if (part.type === "step-finish") {
-    return "step finished"
+    return t("part.stepFinished")
   }
   if (part.type === "snapshot") {
-    return "snapshot"
+    return t("part.snapshot")
   }
   if (part.type === "patch") {
-    return "patch"
+    return t("part.patch")
   }
   if (part.type === "agent") {
-    return "agent"
+    return t("part.agent")
   }
   if (part.type === "retry") {
-    return "retry"
+    return t("part.retry")
   }
   if (part.type === "compaction") {
-    return "compaction"
+    return t("part.compaction")
   }
   if (part.type === "subtask") {
     return "subtask"
   }
-  return part.type || "part"
+  return part.type || t("part.part")
 }
 
 export function partMeta(part: MessagePart) {
   if (part.type === "tool") {
-    return part.state?.status || "pending"
+    const status = part.state?.status || "pending"
+    return status === "pending" || status === "running" || status === "completed" || status === "error"
+      ? t(`tool.status.${status}`)
+      : status
   }
   if (part.type === "file") {
     return part.mime || "file"
@@ -223,20 +227,20 @@ export function isDividerPart(part: MessagePart) {
 
 export function dividerText(part: MessagePart) {
   if (part.type === "retry") {
-    return retryText((part as Record<string, unknown>).error) || "Retry"
+    return retryText((part as Record<string, unknown>).error) || t("part.retry")
   }
 
   if (part.type === "agent") {
-    return textValue((part as Record<string, unknown>).name) || "Agent task"
+    return textValue((part as Record<string, unknown>).name) || t("part.agentTask")
   }
 
   if (part.type === "subtask") {
-    return textValue((part as Record<string, unknown>).description) || textValue((part as Record<string, unknown>).prompt) || "Subtask"
+    return textValue((part as Record<string, unknown>).description) || textValue((part as Record<string, unknown>).prompt) || t("part.subtask")
   }
 
   if (part.type === "step-start") {
     const model = textValue((part as Record<string, unknown>).model)
-    return model ? `Step started · ${model}` : "Step started"
+    return model ? t("part.stepStartedModel", { model }) : t("part.stepStarted")
   }
 
   return partTitle(part)

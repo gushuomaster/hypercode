@@ -84,9 +84,9 @@ function storedView(value: unknown): DiffView | undefined {
 }
 
 function diffSourceLabel(mode: DiffMode) {
-  if (mode === "last-turn") return "last turn"
-  if (mode === "branch") return "main branch"
-  return "working tree"
+  if (mode === "last-turn") return translate("diff.source.lastTurn")
+  if (mode === "branch") return translate("diff.source.mainBranch")
+  return translate("diff.source.workingTree")
 }
 
 function DiffViewer(props: { api: TuiPluginApi }) {
@@ -688,21 +688,21 @@ function DiffViewer(props: { api: TuiPluginApi }) {
       {
         title: translate("command.vcs.workingTree"),
         value: "git" as const,
-        description: "Show current git changes",
+        description: translate("diff.showWorkingTree"),
       },
       ...(vcs?.branch && vcs.default_branch && vcs.branch !== vcs.default_branch
         ? [
             {
-              title: "Main branch",
+              title: translate("diff.mainBranch"),
               value: "branch" as const,
-              description: "Show changes compared to main branch",
+              description: translate("diff.showMainBranch"),
             },
           ]
         : []),
       {
         title: translate("command.vcs.lastTurn"),
         value: "last-turn" as const,
-        description: "Show changes from the last assistant turn",
+        description: translate("diff.showLastTurn"),
       },
     ]
   })
@@ -710,7 +710,7 @@ function DiffViewer(props: { api: TuiPluginApi }) {
   const openSwitchDiffDialog = () => {
     props.api.ui.dialog.replace(() => (
       <DialogSelect
-        title="Switch source"
+        title={translate("diff.switchSource")}
         skipFilter={true}
         renderFilter={false}
         current={mode()}
@@ -754,11 +754,11 @@ function DiffViewer(props: { api: TuiPluginApi }) {
     <box position="absolute" zIndex={2500} left={0} top={0} width={dimensions().width} height={dimensions().height}>
       <PanelGroup axis="y" width="100%" height="100%">
         <Panel border="none" flexShrink={0} padding={0} paddingLeft={1}>
-          <text fg={theme().text}>Diff </text>
+          <text fg={theme().text}>{translate("diff.title")} </text>
           <text fg={theme().textMuted}>{diffSourceLabel(mode())}</text>
           <box flexGrow={1} />
           <text fg={theme().textMuted}>
-            {files().length} {files().length === 1 ? "file" : "files"}
+            {translate("diff.fileCount", { count: files().length })}
           </text>
         </Panel>
 
@@ -767,19 +767,19 @@ function DiffViewer(props: { api: TuiPluginApi }) {
             <Match when={diff.loading}>
               <Separator axis="x" />
               <box flexGrow={1} paddingLeft={1}>
-                <text fg={theme().textMuted}>Loading diff…</text>
+                <text fg={theme().textMuted}>{translate("diff.loading")}</text>
               </box>
             </Match>
             <Match when={!diff.loading && files().length === 0}>
               <Separator axis="x" />
               <box flexGrow={1} paddingLeft={1}>
-                <text fg={theme().textMuted}>No diff!</text>
+                <text fg={theme().textMuted}>{translate("diff.empty")}</text>
               </box>
             </Match>
             <Match when={!diff.loading && diff.error}>
               <Separator axis="x" />
               <box flexGrow={1} paddingLeft={1}>
-                <text fg={theme().error}>Failed to load diff</text>
+                <text fg={theme().error}>{translate("diff.loadFailed")}</text>
               </box>
             </Match>
             <Match when={!diff.loading}>
@@ -837,7 +837,7 @@ function DiffViewer(props: { api: TuiPluginApi }) {
                             <Separator axis="x" start={showFileTree() ? "edge" : undefined} />
                             <Show
                               when={entry.file.patch}
-                              fallback={<text fg={theme().textMuted}>No patch available for this file.</text>}
+                              fallback={<text fg={theme().textMuted}>{translate("diff.noPatch")}</text>}
                             >
                               {(patch) => (
                                 <box border={patchLeftBorder()} borderColor={theme().border}>
@@ -885,56 +885,56 @@ function DiffViewer(props: { api: TuiPluginApi }) {
           <Show when={switchFocusShortcut()}>
             {(shortcut) => (
               <text fg={theme().text}>
-                {shortcut()} <span style={{ fg: theme().textMuted }}>focus file tree</span>
+                {shortcut()} <span style={{ fg: theme().textMuted }}>{translate("diff.hint.focus")}</span>
               </text>
             )}
           </Show>
           <Show when={nextFileShortcut()}>
             {(shortcut) => (
               <text fg={theme().text}>
-                {shortcut()} <span style={{ fg: theme().textMuted }}>next file</span>
+                {shortcut()} <span style={{ fg: theme().textMuted }}>{translate("diff.hint.nextFile")}</span>
               </text>
             )}
           </Show>
           <Show when={nextHunkShortcut()}>
             {(shortcut) => (
               <text fg={theme().text}>
-                {shortcut()} <span style={{ fg: theme().textMuted }}>next hunk</span>
+                {shortcut()} <span style={{ fg: theme().textMuted }}>{translate("diff.hint.nextHunk")}</span>
               </text>
             )}
           </Show>
           <Show when={previousHunkShortcut()}>
             {(shortcut) => (
               <text fg={theme().text}>
-                {shortcut()} <span style={{ fg: theme().textMuted }}>previous hunk</span>
+                {shortcut()} <span style={{ fg: theme().textMuted }}>{translate("diff.hint.previousHunk")}</span>
               </text>
             )}
           </Show>
           <Show when={previousFileShortcut()}>
             {(shortcut) => (
               <text fg={theme().text}>
-                {shortcut()} <span style={{ fg: theme().textMuted }}>previous file</span>
+                {shortcut()} <span style={{ fg: theme().textMuted }}>{translate("diff.hint.previousFile")}</span>
               </text>
             )}
           </Show>
           <Show when={switchSourceShortcut()}>
             {(shortcut) => (
               <text fg={theme().text}>
-                {shortcut()} <span style={{ fg: theme().textMuted }}>switch source</span>
+                {shortcut()} <span style={{ fg: theme().textMuted }}>{translate("diff.hint.switchSource")}</span>
               </text>
             )}
           </Show>
           <Show when={markReviewedShortcut()}>
             {(shortcut) => (
               <text fg={theme().text}>
-                {shortcut()} <span style={{ fg: theme().textMuted }}>mark reviewed</span>
+                {shortcut()} <span style={{ fg: theme().textMuted }}>{translate("diff.hint.markReviewed")}</span>
               </text>
             )}
           </Show>
           <Show when={helpShortcut()}>
             {(shortcut) => (
               <text fg={theme().text}>
-                {shortcut()} <span style={{ fg: theme().textMuted }}>all</span>
+                {shortcut()} <span style={{ fg: theme().textMuted }}>{translate("diff.hint.all")}</span>
               </text>
             )}
           </Show>
@@ -949,63 +949,63 @@ function DiffViewerHelpDialog() {
   const rows = [
     {
       shortcut: () => "q",
-      action: "Close viewer",
-      description: "Quit the diff viewer",
+      action: translate("diff.help.close"),
+      description: translate("diff.help.closeDescription"),
     },
     {
       shortcut: useCommandShortcut("diff.switch_focus"),
-      action: "Focus file tree",
-      description: "Move keyboard focus between the file tree and patch pane",
+      action: translate("diff.help.focus"),
+      description: translate("diff.help.focusDescription"),
     },
     {
       shortcut: useCommandShortcut("diff.next_hunk"),
-      action: "Next hunk",
-      description: "Jump to the next diff hunk",
+      action: translate("diff.help.nextHunk"),
+      description: translate("diff.help.nextHunkDescription"),
     },
     {
       shortcut: useCommandShortcut("diff.previous_hunk"),
-      action: "Previous hunk",
-      description: "Jump to the previous diff hunk",
+      action: translate("diff.help.previousHunk"),
+      description: translate("diff.help.previousHunkDescription"),
     },
     {
       shortcut: useCommandShortcut("diff.next_file"),
-      action: "Next file",
-      description: "Select the next changed file in file-tree order",
+      action: translate("diff.help.nextFile"),
+      description: translate("diff.help.nextFileDescription"),
     },
     {
       shortcut: useCommandShortcut("diff.previous_file"),
-      action: "Previous file",
-      description: "Select the previous changed file in file-tree order",
+      action: translate("diff.help.previousFile"),
+      description: translate("diff.help.previousFileDescription"),
     },
     {
       shortcut: useCommandShortcut("diff.toggle_file_tree"),
-      action: "Toggle file tree",
-      description: "Show or hide the file tree sidebar",
+      action: translate("diff.help.toggleTree"),
+      description: translate("diff.help.toggleTreeDescription"),
     },
     {
       shortcut: useCommandShortcut("diff.single_patch"),
-      action: "Toggle patches",
-      description: "Switch between one selected patch and all patches",
+      action: translate("diff.help.togglePatches"),
+      description: translate("diff.help.togglePatchesDescription"),
     },
     {
       shortcut: useCommandShortcut("diff.switch_source"),
-      action: "Switch source",
-      description: "Choose working tree, main branch, or last-turn changes",
+      action: translate("diff.help.switchSource"),
+      description: translate("diff.help.switchSourceDescription"),
     },
     {
       shortcut: useCommandShortcut("diff.toggle_view"),
-      action: "Toggle view",
-      description: "Switch between split and unified diff layout",
+      action: translate("diff.help.toggleView"),
+      description: translate("diff.help.toggleViewDescription"),
     },
     {
       shortcut: useCommandShortcut("diff.expand_all"),
-      action: "Expand all folders",
-      description: "Open every folder in the file tree",
+      action: translate("diff.help.expand"),
+      description: translate("diff.help.expandDescription"),
     },
     {
       shortcut: useCommandShortcut("diff.mark_reviewed"),
-      action: "Mark reviewed",
-      description: "Toggle reviewed state for the selected file",
+      action: translate("diff.help.reviewed"),
+      description: translate("diff.help.reviewedDescription"),
     },
   ]
 
@@ -1013,18 +1013,18 @@ function DiffViewerHelpDialog() {
     <box paddingLeft={2} paddingRight={2} paddingBottom={1} gap={1}>
       <box flexDirection="row" justifyContent="space-between">
         <text attributes={TextAttributes.BOLD} fg={theme.text}>
-          Diff shortcuts
+          {translate("diff.help.title")}
         </text>
         <text fg={theme.textMuted}>esc</text>
       </box>
       <box flexDirection="row">
         <text fg={theme.textMuted} width={5} wrapMode="none">
-          Key
+          {translate("diff.help.key")}
         </text>
         <text fg={theme.textMuted} width={22} wrapMode="none">
-          Action
+          {translate("diff.help.action")}
         </text>
-        <text fg={theme.textMuted}>Description</text>
+        <text fg={theme.textMuted}>{translate("diff.help.description")}</text>
       </box>
       <For each={rows}>
         {(row) => (

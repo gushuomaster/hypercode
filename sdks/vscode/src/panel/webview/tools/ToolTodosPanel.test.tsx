@@ -1,10 +1,13 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 import React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 
 import { ToolTodosPanel } from "./ToolTodosPanel"
 import type { ToolDetails, ToolPart } from "./types"
+import { setLocale } from "../../../i18n"
+
+beforeEach(() => setLocale("en"))
 
 function todoPart(): ToolPart {
   return {

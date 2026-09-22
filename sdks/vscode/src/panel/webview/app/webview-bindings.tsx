@@ -16,6 +16,7 @@ import { OutputWindow as BaseOutputWindow, normalizedLineCount } from "../render
 import { cleanReasoning, dividerText, extractUrls, fileLabel, isDividerPart, partMeta, partTitle, questionAnswerGroups, questionInfoList, retryText, stringList, textValue, todoMarker, uniqueStrings } from "../lib/part-utils"
 import { agentColorClass } from "../lib/session-meta"
 import { defaultToolExpanded, isMcpTool, lspRendersInline, patchFiles, toolChildSessionId, toolDetails, toolDiagnostics, toolEditDiff, toolFiles, toolLabel, toolTextBody, toolTodos, toolWriteDiff } from "../lib/tool-meta"
+import { t } from "../../../i18n"
 import { ToolFilesPanel as BaseToolFilesPanel } from "../tools/ToolFilesPanel"
 import { ToolLinksPanel as BaseToolLinksPanel } from "../tools/ToolLinksPanel"
 import { renderInlineLspToolTitle, ToolLspPanel as BaseToolLspPanel } from "../tools/ToolLspPanel"
@@ -203,22 +204,22 @@ export function renderPartBody(part: MessagePart) {
   }
   if (part.type === "patch") {
     const files = stringList((part as Record<string, unknown>).files)
-    return files.length > 0 ? <ul className="oc-list">{files.map((file) => <li key={file}>{file}</li>)}</ul> : <div className="oc-partEmpty">Patch created.</div>
+    return files.length > 0 ? <ul className="oc-list">{files.map((file) => <li key={file}>{file}</li>)}</ul> : <div className="oc-partEmpty">{t("part.patchCreated")}</div>
   }
   if (part.type === "subtask") {
     return <MarkdownBlock content={textValue((part as Record<string, unknown>).description) || textValue((part as Record<string, unknown>).prompt) || ""} />
   }
   if (part.type === "snapshot") {
-    return <pre className="oc-partTerminal">{textValue((part as Record<string, unknown>).snapshot) || "Workspace snapshot updated."}</pre>
+    return <pre className="oc-partTerminal">{textValue((part as Record<string, unknown>).snapshot) || t("part.snapshotUpdated")}</pre>
   }
   if (part.type === "retry") {
     return <pre className="oc-partTerminal">{retryText((part as Record<string, unknown>).error)}</pre>
   }
   if (part.type === "agent") {
-    return <MarkdownBlock content={textValue((part as Record<string, unknown>).name) || "Agent task"} />
+    return <MarkdownBlock content={textValue((part as Record<string, unknown>).name) || t("part.agentTask")} />
   }
   if (part.type === "compaction") {
-    return <MarkdownBlock content={(part as Record<string, unknown>).auto ? "Automatic compaction completed." : "Compaction completed."} />
+    return <MarkdownBlock content={(part as Record<string, unknown>).auto ? t("part.compactionAutomatic") : t("part.compactionCompleted")} />
   }
   return <div className="oc-partEmpty">{partTitle(part)}</div>
 }
@@ -227,11 +228,11 @@ export function EmptyState({ title, text, tips }: { title: string; text: string;
   return (
     <div className="oc-emptyWrap">
       <section className="oc-emptyState">
-        <div className="oc-kicker">session</div>
+        <div className="oc-kicker">{t("part.session")}</div>
         <h2 className="oc-emptyTitle">{title}</h2>
         <p className="oc-emptyText">{text}</p>
         {tips?.length ? (
-          <div className="oc-emptyTips" aria-label="Session tips">
+          <div className="oc-emptyTips" aria-label={t("part.sessionTips")}>
             {tips.map((tip) => (
               <div className="oc-emptyTip" key={tip.command}>
                 <code className="oc-emptyTipCommand">{tip.command}</code>
@@ -269,5 +270,5 @@ export function FileRefText({ value, display, tone = "default" }: { value: strin
 }
 
 export function CompactionDivider() {
-  return <div className="oc-dividerPart oc-dividerPart-compaction"><span className="oc-dividerCompactionLine" /><span className="oc-dividerText">Compaction</span></div>
+  return <div className="oc-dividerPart oc-dividerPart-compaction"><span className="oc-dividerCompactionLine" /><span className="oc-dividerText">{t("part.compaction")}</span></div>
 }

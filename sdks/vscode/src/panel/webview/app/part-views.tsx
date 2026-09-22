@@ -1,5 +1,6 @@
 import React from "react"
 import type { MessagePart } from "../../../core/sdk"
+import { t } from "../../../i18n"
 
 type ToolDisplayVariant = "row" | "panel" | "links" | "files" | "todos" | "question"
 
@@ -45,7 +46,7 @@ export function PartView({
   if (part.type === "reasoning") {
     return (
       <section className="oc-part oc-part-reasoning">
-        <MarkdownBlock className="is-subtle" content={`_Thinking:_ ${cleanReasoning(part.text || "")}`} />
+        <MarkdownBlock className="is-subtle" content={`_${t("part.thinking")}:_ ${cleanReasoning(part.text || "")}`} />
       </section>
     )
   }

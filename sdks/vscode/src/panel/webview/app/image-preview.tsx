@@ -1,4 +1,5 @@
 import React from "react"
+import { t } from "../../../i18n"
 
 export type PreviewImage = {
   src: string
@@ -26,7 +27,7 @@ export function ImagePreviewOverlay({
         <button
           type="button"
           className="oc-imagePreviewClose"
-          aria-label="关闭预览"
+          aria-label={t("common.closePreview")}
           onClick={onClose}
         >
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4L12 12M12 4L4 12" /></svg>

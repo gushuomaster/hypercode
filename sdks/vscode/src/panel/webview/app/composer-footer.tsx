@@ -3,6 +3,7 @@ import React from "react"
 import type { StatusItem, StatusTone } from "../lib/session-meta"
 import type { ComposerRunningState } from "./composer-running-state"
 import { ComposerRunningStrip } from "./composer-running-strip"
+import { t } from "../../../i18n"
 
 export type ComposerFooterBadge = {
   label: string
@@ -52,15 +53,15 @@ export function ComposerFooter({
               type="button"
               className={`oc-contextButton${contextOpen ? " is-open" : ""}`}
               onClick={onOpenContext}
-              aria-label={`${contextOpen ? "关闭" : "打开"}上下文`}
-              title={`${contextOpen ? "关闭" : "打开"}上下文`}
+              aria-label={contextOpen ? t("composer.context.close") : t("composer.context.open")}
+              title={contextOpen ? t("composer.context.close") : t("composer.context.open")}
             >
               <ContextButtonRing percent={contextStats.percent} />
             </button>
             <div className="oc-contextButtonTooltip" role="tooltip">
-              <ContextButtonTooltipRow value={contextStats.tokens} label="令牌" />
-              <ContextButtonTooltipRow value={contextStats.usage} label="用量" />
-              <ContextButtonTooltipRow value={contextStats.cost} label="花费" />
+              <ContextButtonTooltipRow value={contextStats.tokens} label={t("composer.context.tokens")} />
+              <ContextButtonTooltipRow value={contextStats.usage} label={t("composer.context.usage")} />
+              <ContextButtonTooltipRow value={contextStats.cost} label={t("composer.context.cost")} />
             </div>
           </div>
         ) : null}
@@ -105,11 +106,11 @@ export function ContextButtonRing({
     ? { "aria-hidden": true }
     : {
       role: "progressbar",
-      "aria-label": "上下文用量",
+      "aria-label": t("composer.context.aria"),
       "aria-valuemin": 0,
       "aria-valuemax": 100,
       "aria-valuenow": clamped,
-      "aria-valuetext": `已使用 ${normalized}%`,
+      "aria-valuetext": t("composer.context.used", { value: normalized }),
     }
 
   return (

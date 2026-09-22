@@ -11,6 +11,7 @@ import { useProviders } from "@/hooks/use-providers"
 import { decode64 } from "@/utils/base64"
 import { useLanguage } from "@/context/language"
 import { ModelTooltip } from "./model-tooltip"
+import { describeFreeModel, isFreeModel, sortFreeModels } from "./free-models"
 
 type ModelState = ReturnType<typeof useLocal>["model"]
 const featuredProviders = ["opencode", "opencode-go", "openai", "anthropic", "google", "github-copilot"]
@@ -29,9 +30,7 @@ export const DialogSelectModelUnpaidV2: Component<{ model?: ModelState }> = (pro
     const c = model.current()
     return c ? `${c.provider.id}:${c.id}` : undefined
   })
-  const isFree = (item: ReturnType<ModelState["list"]>[number]) =>
-    item.provider.id === "opencode" && (!item.cost || item.cost.input === 0)
-  const freeModels = createMemo(() => model.list().filter(isFree))
+  const freeModels = createMemo(() => sortFreeModels(model.list().filter(isFreeModel)))
 
   const openProviders = (provider?: string) => {
     void import("./dialog-connect-provider").then((x) => {
@@ -94,7 +93,7 @@ export const DialogSelectModelUnpaidV2: Component<{ model?: ModelState }> = (pro
                     <ModelTooltip
                       model={{ ...item, name: displayModelName(item.name) }}
                       latest={item.latest}
-                      free={isFree(item)}
+                      free={isFreeModel(item)}
                       v2
                     />
                   }
@@ -104,11 +103,18 @@ export const DialogSelectModelUnpaidV2: Component<{ model?: ModelState }> = (pro
                     class="flex w-full scroll-my-3.5 flex-row items-center gap-1.5 rounded-md px-3 py-2 text-left text-[13px] font-[530] leading-5 tracking-[-0.04px] text-v2-text-text-base [font-family:var(--v2-font-family-sans)] [font-variation-settings:'slnt'_0] hover:bg-v2-overlay-simple-overlay-hover focus:bg-v2-overlay-simple-overlay-hover focus:outline-none"
                     onClick={() => selectModel(item)}
                   >
-                    <span class="min-w-0 truncate">{displayModelName(item.name)}</span>
-                    <Tag class="shrink-0">{language.t("model.tag.free")}</Tag>
-                    <Show when={item.latest}>
-                      <Tag class="shrink-0">{language.t("model.tag.latest")}</Tag>
-                    </Show>
+                    <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span class="flex min-w-0 items-center gap-1.5">
+                        <span class="min-w-0 truncate">{displayModelName(item.name)}</span>
+                        <Tag class="shrink-0">{language.t("model.tag.free")}</Tag>
+                        <Show when={item.latest}>
+                          <Tag class="shrink-0">{language.t("model.tag.latest")}</Tag>
+                        </Show>
+                      </span>
+                      <span class="truncate text-[12px] font-[440] text-v2-text-text-muted">
+                        {describeFreeModel(item, language.t)}
+                      </span>
+                    </span>
                     <Show when={currentKey() === modelKey(item)}>
                       <Icon name="check" class="ml-auto size-4 shrink-0 text-v2-icon-icon-base" />
                     </Show>

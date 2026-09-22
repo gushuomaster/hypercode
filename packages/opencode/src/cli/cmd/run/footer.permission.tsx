@@ -15,6 +15,7 @@ import type { TextareaRenderable } from "@opentui/core"
 import { useKeyboard, useTerminalDimensions } from "@opentui/solid"
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal } from "solid-js"
 import type { PermissionRequest } from "@opencode-ai/sdk/v2"
+import { t } from "@opencode-ai/tui/i18n"
 import {
   createPermissionBodyState,
   permissionAlwaysLines,
@@ -100,7 +101,7 @@ export function RejectField(props: {
       minHeight={1}
       maxHeight={3}
       wrapMode="word"
-      placeholder="Tell HyperCode what to do differently"
+      placeholder={t("permission.rejectHint")}
       placeholderColor={props.theme.muted}
       textColor={props.theme.text}
       focusedTextColor={props.theme.text}
@@ -145,14 +146,14 @@ export function RunPermissionBody(props: {
   const busy = createMemo(() => state().submitting)
   const title = createMemo(() => {
     if (state().stage === "always") {
-      return "Always allow"
+      return t("permission.alwaysAllow")
     }
 
     if (state().stage === "reject") {
-      return "Reject permission"
+      return t("permission.rejectTitle")
     }
 
-    return "Permission required"
+    return t("permission.required")
   })
 
   createEffect(() => {
@@ -284,7 +285,7 @@ export function RunPermissionBody(props: {
           </Match>
           <Match when={state().stage === "reject"}>
             <box paddingLeft={1}>
-              <text fg={props.theme.muted}>Tell HyperCode what to do differently</text>
+              <text fg={props.theme.muted}>{t("permission.rejectHint")}</text>
             </box>
           </Match>
         </Switch>
@@ -325,16 +326,16 @@ export function RunPermissionBody(props: {
                 when={!busy()}
                 fallback={
                   <text fg={props.theme.muted} wrapMode="word" flexShrink={0}>
-                    Waiting for permission event...
+                    {t("run.permission.waiting")}
                   </text>
                 }
               >
                 <box flexDirection="row" gap={2} flexShrink={0}>
                   <text fg={props.theme.text}>
-                    enter <span style={{ fg: props.theme.muted }}>confirm</span>
+                    enter <span style={{ fg: props.theme.muted }}>{t("permission.confirmHint")}</span>
                   </text>
                   <text fg={props.theme.text}>
-                    esc <span style={{ fg: props.theme.muted }}>cancel</span>
+                    esc <span style={{ fg: props.theme.muted }}>{t("permission.cancelHint")}</span>
                   </text>
                 </box>
               </Show>
@@ -392,7 +393,7 @@ export function RunPermissionBody(props: {
                   </Show>
                   <Show when={!info().diff && info().lines.length === 0}>
                     <box paddingLeft={1}>
-                      <text fg={props.theme.muted}>No diff provided</text>
+                      <text fg={props.theme.muted}>{t("permission.noDiff")}</text>
                     </box>
                   </Show>
                 </box>
@@ -449,19 +450,22 @@ export function RunPermissionBody(props: {
             when={!busy()}
             fallback={
               <text fg={props.theme.muted} wrapMode="word" flexShrink={0}>
-                Waiting for permission event...
+                {t("run.permission.waiting")}
               </text>
             }
           >
             <box flexDirection="row" gap={2} flexShrink={0}>
               <text fg={props.theme.text}>
-                {"⇆"} <span style={{ fg: props.theme.muted }}>select</span>
+                {"⇆"} <span style={{ fg: props.theme.muted }}>{t("permission.selectHint")}</span>
               </text>
               <text fg={props.theme.text}>
-                enter <span style={{ fg: props.theme.muted }}>confirm</span>
+                enter <span style={{ fg: props.theme.muted }}>{t("permission.confirmHint")}</span>
               </text>
               <text fg={props.theme.text}>
-                esc <span style={{ fg: props.theme.muted }}>{state().stage === "always" ? "cancel" : "reject"}</span>
+                esc{" "}
+                <span style={{ fg: props.theme.muted }}>
+                  {state().stage === "always" ? t("permission.cancelHint") : t("permission.reject")}
+                </span>
               </text>
             </box>
           </Show>

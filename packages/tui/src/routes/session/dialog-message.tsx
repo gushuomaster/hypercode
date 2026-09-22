@@ -6,6 +6,7 @@ import { useRoute } from "../../context/route"
 import { useClipboard } from "../../context/clipboard"
 import type { PromptInfo } from "../../component/prompt/history"
 import { stripPromptPartIDs as strip } from "../../prompt/part"
+import { translate as t } from "../../context/language"
 
 export function DialogMessage(props: {
   messageID: string
@@ -20,12 +21,12 @@ export function DialogMessage(props: {
 
   return (
     <DialogSelect
-      title="Message Actions"
+      title={t("session.messageActions.title")}
       options={[
         {
-          title: "Revert",
+          title: t("session.messageActions.revert"),
           value: "session.revert",
-          description: "undo messages and file changes",
+          description: t("session.messageActions.revertDescription"),
           onSelect: (dialog) => {
             const msg = message()
             if (!msg) return
@@ -54,9 +55,9 @@ export function DialogMessage(props: {
           },
         },
         {
-          title: "Copy",
+          title: t("session.messageActions.copy"),
           value: "message.copy",
-          description: "message text to clipboard",
+          description: t("session.messageActions.copyDescription"),
           onSelect: async (dialog) => {
             const msg = message()
             if (!msg) return
@@ -74,9 +75,9 @@ export function DialogMessage(props: {
           },
         },
         {
-          title: "Fork",
+          title: t("session.messageActions.fork"),
           value: "session.fork",
-          description: "create a new session",
+          description: t("session.messageActions.forkDescription"),
           onSelect: async (dialog) => {
             const result = await sdk.client.session.fork({
               sessionID: props.sessionID,

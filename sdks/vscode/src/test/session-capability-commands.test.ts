@@ -1,8 +1,11 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 
 import type { SessionInfo } from "../core/sdk"
 import { archiveSession, shareSession, unshareSession } from "../core/commands"
+import { setLocale } from "../i18n"
+
+beforeEach(() => setLocale("en"))
 
 function session(id: string, title = "Session"): SessionInfo {
   return {
@@ -167,6 +170,6 @@ describe("unshareSession", () => {
       directory: "/workspace-a",
     })
     assert.deepEqual(refreshed, ["file:///workspace-a", true])
-    assert.match(message ?? "", /unshared/i)
+    assert.equal(message, "Session sharing disabled.")
   })
 })

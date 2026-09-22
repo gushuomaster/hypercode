@@ -6,6 +6,7 @@ import { SessionTagStore } from "../core/session-tags"
 import { SessionStore } from "../core/session"
 import { WorkspaceManager } from "../core/workspace"
 import { ClearSearchItem, ClearTagFilterItem, SessionItem, StatusItem, WorkspaceItem } from "./item"
+import { t } from "../i18n"
 
 export type WorkspaceSearchState = {
   query: string
@@ -85,30 +86,30 @@ export function getWorkspaceTagFilter(
 
 export function buildWorkspaceChildren(input: WorkspaceChildrenInput) {
   if (input.runtime.state === "starting") {
-    return [new StatusItem(`正在启动服务：${input.runtime.url}`)]
+    return [new StatusItem(t("sidebar.serviceStarting", { url: input.runtime.url }))]
   }
 
   if (input.runtime.state === "error") {
     if (isMissingOpencodeError(input.runtime.err)) {
-      return [new StatusItem("HyperCode 运行时不可用", missingOpencodeMessage(input.runtime))]
+      return [new StatusItem(t("sidebar.runtimeUnavailable"), missingOpencodeMessage(input.runtime))]
     }
 
-    return [new StatusItem(input.runtime.err ? `错误：${input.runtime.err}` : "服务启动失败")]
+    return [new StatusItem(input.runtime.err ? t("sidebar.searchError", { message: input.runtime.err }) : t("sidebar.serviceFailed"))]
   }
 
   if (input.runtime.state !== "ready") {
-    return [new StatusItem("服务已停止")]
+    return [new StatusItem(t("sidebar.serviceStopped"))]
   }
 
   if (input.runtime.sessionsState === "loading" && !input.sessions.length && !input.search) {
-    return [new StatusItem("正在加载会话...")]
+    return [new StatusItem(t("sidebar.sessionsLoading"))]
   }
 
   if (input.search?.status === "loading") {
     return [
       new ClearSearchItem(input.runtime),
       ...(input.tagFilter ? [new ClearTagFilterItem(input.runtime, input.tagFilter)] : []),
-      new StatusItem("正在搜索会话..."),
+      new StatusItem(t("sidebar.sessionsSearching")),
     ]
   }
 
@@ -116,7 +117,7 @@ export function buildWorkspaceChildren(input: WorkspaceChildrenInput) {
     return [
       new ClearSearchItem(input.runtime),
       ...(input.tagFilter ? [new ClearTagFilterItem(input.runtime, input.tagFilter)] : []),
-      new StatusItem(`搜索错误：${input.search.error || "未知错误"}`),
+      new StatusItem(t("sidebar.searchError", { message: input.search.error || t("common.unknownError") })),
     ]
   }
 
@@ -125,21 +126,21 @@ export function buildWorkspaceChildren(input: WorkspaceChildrenInput) {
       .map((session) => new SessionItem(input.runtime, session, input.statuses.get(session.id), input.tags?.[session.id] ?? []))
     return list.length
       ? [new ClearSearchItem(input.runtime), ...(input.tagFilter ? [new ClearTagFilterItem(input.runtime, input.tagFilter)] : []), ...list]
-      : [new ClearSearchItem(input.runtime), ...(input.tagFilter ? [new ClearTagFilterItem(input.runtime, input.tagFilter)] : []), new StatusItem("没有匹配的会话")]
+      : [new ClearSearchItem(input.runtime), ...(input.tagFilter ? [new ClearTagFilterItem(input.runtime, input.tagFilter)] : []), new StatusItem(t("sidebar.noMatches"))]
   }
 
   const list = filteredSessions(input.sessions, input.tagFilter, input.tags)
     .map((session) => new SessionItem(input.runtime, session, input.statuses.get(session.id), input.tags?.[session.id] ?? []))
 
   if (input.runtime.sessionsErr) {
-    return [...(input.tagFilter ? [new ClearTagFilterItem(input.runtime, input.tagFilter)] : []), new StatusItem(`会话错误：${input.runtime.sessionsErr}`), ...list]
+    return [...(input.tagFilter ? [new ClearTagFilterItem(input.runtime, input.tagFilter)] : []), new StatusItem(t("sidebar.sessionError", { message: input.runtime.sessionsErr })), ...list]
   }
 
   if (list.length) {
     return [...(input.tagFilter ? [new ClearTagFilterItem(input.runtime, input.tagFilter)] : []), ...list]
   }
 
-  return [...(input.tagFilter ? [new ClearTagFilterItem(input.runtime, input.tagFilter)] : []), new StatusItem("暂无会话")]
+  return [...(input.tagFilter ? [new ClearTagFilterItem(input.runtime, input.tagFilter)] : []), new StatusItem(t("sidebar.noSessions"))]
 }
 
 export class SidebarProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
@@ -188,7 +189,7 @@ export class SidebarProvider implements vscode.TreeDataProvider<vscode.TreeItem>
         return list.map((rt) => new WorkspaceItem(rt, this.search.has(rt.workspaceId), this.tagFilters.has(rt.workspaceId)))
       }
 
-      return [new StatusItem("未打开工作区文件夹")]
+      return [new StatusItem(t("sidebar.noWorkspace"))]
     }
 
     if (item instanceof WorkspaceItem) {

@@ -1,9 +1,10 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 import React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 
 import type { Todo } from "../../../core/sdk"
+import { setLocale } from "../../../i18n"
 import { CodexTodoPopover } from "./codex-todo-popover"
 
 function todo(content: string, status: string, priority = "medium"): Todo {
@@ -11,6 +12,8 @@ function todo(content: string, status: string, priority = "medium"): Todo {
 }
 
 describe("CodexTodoPopover", () => {
+  beforeEach(() => setLocale("en"))
+
   test("renders summary counts and todo items", () => {
     const html = renderToStaticMarkup(
       <CodexTodoPopover
@@ -24,7 +27,7 @@ describe("CodexTodoPopover", () => {
 
     assert.equal(html.includes("Collapse task list"), true)
     assert.equal(html.includes("ACTIVE TASKS"), true)
-    assert.equal(html.includes("共 3 个任务，已经完成 1 个"), true)
+    assert.equal(html.includes("3 tasks, 1 completed"), true)
     assert.equal(html.includes("Write tests"), true)
     assert.equal(html.includes("Implement popover"), true)
     assert.equal(html.includes("Verify compile"), true)

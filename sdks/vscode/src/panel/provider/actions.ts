@@ -10,6 +10,7 @@ import { text, textError, wait } from "./utils"
 import { friendlyShellSubmitError } from "./shell-errors"
 import { parseComposerFileQuery } from "../webview/lib/composer-file-selection"
 import { compactSkillInvocationText } from "../shared/skill-invocation"
+import { t } from "../../i18n"
 
 export type PanelActionState = {
   disposed: boolean
@@ -41,7 +42,7 @@ export async function submit(ctx: ActionContext, textValue: string, parts?: Comp
   const rt = ctx.mgr.get(ctx.ref.workspaceId)
 
   if (!rt || rt.state !== "ready" || !rt.sdk) {
-    await fail(ctx.panel.webview, "Workspace server is not ready.")
+    await fail(ctx.panel.webview, t("panel.workspaceNotReady"))
     return
   }
 
@@ -63,7 +64,7 @@ export async function submit(ctx: ActionContext, textValue: string, parts?: Comp
   } catch (err) {
     const message = textError(err)
     ctx.log(`submit failed: ${message}`)
-    await vscode.window.showErrorMessage(`HyperCode message send failed for ${rt.name}: ${message}`)
+    await vscode.window.showErrorMessage(t("panel.sendFailed", { runtime: rt.name, message }))
     await fail(ctx.panel.webview, message)
   } finally {
     ctx.state.pendingSubmitCount = Math.max(0, ctx.state.pendingSubmitCount - 1)
@@ -80,7 +81,7 @@ export async function providerAuthAction(ctx: ActionContext, providerID: string)
 
   const rt = ctx.mgr.get(ctx.ref.workspaceId)
   if (!rt || rt.state !== "ready" || !rt.sdk) {
-    await fail(ctx.panel.webview, "Workspace server is not ready.")
+    await fail(ctx.panel.webview, t("panel.workspaceNotReady"))
     return
   }
 
@@ -111,7 +112,7 @@ export async function providerAuthAction(ctx: ActionContext, providerID: string)
       await vscode.window.showInformationMessage(authz.instructions)
     }
   } catch (err) {
-    const message = `Failed to authenticate provider ${providerID}: ${text(err)}`
+    const message = t("panel.providerAuthFailed", { provider: providerID, message: text(err) })
     ctx.log(message)
     await vscode.window.showErrorMessage(message)
   }
@@ -139,7 +140,7 @@ export async function runMcpAction(ctx: ActionContext, name: string, action: "co
     }
     await ctx.push(true)
   } catch (err) {
-    const message = `Failed to update MCP ${name}: ${text(err)}`
+    const message = t("panel.mcpFailed", { name, message: text(err) })
     ctx.log(message)
     void vscode.window.showErrorMessage(message)
     await ctx.push(true)
@@ -158,7 +159,7 @@ export async function runSlashCommand(ctx: ActionContext, command: string, args:
 
   const rt = ctx.mgr.get(ctx.ref.workspaceId)
   if (!rt || rt.state !== "ready" || !rt.sdk) {
-    await fail(ctx.panel.webview, "Workspace server is not ready.")
+    await fail(ctx.panel.webview, t("panel.workspaceNotReady"))
     return
   }
 
@@ -181,7 +182,7 @@ export async function runSlashCommand(ctx: ActionContext, command: string, args:
   } catch (err) {
     const message = textError(err)
     ctx.log(`slash command failed: ${command} ${message}`)
-    await vscode.window.showErrorMessage(`HyperCode command /${command} failed for ${rt.name}: ${message}`)
+    await vscode.window.showErrorMessage(t("panel.commandFailed", { command, runtime: rt.name, message }))
     await fail(ctx.panel.webview, message)
   } finally {
     ctx.state.pendingSubmitCount = Math.max(0, ctx.state.pendingSubmitCount - 1)
@@ -198,7 +199,7 @@ export async function runShellCommand(ctx: ActionContext, command: string, agent
 
   const rt = ctx.mgr.get(ctx.ref.workspaceId)
   if (!rt || rt.state !== "ready" || !rt.sdk) {
-    await fail(ctx.panel.webview, "Workspace server is not ready.")
+    await fail(ctx.panel.webview, t("panel.workspaceNotReady"))
     return
   }
 
@@ -276,12 +277,12 @@ export async function runComposerAction(
 
     if (action === "compactSession") {
       if (!rt || rt.state !== "ready" || !rt.sdk) {
-        await fail(ctx.panel.webview, "Workspace server is not ready.")
+        await fail(ctx.panel.webview, t("panel.workspaceNotReady"))
         return
       }
 
       if (!model?.providerID || !model.modelID) {
-        const message = "Connect or select a model before running /compact."
+        const message = t("panel.compactNeedsModel")
         ctx.log(message)
         await vscode.window.showErrorMessage(message)
         await fail(ctx.panel.webview, message)
@@ -312,7 +313,7 @@ export async function runComposerAction(
 
     if (action === "interruptSession") {
       if (!rt || rt.state !== "ready" || !rt.sdk) {
-        await fail(ctx.panel.webview, "Workspace server is not ready.")
+        await fail(ctx.panel.webview, t("panel.workspaceNotReady"))
         return
       }
 
@@ -335,7 +336,7 @@ export async function runComposerAction(
 
     if (action === "undoSession") {
       if (!rt || rt.state !== "ready" || !rt.sdk) {
-        await fail(ctx.panel.webview, "Workspace server is not ready.")
+        await fail(ctx.panel.webview, t("panel.workspaceNotReady"))
         return
       }
 
@@ -394,7 +395,7 @@ export async function runComposerAction(
 
     if (action === "redoSession") {
       if (!rt || rt.state !== "ready" || !rt.sdk) {
-        await fail(ctx.panel.webview, "Workspace server is not ready.")
+        await fail(ctx.panel.webview, t("panel.workspaceNotReady"))
         return
       }
 
@@ -446,7 +447,7 @@ export async function runComposerAction(
     return
   }
 
-  const message = `Unsupported composer action: ${action}`
+  const message = t("panel.unsupportedAction", { action })
   ctx.log(message)
   await fail(ctx.panel.webview, message)
 }
@@ -511,7 +512,7 @@ export async function replyPermission(ctx: ActionContext, requestID: string, rep
   const rt = ctx.mgr.get(ctx.ref.workspaceId)
 
   if (!rt || rt.state !== "ready" || !rt.sdk) {
-    await fail(ctx.panel.webview, "Workspace server is not ready.")
+    await fail(ctx.panel.webview, t("panel.workspaceNotReady"))
     return
   }
 
@@ -534,7 +535,7 @@ export async function replyQuestion(ctx: ActionContext, requestID: string, answe
   const rt = ctx.mgr.get(ctx.ref.workspaceId)
 
   if (!rt || rt.state !== "ready" || !rt.sdk) {
-    await fail(ctx.panel.webview, "Workspace server is not ready.")
+    await fail(ctx.panel.webview, t("panel.workspaceNotReady"))
     return
   }
 
@@ -556,7 +557,7 @@ export async function rejectQuestion(ctx: ActionContext, requestID: string) {
   const rt = ctx.mgr.get(ctx.ref.workspaceId)
 
   if (!rt || rt.state !== "ready" || !rt.sdk) {
-    await fail(ctx.panel.webview, "Workspace server is not ready.")
+    await fail(ctx.panel.webview, t("panel.workspaceNotReady"))
     return
   }
 

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import { toolTodosFromMetadata, defaultToolTitle } from "../panel/webview/lib/tool-meta"
+import { setLocale } from "../i18n"
 
 describe("todowrite tool", () => {
   describe("todo item structure", () => {
@@ -241,6 +242,7 @@ describe("todowrite tool", () => {
     })
 
     test("displays fallback message when no todos exist", () => {
+      setLocale("en")
       const metadata = { todos: [] }
 
       const title = defaultToolTitle("todowrite", {}, metadata)
@@ -249,11 +251,17 @@ describe("todowrite tool", () => {
     })
 
     test("displays fallback message when todos field is missing", () => {
+      setLocale("en")
       const metadata = {}
 
       const title = defaultToolTitle("todowrite", {}, metadata)
 
       assert.equal(title, "Updating todos")
+    })
+
+    test("localizes the fallback title", () => {
+      setLocale("zh")
+      assert.equal(defaultToolTitle("todowrite", {}, {}), "正在更新待办事项")
     })
 
     test("does not count cancelled todos in completion count", () => {

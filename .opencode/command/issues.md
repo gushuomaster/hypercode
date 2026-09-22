@@ -1,5 +1,8 @@
 ---
-description: "find issue(s) on github"
+description: "Find matching GitHub issues"
+description_i18n:
+  zh: "查找匹配的 GitHub Issue"
+  en: "Find matching GitHub issues"
 model: opencode/claude-haiku-4-5
 ---
 

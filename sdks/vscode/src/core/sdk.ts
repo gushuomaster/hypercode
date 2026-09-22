@@ -142,6 +142,10 @@ export type LspStatus = {
 export type CommandInfo = {
   name: string
   description?: string
+  description_i18n?: {
+    zh?: string
+    en?: string
+  }
   agent?: string
   model?: string
   source?: "command" | "mcp" | "skill"

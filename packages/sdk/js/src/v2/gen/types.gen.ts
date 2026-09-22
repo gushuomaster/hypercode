@@ -1644,7 +1644,7 @@ export type GlobalEvent = {
 export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR"
 
 /**
- * Server configuration for opencode serve and web commands
+ * Server configuration for hypercode serve and web commands
  */
 export type ServerConfig = {
   port?: number
@@ -1895,6 +1895,10 @@ export type Config = {
     [key: string]: {
       template: string
       description?: string
+      description_i18n?: {
+        zh?: string
+        en?: string
+      }
       agent?: string
       model?: string
       variant?: string
@@ -2342,6 +2346,10 @@ export type VcsApplyError = {
 export type Command = {
   name: string
   description?: string
+  description_i18n?: {
+    zh?: string
+    en?: string
+  }
   agent?: string
   model?: string
   source?: "command" | "mcp" | "skill"
@@ -5011,6 +5019,10 @@ export type CommandV2Info = {
   name: string
   template: string
   description?: string
+  description_i18n?: {
+    zh?: string
+    en?: string
+  }
   agent?: string
   model?: ModelRef
   subtask?: boolean

@@ -7,6 +7,7 @@ import type { AssistantMessage } from "@opencode-ai/sdk/v2"
 import { Locale } from "../../util/locale"
 import { useTerminalDimensions } from "@opentui/solid"
 import { useCommandShortcut, useOpencodeKeymap } from "../../keymap"
+import { translate as t } from "../../context/language"
 
 export function SubagentFooter() {
   const route = useRouteData("session")
@@ -16,9 +17,9 @@ export function SubagentFooter() {
 
   const subagentInfo = createMemo(() => {
     const s = session()
-    if (!s) return { label: "Subagent", index: 0, total: 0 }
+    if (!s) return { label: t("session.subagent.label"), index: 0, total: 0 }
     const agentMatch = s.title.match(/@(\w+) subagent/)
-    const label = agentMatch ? Locale.titlecase(agentMatch[1]) : "Subagent"
+    const label = agentMatch ? Locale.titlecase(agentMatch[1]) : t("session.subagent.label")
 
     if (!s.parentID) return { label, index: 0, total: 0 }
 
@@ -82,7 +83,7 @@ export function SubagentFooter() {
             </text>
             <Show when={subagentInfo().total > 0}>
               <text style={{ fg: theme.textMuted }}>
-                ({subagentInfo().index} of {subagentInfo().total})
+                ({t("session.subagent.position", { index: subagentInfo().index, total: subagentInfo().total })})
               </text>
             </Show>
             <Show when={usage()}>
@@ -101,7 +102,7 @@ export function SubagentFooter() {
               backgroundColor={hover() === "parent" ? theme.backgroundElement : theme.backgroundPanel}
             >
               <text fg={theme.text}>
-                Parent <span style={{ fg: theme.textMuted }}>{parentShortcut()}</span>
+                {t("session.subagent.parent")} <span style={{ fg: theme.textMuted }}>{parentShortcut()}</span>
               </text>
             </box>
             <box
@@ -111,7 +112,7 @@ export function SubagentFooter() {
               backgroundColor={hover() === "prev" ? theme.backgroundElement : theme.backgroundPanel}
             >
               <text fg={theme.text}>
-                Prev <span style={{ fg: theme.textMuted }}>{previousShortcut()}</span>
+                {t("session.subagent.previous")} <span style={{ fg: theme.textMuted }}>{previousShortcut()}</span>
               </text>
             </box>
             <box
@@ -121,7 +122,7 @@ export function SubagentFooter() {
               backgroundColor={hover() === "next" ? theme.backgroundElement : theme.backgroundPanel}
             >
               <text fg={theme.text}>
-                Next <span style={{ fg: theme.textMuted }}>{nextShortcut()}</span>
+                {t("session.subagent.next")} <span style={{ fg: theme.textMuted }}>{nextShortcut()}</span>
               </text>
             </box>
           </box>

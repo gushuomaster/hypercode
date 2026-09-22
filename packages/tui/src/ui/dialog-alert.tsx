@@ -2,6 +2,7 @@ import { TextAttributes } from "@opentui/core"
 import { useTheme } from "../context/theme"
 import { useDialog, type DialogContext } from "./dialog"
 import { useBindings } from "../keymap"
+import { translate as t } from "../context/language"
 
 export type DialogAlertProps = {
   title: string
@@ -17,8 +18,8 @@ export function DialogAlert(props: DialogAlertProps) {
     bindings: [
       {
         key: "return",
-        desc: "Confirm alert",
-        group: "Dialog",
+        desc: t("dialog.select.submit"),
+        group: t("dialog.category"),
         cmd: () => {
           props.onConfirm?.()
           dialog.clear()
@@ -49,7 +50,7 @@ export function DialogAlert(props: DialogAlertProps) {
             dialog.clear()
           }}
         >
-          <text fg={theme.selectedListItemText}>ok</text>
+          <text fg={theme.selectedListItemText}>{t("dialog.action.ok")}</text>
         </box>
       </box>
     </box>

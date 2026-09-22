@@ -3,6 +3,7 @@ import { isMissingOpencodeError } from "../core/runtime-errors"
 import type { SessionInfo, SessionStatus } from "../core/sdk"
 import type { WorkspaceRuntime } from "../core/server"
 import { displaySessionTitle } from "../core/session-titles"
+import { t } from "../i18n"
 
 export class WorkspaceItem extends vscode.TreeItem {
   constructor(
@@ -48,7 +49,7 @@ export class SessionItem extends vscode.TreeItem {
       : new vscode.ThemeIcon("comment-discussion")
     this.command = {
       command: "hypercode.openSession",
-      title: "打开会话",
+      title: t("sidebar.command.openSession"),
       arguments: [this],
     }
   }
@@ -56,13 +57,13 @@ export class SessionItem extends vscode.TreeItem {
 
 export class ClearSearchItem extends vscode.TreeItem {
   constructor(readonly runtime: Pick<WorkspaceRuntime, "workspaceId">) {
-    super("清除搜索", vscode.TreeItemCollapsibleState.None)
+    super(t("sidebar.clearSearch"), vscode.TreeItemCollapsibleState.None)
     this.id = `${runtime.workspaceId}:clear-search`
     this.contextValue = "clear-search"
     this.iconPath = new vscode.ThemeIcon("close")
     this.command = {
       command: "hypercode.clearWorkspaceSessionSearch",
-      title: "清除会话搜索",
+      title: t("sidebar.command.clearSearch"),
       arguments: [this],
     }
   }
@@ -73,14 +74,14 @@ export class ClearTagFilterItem extends vscode.TreeItem {
     readonly runtime: Pick<WorkspaceRuntime, "workspaceId">,
     tag: string,
   ) {
-    super(`清除标签过滤 (#${tag})`, vscode.TreeItemCollapsibleState.None)
-    this.label = `清除标签过滤 (#${tag})`
+    super(t("sidebar.clearTag", { tag }), vscode.TreeItemCollapsibleState.None)
+    this.label = t("sidebar.clearTag", { tag })
     this.id = `${runtime.workspaceId}:clear-tag-filter`
     this.contextValue = "clear-tag-filter"
     this.iconPath = new vscode.ThemeIcon("tag")
     this.command = {
       command: "hypercode.clearWorkspaceTagFilter",
-      title: "清除标签过滤",
+      title: t("sidebar.command.clearTag"),
       arguments: [this],
     }
   }
@@ -88,22 +89,22 @@ export class ClearTagFilterItem extends vscode.TreeItem {
 
 function desc(runtime: WorkspaceRuntime) {
   if (runtime.state === "ready") {
-    return `就绪 :${runtime.port}`
+    return t("sidebar.runtime.ready", { port: runtime.port })
   }
 
   if (runtime.state === "starting") {
-    return `启动中 :${runtime.port}`
+    return t("sidebar.runtime.starting", { port: runtime.port })
   }
 
   if (runtime.state === "error") {
     if (isMissingOpencodeError(runtime.err)) {
-      return "运行时不可用"
+      return t("sidebar.runtime.unavailable")
     }
 
-    return "错误"
+    return t("sidebar.runtime.error")
   }
 
-  return "已停止"
+  return t("sidebar.runtime.stopped")
 }
 
 function icon(state: WorkspaceRuntime["state"]) {
@@ -140,7 +141,7 @@ function workspaceContextValue(searchActive: boolean, tagFilterActive: boolean) 
 
 function buildSessionDescription(session: SessionInfo, tags: string[]) {
   const base = session.id.slice(0, 8)
-  const shared = session.share?.url ? "已分享" : ""
+  const shared = session.share?.url ? t("sidebar.session.shared") : ""
   const summary = tagSummary(tags)
   return [base, shared, summary].filter(Boolean).join(" ")
 }
@@ -148,10 +149,10 @@ function buildSessionDescription(session: SessionInfo, tags: string[]) {
 function buildSessionTooltip(runtimeDir: string, session: SessionInfo, tags: string[]) {
   const lines = [`${displaySessionTitle(session.title, session.id)}`, session.id, runtimeDir]
   if (session.share?.url) {
-    lines.push(`分享链接：${session.share.url}`)
+    lines.push(t("sidebar.session.shareLink", { url: session.share.url }))
   }
   if (tags.length > 0) {
-    lines.push(`标签：${tags.join(", ")}`)
+    lines.push(t("sidebar.session.tags", { tags: tags.join(", ") }))
   }
   return lines.join("\n")
 }

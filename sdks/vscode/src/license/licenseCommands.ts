@@ -1,5 +1,6 @@
 import * as vscode from "vscode"
 import { ensureLicenseFile, resolveLicensePath } from "./licensePaths"
+import { t } from "../i18n"
 
 export async function openLicenseFile() {
   const target = resolveLicensePath()
@@ -12,8 +13,8 @@ export async function openLicenseFile() {
 export async function promptForLicenseIssue(message: string) {
   return await vscode.window.showErrorMessage(
     message,
-    "打开授权文件",
-    "创建授权文件",
-    "重试授权检查",
+    t("license.open"),
+    t("license.create"),
+    t("license.retry"),
   )
 }

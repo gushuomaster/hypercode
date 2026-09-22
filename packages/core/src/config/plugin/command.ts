@@ -32,6 +32,7 @@ export const Plugin = define({
             draft.update(name, (item) => {
               item.template = command.template
               if (command.description !== undefined) item.description = command.description
+              if (command.description_i18n !== undefined) item.description_i18n = command.description_i18n
               if (command.agent !== undefined) item.agent = command.agent
               if (command.model !== undefined) {
                 const model = ModelV2.parse(command.model)

@@ -22,6 +22,12 @@ export const Event = {
 export const Info = Schema.Struct({
   name: Schema.String,
   description: Schema.optional(Schema.String),
+  description_i18n: Schema.optional(
+    Schema.Struct({
+      zh: Schema.optional(Schema.String),
+      en: Schema.optional(Schema.String),
+    }),
+  ),
   agent: Schema.optional(Schema.String),
   model: Schema.optional(Schema.String),
   source: Schema.optional(Schema.Literals(["command", "mcp", "skill"])),
@@ -70,6 +76,10 @@ const layer = Layer.effect(
       commands[Default.INIT] = {
         name: Default.INIT,
         description: "guided AGENTS.md setup",
+        description_i18n: {
+          zh: "引导式配置 AGENTS.md",
+          en: "Guided AGENTS.md setup",
+        },
         source: "command",
         get template() {
           return PROMPT_INITIALIZE.replace("${path}", ctx.worktree)
@@ -79,6 +89,10 @@ const layer = Layer.effect(
       commands[Default.REVIEW] = {
         name: Default.REVIEW,
         description: "review changes [commit|branch|pr], defaults to uncommitted",
+        description_i18n: {
+          zh: "审查更改 [commit|branch|pr]，默认审查未提交更改",
+          en: "Review changes [commit|branch|pr], defaults to uncommitted",
+        },
         source: "command",
         get template() {
           return PROMPT_REVIEW.replace("${path}", ctx.worktree)
@@ -93,6 +107,7 @@ const layer = Layer.effect(
           agent: command.agent,
           model: command.model,
           description: command.description,
+          description_i18n: command.description_i18n,
           source: "command",
           get template() {
             return command.template

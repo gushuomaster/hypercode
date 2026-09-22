@@ -1,4 +1,5 @@
 import React from "react"
+import { t } from "../../../i18n"
 
 type SkillPillProps = {
   name: string
@@ -15,7 +16,7 @@ export function SkillPill({ name, onClick }: SkillPillProps) {
 
   if (onClick) {
     return (
-      <button type="button" className="oc-pill oc-pill-file oc-pill-skill oc-pillButton" aria-label={`Open skill ${name}`} onClick={onClick}>
+      <button type="button" className="oc-pill oc-pill-file oc-pill-skill oc-pillButton" aria-label={t("skill.open", { name })} onClick={onClick}>
         {content}
       </button>
     )

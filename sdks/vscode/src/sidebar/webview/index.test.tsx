@@ -1,12 +1,15 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 import React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 
 import type { SidebarViewState } from "../view-types"
+import { setLocale } from "../../i18n"
 import { buildSubagentOpenMessage, buildSubagentPanelView, SubagentsList, TodoList } from "./index"
 
 describe("sidebar todo list", () => {
+  beforeEach(() => setLocale("en"))
+
   test("does not render the session title under each todo item", () => {
     const state: SidebarViewState = {
       status: "ready",

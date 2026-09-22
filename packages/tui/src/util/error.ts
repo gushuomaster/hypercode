@@ -1,4 +1,5 @@
 import { isRecord } from "./record"
+import { t, type Locale } from "../i18n"
 
 type ConfigIssue = { message: string; path: string[] }
 
@@ -142,6 +143,46 @@ export function errorMessage(error: unknown): string {
   const formatted = errorFormat(error)
   if (formatted) return formatted
   return "unknown error"
+}
+
+export function sessionErrorMessage(error: unknown, locale?: Locale): string {
+  if (!isRecord(error) || error.name !== "APIError" || !isRecord(error.data)) return errorMessage(error)
+  if (
+    typeof error.data.responseBody !== "string" ||
+    !error.data.responseBody.includes("FreeUsageLimitError")
+  )
+    return errorMessage(error)
+
+  const reset = retryAfter(error.data.responseHeaders)
+  if (reset === undefined) return t("session.error.freeUsageLimit", undefined, locale)
+  return t("session.error.freeUsageLimitReset", { duration: resetDuration(reset, locale) }, locale)
+}
+
+function retryAfter(value: unknown) {
+  if (!isRecord(value)) return undefined
+
+  const milliseconds = Number.parseFloat(typeof value["retry-after-ms"] === "string" ? value["retry-after-ms"] : "")
+  if (!Number.isNaN(milliseconds)) return Math.max(0, Math.ceil(milliseconds / 1000))
+
+  const retry = typeof value["retry-after"] === "string" ? value["retry-after"] : ""
+  const seconds = Number.parseFloat(retry)
+  if (!Number.isNaN(seconds)) return Math.max(0, Math.ceil(seconds))
+
+  const timestamp = Date.parse(retry)
+  if (Number.isNaN(timestamp)) return undefined
+  return Math.max(0, Math.ceil((timestamp - Date.now()) / 1000))
+}
+
+function resetDuration(seconds: number, locale?: Locale) {
+  const days = Math.floor(seconds / 86_400)
+  const hours = Math.floor((seconds % 86_400) / 3_600)
+  const minutes = Math.ceil((seconds % 3_600) / 60)
+  const unit = (value: number, singular: "day" | "hour" | "minute") =>
+    t(`session.error.duration.${singular}${value === 1 ? "" : "s"}`, { count: value }, locale)
+
+  if (days > 0) return hours > 0 ? `${unit(days, "day")} ${unit(hours, "hour")}` : unit(days, "day")
+  if (hours > 0) return minutes > 0 ? `${unit(hours, "hour")} ${unit(minutes, "minute")}` : unit(hours, "hour")
+  return minutes > 0 ? unit(minutes, "minute") : t("session.error.duration.lessThanMinute", undefined, locale)
 }
 
 export function errorData(error: unknown) {

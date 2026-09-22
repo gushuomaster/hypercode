@@ -1,5 +1,5 @@
 import { describe, expect } from "bun:test"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { CommandV2 } from "@opencode-ai/core/command"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
 import { ModelV2 } from "@opencode-ai/core/model"
@@ -9,6 +9,39 @@ import { testEffect } from "./lib/effect"
 const it = testEffect(AppNodeBuilder.build(CommandV2.node))
 
 describe("CommandV2", () => {
+  it.effect("decodes localized descriptions while preserving legacy descriptions", () =>
+    Effect.sync(() => {
+      const decode = Schema.decodeUnknownSync(CommandV2.Info)
+      expect(
+        decode({
+          name: "review",
+          template: "Review files",
+          description: "File review",
+          description_i18n: {
+            zh: "审查文件",
+            en: "File review",
+          },
+        }),
+      ).toHaveProperty("description_i18n", {
+        zh: "审查文件",
+        en: "File review",
+      })
+      expect(
+        decode({
+          name: "legacy",
+          template: "Legacy command",
+          description: "Legacy description",
+        }),
+      ).toEqual(
+        CommandV2.Info.make({
+          name: "legacy",
+          template: "Legacy command",
+          description: "Legacy description",
+        }),
+      )
+    }),
+  )
+
   it.effect("applies command transforms and preserves later overrides", () =>
     Effect.gen(function* () {
       const command = yield* CommandV2.Service

@@ -8,6 +8,7 @@ import { useRoute } from "../../context/route"
 import { useDialog, type DialogContext } from "../../ui/dialog"
 import type { PromptInfo } from "../../component/prompt/history"
 import { stripPromptPartIDs as strip } from "../../prompt/part"
+import { translate as t } from "../../context/language"
 
 export function DialogForkFromTimeline(props: { sessionID: string; onMove: (messageID?: string) => void }) {
   const sync = useSync()
@@ -22,7 +23,7 @@ export function DialogForkFromTimeline(props: { sessionID: string; onMove: (mess
   const options = createMemo((): DialogSelectOption<string | undefined>[] => {
     const messages = sync.data.message[props.sessionID] ?? []
     const fullSession = {
-      title: "Full session",
+      title: t("session.fork.full"),
       value: undefined,
       onSelect: async (dialog: DialogContext) => {
         const forked = await sdk.client.session.fork({ sessionID: props.sessionID })
@@ -72,5 +73,5 @@ export function DialogForkFromTimeline(props: { sessionID: string; onMove: (mess
     return [fullSession, ...result.reverse()]
   })
 
-  return <DialogSelect onMove={(option) => props.onMove(option.value)} title="Fork session" options={options()} />
+  return <DialogSelect onMove={(option) => props.onMove(option.value)} title={t("session.fork.title")} options={options()} />
 }

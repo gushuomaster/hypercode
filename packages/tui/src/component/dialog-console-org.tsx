@@ -7,6 +7,7 @@ import { useToast } from "../ui/toast"
 import { useTheme } from "../context/theme"
 import { errorMessage } from "../util/error"
 import type { ExperimentalConsoleListOrgsResponse } from "@opencode-ai/sdk/v2"
+import { translate as t } from "../context/language"
 
 type OrgOption = ExperimentalConsoleListOrgsResponse["orgs"][number]
 
@@ -51,7 +52,7 @@ export function DialogConsoleOrg() {
     if (listed === undefined) {
       return [
         {
-          title: "Loading orgs…",
+          title: t("dialog.consoleOrg.loading"),
           value: "loading",
           onSelect: () => {},
         },
@@ -61,7 +62,7 @@ export function DialogConsoleOrg() {
     if (listed.length === 0) {
       return [
         {
-          title: "No orgs found",
+          title: t("dialog.consoleOrg.empty"),
           value: "empty",
           onSelect: () => {},
         },
@@ -105,7 +106,7 @@ export function DialogConsoleOrg() {
 
           await sdk.client.instance.dispose()
           toast.show({
-            message: `Switched to ${item.orgName}`,
+            message: t("dialog.consoleOrg.switched", { org: item.orgName }),
             variant: "info",
           })
           dialog.clear()
@@ -115,7 +116,7 @@ export function DialogConsoleOrg() {
 
   return (
     <DialogSelect<string | OrgOption>
-      title="Switch org"
+      title={t("dialog.consoleOrg.title")}
       options={options()}
       current={current()}
       renderFilter={!showError()}
@@ -124,7 +125,7 @@ export function DialogConsoleOrg() {
         showError() ? (
           <box paddingLeft={4} paddingRight={4}>
             <text fg={theme.error} attributes={TextAttributes.BOLD}>
-              Could not load orgs
+              {t("dialog.consoleOrg.loadError")}
             </text>
             <text fg={theme.textMuted}>{errorMessage(loadError())}</text>
           </box>

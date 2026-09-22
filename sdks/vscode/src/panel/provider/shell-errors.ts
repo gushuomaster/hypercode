@@ -1,11 +1,13 @@
+import { t } from "../../i18n"
+
 export function friendlyShellSubmitError(message: string) {
   const normalized = message.replace(/\s+/g, " ").trim()
   if (/(^|\b)session\b.*\bis busy\b/i.test(normalized) || /\bis busy\b/i.test(normalized)) {
-    return "Session is currently running. Wait for it to finish, then retry the shell command."
+    return t("panel.shellSessionBusy")
   }
 
   if (/workspace server is not ready/i.test(normalized)) {
-    return "Workspace server is not ready."
+    return t("panel.workspaceNotReady")
   }
 
   const cleaned = normalized
@@ -14,5 +16,5 @@ export function friendlyShellSubmitError(message: string) {
     .replace(/\s*\((src|\.\.\/).+$/i, "")
     .trim()
 
-  return `Failed to send shell command: ${cleaned || "Unknown error"}`
+  return t("panel.shellSendFailed", { message: cleaned || t("common.unknownError") })
 }

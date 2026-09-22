@@ -15,6 +15,8 @@ import { isConsoleManagedProvider } from "../util/provider-origin"
 import { useConnected } from "./use-connected"
 import { useBindings } from "../keymap"
 import { useClipboard } from "../context/clipboard"
+import { translate, useLanguage } from "../context/language"
+import { getLocale, t, type Locale } from "../i18n"
 
 const PROVIDER_PRIORITY: Record<string, number> = {
   opencode: 0,
@@ -44,7 +46,7 @@ type ProviderOption =
       type: "custom"
     })
 
-export function providerOptions(list: { id: string; name: string }[]): ProviderOption[] {
+export function providerOptions(list: { id: string; name: string }[], locale: Locale = getLocale()): ProviderOption[] {
   return [
     ...pipe(
       list,
@@ -59,20 +61,23 @@ export function providerOptions(list: { id: string; name: string }[]): ProviderO
         value: provider.id,
         providerID: provider.id,
         description: {
-          opencode: "(Recommended)",
-          anthropic: "(API key)",
-          openai: "(ChatGPT Plus/Pro or API key)",
-          "opencode-go": "Low cost subscription for everyone",
+          opencode: t("dialog.provider.recommended", undefined, locale),
+          anthropic: t("dialog.provider.apiKeyBadge", undefined, locale),
+          openai: t("dialog.provider.chatgptBadge", undefined, locale),
+          "opencode-go": t("dialog.provider.lowCost", undefined, locale),
         }[provider.id],
-        category: provider.id in PROVIDER_PRIORITY ? "Popular" : "Providers",
+        category:
+          provider.id in PROVIDER_PRIORITY
+            ? t("dialog.provider.category.popular", undefined, locale)
+            : t("dialog.provider.category.providers", undefined, locale),
       })),
     ),
     {
       type: "custom",
-      title: "Other",
+      title: t("dialog.provider.other", undefined, locale),
       value: CUSTOM_PROVIDER_OPTION_VALUE,
-      description: "Custom provider",
-      category: "Providers",
+      description: t("dialog.provider.custom", undefined, locale),
+      category: t("dialog.provider.category.providers", undefined, locale),
     },
   ]
 }
@@ -90,13 +95,14 @@ export function createDialogProviderOptions() {
   const toast = useToast()
   const { theme } = useTheme()
   const onboarded = useConnected()
+  const language = useLanguage()
 
   async function promptCustomProviderID(): Promise<string | undefined> {
-    const value = await DialogPrompt.show(dialog, "Other", {
-      placeholder: "Provider id",
+    const value = await DialogPrompt.show(dialog, translate("dialog.provider.other"), {
+      placeholder: translate("dialog.provider.id"),
       description: () => (
         <text fg={theme.textMuted}>
-          This only stores a credential. Configure the provider in opencode.json to use it.
+          {translate("dialog.provider.customDescription")}
         </text>
       ),
     })
@@ -107,15 +113,14 @@ export function createDialogProviderOptions() {
 
     toast.show({
       variant: "error",
-      message:
-        "Provider ids must start with a lowercase letter or number and only use lowercase letters, numbers, hyphens, and underscores",
+      message: translate("dialog.provider.invalidID"),
     })
     return promptCustomProviderID()
   }
 
   const options = createMemo(() => {
     return pipe(
-      providerOptions(sync.data.provider_next.all),
+      providerOptions(sync.data.provider_next.all, language.locale()),
       map((provider) => {
         if (provider.type === "custom") {
           return {
@@ -126,7 +131,9 @@ export function createDialogProviderOptions() {
             async onSelect() {
               const providerID = await promptCustomProviderID()
               if (!providerID) return
-              return dialog.replace(() => <ApiMethod providerID={providerID} title="API key" custom />)
+              return dialog.replace(() => (
+                <ApiMethod providerID={providerID} title={translate("dialog.provider.apiKey")} custom />
+              ))
             },
           }
         }
@@ -157,7 +164,7 @@ export function createDialogProviderOptions() {
                 dialog.replace(
                   () => (
                     <DialogSelect
-                      title="Select auth method"
+                      title={translate("dialog.provider.authMethod")}
                       options={methods.map((x, index) => ({
                         title: x.label,
                         value: index,
@@ -227,7 +234,7 @@ export function createDialogProviderOptions() {
 
 export function DialogProvider() {
   const options = createDialogProviderOptions()
-  return <DialogSelect title="Connect a provider" options={options()} />
+  return <DialogSelect title={translate("dialog.provider.connect")} options={options()} />
 }
 
 interface AutoMethodProps {
@@ -248,14 +255,14 @@ function AutoMethod(props: AutoMethodProps) {
     bindings: [
       {
         key: "c",
-        desc: "Copy provider code",
-        group: "Dialog",
+        desc: translate("dialog.provider.copyCode"),
+        group: translate("dialog.category"),
         cmd: () => {
           const code =
             props.authorization.instructions.match(/[A-Z0-9]{4}-[A-Z0-9]{4,5}/)?.[0] ?? props.authorization.url
           clipboard
             .write?.(code)
-            .then(() => toast.show({ message: "Copied to clipboard", variant: "info" }))
+            .then(() => toast.show({ message: translate("dialog.provider.copied"), variant: "info" }))
             .catch(toast.error)
         },
       },
@@ -272,7 +279,7 @@ function AutoMethod(props: AutoMethodProps) {
         variant: "error",
         message:
           "name" in result.error && result.error.name === "ProviderAuthOauthCallbackFailed"
-            ? "OAuth authorization failed. Try /connect again."
+            ? translate("dialog.provider.oauthFailed")
             : JSON.stringify(result.error),
       })
       dialog.clear()
@@ -297,9 +304,9 @@ function AutoMethod(props: AutoMethodProps) {
         <Link href={props.authorization.url} fg={theme.primary} />
         <text fg={theme.textMuted}>{props.authorization.instructions}</text>
       </box>
-      <text fg={theme.textMuted}>Waiting for authorization…</text>
+      <text fg={theme.textMuted}>{translate("dialog.provider.waiting")}</text>
       <text fg={theme.text}>
-        c <span style={{ fg: theme.textMuted }}>copy</span>
+        c <span style={{ fg: theme.textMuted }}>{translate("dialog.provider.copy")}</span>
       </text>
     </box>
   )
@@ -321,7 +328,7 @@ function CodeMethod(props: CodeMethodProps) {
   return (
     <DialogPrompt
       title={props.title}
-      placeholder="Authorization code"
+      placeholder={translate("dialog.provider.authorizationCode")}
       onConfirm={async (value) => {
         const { error } = await sdk.client.provider.oauth.callback({
           providerID: props.providerID,
@@ -341,7 +348,7 @@ function CodeMethod(props: CodeMethodProps) {
           <text fg={theme.textMuted}>{props.authorization.instructions}</text>
           <Link href={props.authorization.url} fg={theme.primary} />
           <Show when={error()}>
-            <text fg={theme.error}>Invalid code</text>
+            <text fg={theme.error}>{translate("dialog.provider.invalidCode")}</text>
           </Show>
         </box>
       )}
@@ -365,28 +372,26 @@ function ApiMethod(props: ApiMethodProps) {
   return (
     <DialogPrompt
       title={props.title}
-      placeholder="API key"
+      placeholder={translate("dialog.provider.apiKey")}
       description={() =>
         ({
           opencode: (
             <box gap={1}>
               <text fg={theme.textMuted}>
-                HyperCode Zen gives you access to all the best coding models at the cheapest prices with a single API
-                key.
+                {translate("dialog.provider.zenDescription")}
               </text>
               <text fg={theme.text}>
-                Go to <span style={{ fg: theme.primary }}>https://opencode.ai/zen</span> to get a key
+                {translate("dialog.provider.zenKey")}
               </text>
             </box>
           ),
           "opencode-go": (
             <box gap={1}>
               <text fg={theme.textMuted}>
-                HyperCode Go is a $10 per month subscription that provides reliable access to popular open coding models
-                with generous usage limits.
+                {translate("dialog.provider.goDescription")}
               </text>
               <text fg={theme.text}>
-                Go to <span style={{ fg: theme.primary }}>https://opencode.ai/go</span> and enable HyperCode Go
+                {translate("dialog.provider.goEnable")}
               </text>
             </box>
           ),
@@ -407,7 +412,7 @@ function ApiMethod(props: ApiMethodProps) {
         if (props.custom && !sync.data.provider_next.all.some((provider) => provider.id === props.providerID)) {
           toast.show({
             variant: "info",
-            message: `Saved credential for ${props.providerID}. Configure it in opencode.json to use it.`,
+            message: translate("dialog.provider.savedCredential", { provider: props.providerID }),
           })
           dialog.clear()
           return

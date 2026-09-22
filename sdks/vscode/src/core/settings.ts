@@ -1,4 +1,5 @@
 import * as vscode from "vscode"
+import { t } from "../i18n"
 
 export type DiffMode = "unified" | "split"
 export type PanelTheme = "classic" | "codex" | "claude"
@@ -97,7 +98,7 @@ export function openSettingsQuery() {
 }
 
 export function proxyRestartMessage() {
-  return "Proxy settings changed. Reload VS Code so HyperCode runtime picks them up."
+  return t("settings.proxyRestart")
 }
 
 function hasInheritedProxy() {

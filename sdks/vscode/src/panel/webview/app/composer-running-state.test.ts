@@ -1,9 +1,12 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 
 import { composerRunningState } from "./composer-running-state"
+import { setLocale } from "../../../i18n"
 
 describe("composerRunningState", () => {
+  beforeEach(() => setLocale("zh"))
+
   test("maps a busy session to the default thinking interrupt state", () => {
     assert.deepEqual(composerRunningState({ type: "busy" }, false), {
       label: "思考中",

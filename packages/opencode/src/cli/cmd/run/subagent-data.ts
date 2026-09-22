@@ -1,4 +1,5 @@
 import type { Event, Message, Part, PermissionRequest, QuestionRequest, ToolPart } from "@opencode-ai/sdk/v2"
+import { t } from "@opencode-ai/tui/i18n"
 import * as Locale from "@/util/locale"
 import {
   bootstrapSessionData,
@@ -446,7 +447,7 @@ function ensureBlockerTab(
 
     const next = {
       ...current,
-      description: kind === "permission" ? "Pending permission" : "Pending question",
+      description: kind === "permission" ? t("run.subagent.pendingPermission") : t("run.subagent.pendingQuestion"),
       status: "running" as const,
       title: current.title ?? title,
       lastUpdatedAt: Date.now(),
@@ -464,7 +465,7 @@ function ensureBlockerTab(
     partID: `bootstrap:${sessionID}`,
     callID: `bootstrap:${sessionID}`,
     label: text(title) ?? Locale.titlecase(kind),
-    description: kind === "permission" ? "Pending permission" : "Pending question",
+    description: kind === "permission" ? t("run.subagent.pendingPermission") : t("run.subagent.pendingQuestion"),
     status: "running",
     lastUpdatedAt: Date.now(),
   })

@@ -4,6 +4,7 @@ import type { WorkspaceRuntime } from "./server"
 import { shouldTrackSession, syncTrackedSession } from "./session-list"
 import type { SessionEvent, SessionInfo, SessionStatus } from "./sdk"
 import { WorkspaceManager } from "./workspace"
+import { t } from "../i18n"
 
 type RefreshRuntime = {
   workspaceId: string
@@ -116,7 +117,7 @@ export class SessionStore implements vscode.Disposable {
     } catch (err) {
       const msg = text(err)
       this.log(rt.name, `session create failed: ${msg}`)
-      await vscode.window.showErrorMessage(`HyperCode session create failed for ${rt.name}: ${msg}`)
+      await vscode.window.showErrorMessage(t("session.createFailed", { runtime: rt.name, message: msg }))
       throw err
     }
   }
@@ -143,7 +144,7 @@ export class SessionStore implements vscode.Disposable {
     } catch (err) {
       const msg = text(err)
       this.log(rt.name, `session delete failed: ${msg}`)
-      await vscode.window.showErrorMessage(`HyperCode session delete failed for ${rt.name}: ${msg}`)
+      await vscode.window.showErrorMessage(t("session.deleteFailed", { runtime: rt.name, message: msg }))
       throw err
     }
   }
@@ -266,7 +267,7 @@ export class SessionStore implements vscode.Disposable {
       rt.sessionsErr = text(err)
       this.log(rt.name, `session list failed: ${rt.sessionsErr}`)
       if (entry.loud) {
-        await vscode.window.showErrorMessage(`HyperCode session list failed for ${rt.name}: ${rt.sessionsErr}`)
+        await vscode.window.showErrorMessage(t("session.listFailed", { runtime: rt.name, message: rt.sessionsErr }))
       }
       return []
     } finally {

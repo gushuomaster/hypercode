@@ -1,4 +1,5 @@
 import React from "react"
+import { t } from "../../../i18n"
 
 import type { Todo } from "../../../core/sdk"
 
@@ -58,17 +59,17 @@ export function CodexTodoPopover({ todos, collapsed = false, onToggle }: CodexTo
   }
 
   return (
-    <section className={`oc-codexTodoPopover${collapsed ? " is-collapsed" : ""}`} aria-label="Tracked tasks">
+    <section className={`oc-codexTodoPopover${collapsed ? " is-collapsed" : ""}`} aria-label={t("todo.tracked")}>
       <div className="oc-codexTodoHeader">
         <div className="oc-codexTodoHeaderText">
-          <span className="oc-codexTodoEyebrow">ACTIVE TASKS</span>
-          <span className="oc-codexTodoSummary">共 {todos.length} 个任务，已经完成 {completed} 个</span>
+          <span className="oc-codexTodoEyebrow">{t("todo.active")}</span>
+          <span className="oc-codexTodoSummary">{t("todo.summary", { total: todos.length, completed })}</span>
           {collapsed && active?.content ? <span className="oc-codexTodoPreview">{active.content}</span> : null}
         </div>
         <button
           type="button"
           className={`oc-codexTodoToggle${collapsed ? " is-collapsed" : ""}`}
-          aria-label={collapsed ? "Expand task list" : "Collapse task list"}
+          aria-label={collapsed ? t("todo.expand") : t("todo.collapse")}
           aria-expanded={collapsed ? "false" : "true"}
           onClick={onToggle}
         >

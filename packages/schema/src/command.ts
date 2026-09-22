@@ -9,6 +9,10 @@ export const Info = Schema.Struct({
   name: Schema.String,
   template: Schema.String,
   description: Schema.String.pipe(optional),
+  description_i18n: Schema.Struct({
+    zh: Schema.String.pipe(optional),
+    en: Schema.String.pipe(optional),
+  }).pipe(optional),
   agent: Schema.String.pipe(optional),
   model: Model.Ref.pipe(optional),
   subtask: Schema.Boolean.pipe(optional),

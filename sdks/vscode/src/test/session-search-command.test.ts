@@ -1,8 +1,11 @@
 import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { beforeEach, describe, test } from "node:test"
 
 import type { SessionInfo } from "../core/sdk"
 import { buildWorkspaceSearchInputOptions, runWorkspaceSessionSearch } from "../core/commands"
+import { setLocale } from "../i18n"
+
+beforeEach(() => setLocale("en"))
 
 function session(id: string, title: string): SessionInfo {
   return {
@@ -114,7 +117,7 @@ describe("workspace session search command", () => {
       showErrorMessage: async () => undefined,
     })
 
-    assert.equal(info.includes("not supported"), true)
+    assert.equal(info, "HyperCode service (Workspace) does not support session search.")
   })
 
   test("stores matching results and marks search supported after success", async () => {
@@ -211,7 +214,7 @@ describe("workspace session search command", () => {
 
     assert.deepEqual(calls, ["loading", "clear"])
     assert.equal(cachedState, "unsupported")
-    assert.equal(info.includes("not supported"), true)
+    assert.equal(info, "HyperCode service (Workspace) does not support session search.")
   })
 
   test("shows an error state for ambiguous search failures", async () => {

@@ -4,6 +4,7 @@ import { useKeyboard } from "@opentui/solid"
 import { registerOpencodeSpinner } from "@opencode-ai/tui/component/register-spinner"
 import { Show, createMemo, indexArray } from "solid-js"
 import { SPINNER_FRAMES } from "@opencode-ai/tui/component/spinner"
+import { t } from "@opencode-ai/tui/i18n"
 import { RunEntryContent, separatorRows } from "./scrollback.writer"
 import type { FooterSubagentDetail, FooterSubagentTab, RunDiffStyle } from "./types"
 import type { RunFooterTheme, RunTheme } from "./theme"
@@ -143,7 +144,7 @@ export function RunFooterSubagentBody(props: {
               </text>
               <Show when={props.total() > 1 && props.index() > 0}>
                 <text fg={footer().muted} wrapMode="none" truncate flexShrink={0}>
-                  {props.index()} of {props.total()}
+                  {t("session.subagent.position", { index: props.index(), total: props.total() })}
                 </text>
               </Show>
             </box>
@@ -164,7 +165,7 @@ export function RunFooterSubagentBody(props: {
               rows()
             ) : (
               <text fg={footer().muted} wrapMode="word">
-                No subagent activity yet
+                {t("run.subagent.empty")}
               </text>
             )}
           </box>
