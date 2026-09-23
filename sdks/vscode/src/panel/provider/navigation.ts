@@ -2,6 +2,7 @@ import type { SessionSnapshot } from "../../bridge/types"
 import type { PermissionRequest, QuestionRequest } from "../../core/sdk"
 import { displaySessionTitle } from "../../core/session-titles"
 import { cmp } from "./utils"
+import { deriveProductSessionNavigation, resolveProductSessionNavigation } from "@opencode-ai/product"
 
 type SessionInfo = NonNullable<SessionSnapshot["session"]>
 
@@ -41,29 +42,27 @@ export function subtreeSessionIds(rootID: string, sessions: SessionInfo[]) {
 }
 
 export function nav(session: SessionInfo, sessions: SessionInfo[]) {
-  const rootID = session.parentID || session.id
-  const children = sessions
-    .filter((item) => isVisibleChildSession(item, rootID))
-    .sort((a, b) => cmp(a.id, b.id))
-  const firstChild = children[0]
-
-  if (!session.parentID) {
-    return {
-      firstChild: firstChild ? ref(firstChild) : undefined,
-    }
+  const projection = deriveProductSessionNavigation({
+    currentSessionID: session.id,
+    nodes: sessions.map((item, order) => ({
+      id: item.id,
+      parentID: item.parentID,
+      title: item.title,
+      archivedAt: item.time.archived,
+      order: order,
+    })),
+  })
+  const target = (action: Parameters<typeof resolveProductSessionNavigation>[1]) => {
+    const result = resolveProductSessionNavigation(projection, action)
+    if (!result.available) return undefined
+    const item = sessions.find((candidate) => candidate.id === result.sessionID)
+    return item ? ref(item) : undefined
   }
-
-  const parent = sessions.find((item) => item.id === session.parentID)
-  const siblings = children
-  const index = siblings.findIndex((item) => item.id === session.id)
-  const prev = index >= 0 && siblings.length > 1 ? siblings[(index - 1 + siblings.length) % siblings.length] : undefined
-  const next = index >= 0 && siblings.length > 1 ? siblings[(index + 1) % siblings.length] : undefined
-
   return {
-    firstChild: firstChild ? ref(firstChild) : undefined,
-    parent: parent ? ref(parent) : undefined,
-    prev: prev && prev.id !== session.id ? ref(prev) : undefined,
-    next: next && next.id !== session.id ? ref(next) : undefined,
+    firstChild: target({ type: "subagent.open", sessionID: session.id }),
+    parent: target({ type: "subagent.back", sessionID: session.id }),
+    prev: target({ type: "subagent.sibling", sessionID: session.id, direction: "previous" }),
+    next: target({ type: "subagent.sibling", sessionID: session.id, direction: "next" }),
   }
 }
 

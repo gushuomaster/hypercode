@@ -511,7 +511,7 @@ Report audit classifications, commits and hashes, Part A baseline, Phase 2C/2D d
 
 - Part A baseline: `3b4ea32677c6b73ea32b7183ecd499441ab4a976`
 - Phase 2C: `335b34ff6` (`feat(product): unify session mutation behavior`)
-- Phase 2D: `66f152525` (`feat(product): unify subagent navigation behavior`)
+- Phase 2D: `66f152525` (`feat(product): unify subagent navigation behavior`) plus `nav` projection follow-up in `navigation.ts`.
 - Product final focused suite: 41 pass; typecheck pass.
 - TUI final related suite: 26 pass; typecheck pass.
 - VSCode final related suite: 60 pass; `check-types` pass; VSIX package pass.
