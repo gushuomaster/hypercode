@@ -9,6 +9,12 @@ export type ProductAction =
   | { type: "session.redo" }
   | { type: "session.select"; sessionID: string }
   | { type: "session.switch"; sessionID: string }
+  | { type: "session.rename"; sessionID: string; title: string }
+  | { type: "session.archive"; sessionID: string }
+  | { type: "session.share"; sessionID: string }
+  | { type: "session.unshare"; sessionID: string }
+  | { type: "session.tag.add"; sessionID: string; tag: string }
+  | { type: "session.tag.remove"; sessionID: string; tag: string }
   | { type: "model.select"; model: ProductModelRef }
   | { type: "agent.select"; agent: string }
   | { type: "variant.select"; model: ProductModelRef; variant?: string }
@@ -17,6 +23,10 @@ export type ProductAction =
   | { type: "question.reject"; requestID: string }
 
 export type ProductSelectionAction = Extract<ProductAction, { type: "model.select" | "agent.select" | "variant.select" }>
+
+export type ProductSessionMutationAction = Extract<ProductAction, {
+  type: "session.rename" | "session.archive" | "session.share" | "session.unshare" | "session.tag.add" | "session.tag.remove"
+}>
 
 export type ProductActionEffect = {
   clearComposer: boolean

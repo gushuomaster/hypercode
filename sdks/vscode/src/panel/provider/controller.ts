@@ -11,6 +11,7 @@ import { needsRefresh, reduce } from "./reducer"
 import { buildSessionSnapshot, DEFAULT_SESSION_MESSAGE_LIMIT, patch } from "./snapshot"
 import { boot, panelIconPath, panelTitle } from "./utils"
 import { sessionPanelHtml } from "../html"
+import { registerSessionMutationEventSink, unregisterSessionMutationEventSink } from "../../core/commands"
 
 export class SessionPanelController implements vscode.Disposable {
   ref: SessionPanelRef
@@ -52,6 +53,7 @@ export class SessionPanelController implements vscode.Disposable {
     panel.webview.html = sessionPanelHtml(panel.webview, this.extensionUri, ref)
     panel.title = panelTitle(ref.sessionId)
     panel.iconPath = panelIconPath(this.extensionUri)
+    registerSessionMutationEventSink(ref, (event) => this.postSessionMutation(event))
 
     this.panel.webview.onDidReceiveMessage(
       (message: WebviewMessage) => {
@@ -285,9 +287,16 @@ export class SessionPanelController implements vscode.Disposable {
     }
 
     this.state.disposed = true
+    unregisterSessionMutationEventSink(this.ref)
     this.state.run += 1
     this.onDispose(this.key)
     vscode.Disposable.from(...this.bag).dispose()
+  }
+
+  private async postSessionMutation(event: import("../../product/session-mutation").VsCodeSessionMutationEvent) {
+    if (!this.state.disposed && this.ready) {
+      await postToWebview(this.panel.webview, { type: "sessionMutation", event })
+    }
   }
 
   async retarget(ref: SessionPanelRef, key: string) {

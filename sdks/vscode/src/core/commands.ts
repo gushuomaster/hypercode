@@ -17,6 +17,8 @@ import { SidebarProvider } from "../sidebar/provider"
 import { buildSessionPickerPayload } from "../panel/provider/actions"
 import { openLicenseFile } from "../license"
 import { t } from "../i18n"
+import { createProductSessionMutationState, hydrateProductMutableSessions, type ProductSessionMutationAction, type ProductSessionMutationState } from "@opencode-ai/product"
+import { runVsCodeSessionMutation, toVsCodeMutableSession, toVsCodeSessionMutationTarget, type VsCodeSessionMutationEvent, type VsCodeSessionMutationTarget } from "../product/session-mutation"
 
 type SessionActionRuntime = Pick<WorkspaceRuntime, "workspaceId" | "dir" | "name" | "state"> & {
   sdk?: {
@@ -51,6 +53,23 @@ type SessionActionInput = {
   sessions: Pick<SessionStore, "refresh">
   showInformationMessage: (message: string) => Thenable<unknown>
   showErrorMessage: (message: string) => Thenable<unknown>
+  mutationState?: ProductSessionMutationState
+  onMutationState?: (state: ProductSessionMutationState) => void
+  onMutationEvent?: (event: VsCodeSessionMutationEvent) => void | Promise<void>
+}
+
+const sessionMutationSinks = new Map<string, (event: VsCodeSessionMutationEvent) => void | Promise<void>>()
+
+export function registerSessionMutationEventSink(ref: WorkspaceRef & { sessionId: string }, sink: (event: VsCodeSessionMutationEvent) => void | Promise<void>) {
+  sessionMutationSinks.set(`${ref.workspaceId}::${ref.sessionId}`, sink)
+}
+
+export function unregisterSessionMutationEventSink(ref: WorkspaceRef & { sessionId: string }) {
+  sessionMutationSinks.delete(`${ref.workspaceId}::${ref.sessionId}`)
+}
+
+function sessionMutationEventSink(ref: WorkspaceRef & { sessionId: string }) {
+  return sessionMutationSinks.get(`${ref.workspaceId}::${ref.sessionId}`)
 }
 
 export function commands(
@@ -64,6 +83,10 @@ export function commands(
   tags: SessionTagStore,
   tree: SidebarProvider,
 ) {
+  let productSessionMutationState = createProductSessionMutationState()
+  const onMutationState = (state: ProductSessionMutationState) => {
+    productSessionMutationState = state
+  }
   ctx.subscriptions.push(
     vscode.commands.registerCommand("hypercode.refresh", async () => {
       const folders = vscode.workspace.workspaceFolders ?? []
@@ -261,6 +284,8 @@ export function commands(
         showInputBox: (options) => vscode.window.showInputBox(options),
         showInformationMessage: (message) => vscode.window.showInformationMessage(message),
         showErrorMessage: (message) => vscode.window.showErrorMessage(message),
+        mutationState: productSessionMutationState,
+        onMutationState,
       })
     }),
     vscode.commands.registerCommand("hypercode.archiveSession", async (item?: SessionItem) => {
@@ -276,6 +301,8 @@ export function commands(
         showWarningMessage: (message, options, ...items) => vscode.window.showWarningMessage(message, options, ...items),
         showInformationMessage: (message) => vscode.window.showInformationMessage(message),
         showErrorMessage: (message) => vscode.window.showErrorMessage(message),
+        mutationState: productSessionMutationState,
+        onMutationState,
       })
     }),
     vscode.commands.registerCommand("hypercode.shareSession", async (item?: SessionItem) => {
@@ -290,6 +317,8 @@ export function commands(
         copyText: (value) => vscode.env.clipboard.writeText(value),
         showInformationMessage: (message) => vscode.window.showInformationMessage(message),
         showErrorMessage: (message) => vscode.window.showErrorMessage(message),
+        mutationState: productSessionMutationState,
+        onMutationState,
       })
     }),
     vscode.commands.registerCommand("hypercode.unshareSession", async (item?: SessionItem) => {
@@ -303,6 +332,8 @@ export function commands(
         sessions,
         showInformationMessage: (message) => vscode.window.showInformationMessage(message),
         showErrorMessage: (message) => vscode.window.showErrorMessage(message),
+        mutationState: productSessionMutationState,
+        onMutationState,
       })
     }),
     vscode.commands.registerCommand("hypercode.getSessionPickerPayload", async (current?: WorkspaceRef & { sessionId: string }, relatedSessionIds?: string[]) => {
@@ -345,6 +376,7 @@ export function commands(
       current?: WorkspaceRef & { sessionId: string },
       sessionID?: string,
       action?: "rename" | "share" | "unshare" | "archive" | "tags",
+      onMutationEvent?: (event: VsCodeSessionMutationEvent) => void | Promise<void>,
     ) => {
       if (!current || !sessionID || !action) {
         return
@@ -375,6 +407,9 @@ export function commands(
           showInputBox: (options) => vscode.window.showInputBox(options),
           showInformationMessage: (message) => vscode.window.showInformationMessage(message),
           showErrorMessage: (message) => vscode.window.showErrorMessage(message),
+          mutationState: productSessionMutationState,
+          onMutationState,
+          onMutationEvent: sessionMutationEventSink(current),
         })
         return
       }
@@ -386,6 +421,9 @@ export function commands(
           copyText: (value) => vscode.env.clipboard.writeText(value),
           showInformationMessage: (message) => vscode.window.showInformationMessage(message),
           showErrorMessage: (message) => vscode.window.showErrorMessage(message),
+          mutationState: productSessionMutationState,
+          onMutationState,
+          onMutationEvent: sessionMutationEventSink(current),
         })
         return
       }
@@ -396,6 +434,9 @@ export function commands(
           sessions,
           showInformationMessage: (message) => vscode.window.showInformationMessage(message),
           showErrorMessage: (message) => vscode.window.showErrorMessage(message),
+          mutationState: productSessionMutationState,
+          onMutationState,
+          onMutationEvent: sessionMutationEventSink(current),
         })
         return
       }
@@ -408,6 +449,9 @@ export function commands(
           showWarningMessage: (message, options, ...items) => vscode.window.showWarningMessage(message, options, ...items),
           showInformationMessage: (message) => vscode.window.showInformationMessage(message),
           showErrorMessage: (message) => vscode.window.showErrorMessage(message),
+          mutationState: productSessionMutationState,
+          onMutationState,
+          onMutationEvent: sessionMutationEventSink(current),
         })
         return
       }
@@ -416,6 +460,9 @@ export function commands(
         target,
         tags,
         showInputBox: (options) => vscode.window.showInputBox(options),
+        mutationState: productSessionMutationState,
+        onMutationState,
+        onMutationEvent: sessionMutationEventSink(current),
       })
     }),
     vscode.commands.registerCommand("hypercode.quickNewSession", async () => {
@@ -756,22 +803,23 @@ export async function renameSession(input: SessionActionInput & {
     return
   }
 
-  try {
-    await input.target.runtime.sdk!.session.update!({
-      sessionID: input.target.session.id,
-      directory: input.target.runtime.dir,
-      title: next,
-    })
-    await input.sessions.refresh(input.target.runtime.workspaceId, true)
-  } catch (error) {
-    await input.showErrorMessage(t("command.renameFailed", { runtime: input.target.runtime.name, message: errorMessage(error) }))
+  const target = sessionMutationTarget(input, { type: "session.rename", sessionID: input.target.session.id, title: next })
+  if (!target || target.kind === "unavailable") return
+  const result = await runSessionMutation(input, target)
+  if (!result.ok) {
+    await input.showErrorMessage(t("command.renameFailed", { runtime: input.target.runtime.name, message: result.failure.error.raw ?? result.failure.error.message }))
+    return
   }
+  await input.sessions.refresh(input.target.runtime.workspaceId, true)
 }
 
 export async function manageSessionTags(input: {
   target: SessionActionTarget
   tags: Pick<SessionTagStore, "tags" | "setTags">
   showInputBox: (options: vscode.InputBoxOptions) => Thenable<string | undefined>
+  mutationState?: ProductSessionMutationState
+  onMutationState?: (state: ProductSessionMutationState) => void
+  onMutationEvent?: (event: VsCodeSessionMutationEvent) => void | Promise<void>
 }) {
   const current = input.tags.tags(input.target.runtime.workspaceId, input.target.session.id)
   const value = await input.showInputBox({
@@ -785,7 +833,23 @@ export async function manageSessionTags(input: {
     return
   }
 
-  await input.tags.setTags(input.target.runtime.workspaceId, input.target.session.id, parseSessionTagsInput(value))
+  const desired = parseSessionTagsInput(value)
+  const actions = [
+    ...current.filter((tag) => !desired.includes(tag)).map((tag) => ({ type: "session.tag.remove" as const, sessionID: input.target.session.id, tag })),
+    ...desired.filter((tag) => !current.includes(tag)).map((tag) => ({ type: "session.tag.add" as const, sessionID: input.target.session.id, tag })),
+  ]
+  const initial = hydrateProductMutableSessions(input.mutationState ?? createProductSessionMutationState(), [
+    toVsCodeMutableSession(input.target.session, current, sessionMutationCapabilities(input.target)),
+  ])
+  await actions.reduce(async (previous, action) => {
+    const state = await previous
+    const target = toVsCodeSessionMutationTarget(state, action, input.target.runtime.dir, input.target.runtime.workspaceId)
+    if (target.kind === "unavailable") return state
+    input.onMutationState?.(target.state)
+    const result = await runVsCodeSessionMutation(target, sessionMutationHost(input.target, input.tags), input.onMutationEvent ?? (() => {}))
+    input.onMutationState?.(result.state)
+    return result.state
+  }, Promise.resolve(initial))
 }
 
 export async function archiveSession(input: SessionActionInput & {
@@ -813,20 +877,16 @@ export async function archiveSession(input: SessionActionInput & {
     return
   }
 
-  try {
-    await input.target.runtime.sdk!.session.update!({
-      sessionID: input.target.session.id,
-      directory: input.target.runtime.dir,
-      time: {
-        archived: (input.now ?? Date.now)(),
-      },
-    })
-    await input.sessions.refresh(input.target.runtime.workspaceId, true)
-    await input.closeSession?.()
-    await input.showInformationMessage(t("command.archiveSuccess", { title: label }))
-  } catch (error) {
-    await input.showErrorMessage(t("command.archiveFailed", { runtime: input.target.runtime.name, message: errorMessage(error) }))
+  const target = sessionMutationTarget(input, { type: "session.archive", sessionID: input.target.session.id })
+  if (!target || target.kind === "unavailable") return
+  const result = await runSessionMutation(input, target, input.now)
+  if (!result.ok) {
+    await input.showErrorMessage(t("command.archiveFailed", { runtime: input.target.runtime.name, message: result.failure.error.raw ?? result.failure.error.message }))
+    return
   }
+  await input.sessions.refresh(input.target.runtime.workspaceId, true)
+  await input.closeSession?.()
+  await input.showInformationMessage(t("command.archiveSuccess", { title: label }))
 }
 
 export async function shareSession(input: SessionActionInput & {
@@ -836,23 +896,27 @@ export async function shareSession(input: SessionActionInput & {
     return
   }
 
-  try {
-    const result = await input.target.runtime.sdk!.session.share!({
-      sessionID: input.target.session.id,
-      directory: input.target.runtime.dir,
-    })
-    const url = result.data?.share?.url
-    if (!url) {
-      await input.showErrorMessage(t("command.shareMissing", { runtime: input.target.runtime.name }))
-      return
-    }
-
-    await input.copyText(url)
-    await input.sessions.refresh(input.target.runtime.workspaceId, true)
-    await input.showInformationMessage(t("command.shareCopied"))
-  } catch (error) {
-    await input.showErrorMessage(t("command.shareFailed", { runtime: input.target.runtime.name, message: errorMessage(error) }))
+  const target = sessionMutationTarget(input, { type: "session.share", sessionID: input.target.session.id })
+  if (!target || target.kind === "unavailable") return
+  input.onMutationState?.(target.state)
+  const result = await runVsCodeSessionMutation(target, {
+    ...sessionMutationHost(input.target),
+    share: async (request) => {
+      const response = await input.target.runtime.sdk!.session.share!(request)
+      const url = response.data?.share?.url
+      if (!url) throw new Error(t("command.shareMissing", { runtime: input.target.runtime.name }))
+      return url
+    },
+  }, input.onMutationEvent ?? (() => {}))
+  input.onMutationState?.(result.state)
+  if (!result.ok) {
+    await input.showErrorMessage(t("command.shareFailed", { runtime: input.target.runtime.name, message: result.failure.error.raw ?? result.failure.error.message }))
+    return
   }
+  if (result.result.type !== "session.share") return
+  await input.copyText(result.result.shareURL)
+  await input.sessions.refresh(input.target.runtime.workspaceId, true)
+  await input.showInformationMessage(t("command.shareCopied"))
 }
 
 export async function unshareSession(input: SessionActionInput) {
@@ -860,16 +924,87 @@ export async function unshareSession(input: SessionActionInput) {
     return
   }
 
-  try {
-    await input.target.runtime.sdk!.session.unshare!({
-      sessionID: input.target.session.id,
-      directory: input.target.runtime.dir,
-    })
-    await input.sessions.refresh(input.target.runtime.workspaceId, true)
-    await input.showInformationMessage(t("command.unshareSuccess"))
-  } catch (error) {
-    await input.showErrorMessage(t("command.unshareFailed", { runtime: input.target.runtime.name, message: errorMessage(error) }))
+  const target = sessionMutationTarget(input, { type: "session.unshare", sessionID: input.target.session.id })
+  if (!target || target.kind === "unavailable") return
+  const result = await runSessionMutation(input, target)
+  if (!result.ok) {
+    await input.showErrorMessage(t("command.unshareFailed", { runtime: input.target.runtime.name, message: result.failure.error.raw ?? result.failure.error.message }))
+    return
   }
+  await input.sessions.refresh(input.target.runtime.workspaceId, true)
+  await input.showInformationMessage(t("command.unshareSuccess"))
+}
+
+function sessionMutationTarget(input: SessionActionInput, action: ProductSessionMutationAction) {
+  const state = hydrateProductMutableSessions(input.mutationState ?? createProductSessionMutationState(), [
+    toVsCodeMutableSession(input.target.session, [], sessionMutationCapabilities(input.target)),
+  ])
+  const target = toVsCodeSessionMutationTarget(state, action, input.target.runtime.dir, input.target.runtime.workspaceId)
+  if (target.kind === "unavailable") {
+    void input.showErrorMessage(sessionMutationUnavailableMessage(target.reason))
+  }
+  return target
+}
+
+async function runSessionMutation(
+  input: SessionActionInput,
+  target: Exclude<VsCodeSessionMutationTarget, { kind: "unavailable" }>,
+  now?: () => number,
+) {
+  input.onMutationState?.(target.state)
+  const result = await runVsCodeSessionMutation(
+    target,
+    sessionMutationHost(input.target, undefined, now),
+    input.onMutationEvent ?? (() => {}),
+  )
+  input.onMutationState?.(result.state)
+  return result
+}
+
+function sessionMutationCapabilities(target: SessionActionTarget) {
+  return {
+    rename: typeof target.runtime.sdk?.session.update === "function",
+    archive: typeof target.runtime.sdk?.session.update === "function",
+    share: typeof target.runtime.sdk?.session.share === "function",
+    unshare: typeof target.runtime.sdk?.session.unshare === "function",
+    tags: true,
+  }
+}
+
+function sessionMutationHost(
+  target: SessionActionTarget,
+  tags?: Pick<SessionTagStore, "setTags">,
+  now: () => number = Date.now,
+) {
+  return {
+    update: async (input: { sessionID: string; directory: string; title: string }) => {
+      await target.runtime.sdk!.session.update!(input)
+    },
+    archive: async (input: { sessionID: string; directory: string }) => {
+      const archivedAt = now()
+      await target.runtime.sdk!.session.update!({ ...input, time: { archived: archivedAt } })
+      return archivedAt
+    },
+    share: async (input: { sessionID: string; directory: string }) => {
+      const result = await target.runtime.sdk!.session.share!(input)
+      return result.data?.share?.url ?? ""
+    },
+    unshare: async (input: { sessionID: string; directory: string }) => {
+      await target.runtime.sdk!.session.unshare!(input)
+    },
+    setTags: async (input: { workspaceID: string; sessionID: string; tags: string[] }) => {
+      await tags?.setTags(input.workspaceID, input.sessionID, input.tags)
+    },
+  }
+}
+
+function sessionMutationUnavailableMessage(reason: Exclude<Extract<VsCodeSessionMutationTarget, { kind: "unavailable" }>["reason"], never>) {
+  if (reason === "not_found") return t("product.error.session.notFound")
+  if (reason === "unsupported") return t("product.error.session.unsupported")
+  if (reason === "already_archived") return t("product.error.session.alreadyArchived")
+  if (reason === "already_shared") return t("product.error.session.alreadyShared")
+  if (reason === "invalid_title") return t("product.error.session.invalidTitle")
+  return t("product.error.session.requestFailed")
 }
 
 function firstRuntime(mgr: WorkspaceManager): WorkspaceRuntime | undefined {

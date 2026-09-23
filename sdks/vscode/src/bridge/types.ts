@@ -1,6 +1,7 @@
 import type { AgentInfo, CommandInfo, FileDiff, FormatterStatus, LspStatus, McpResource, McpStatus, PermissionRequest, PromptFilePartInput, PromptSource, ProviderAuthMethod, ProviderInfo, QuestionRequest, SessionEvent, SessionInfo, SessionMessage, SessionStatus, Todo } from "../core/sdk"
 import type { DisplaySettings, PanelColorScheme, PanelTheme } from "../core/settings"
 import type { ProductSnapshot } from "@opencode-ai/product"
+import type { VsCodeSessionMutationEvent } from "../product/session-mutation"
 
 export const SESSION_PANEL_VIEW_TYPE = "hypercode.session"
 
@@ -160,6 +161,10 @@ export type HostMessage =
   | {
       type: "sessionPicker"
       payload: SessionPickerPayload
+    }
+  | {
+      type: "sessionMutation"
+      event: VsCodeSessionMutationEvent
     }
   | {
       type: "imagePreviewCommand"

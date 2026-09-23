@@ -70,3 +70,19 @@ test("validates session switch targets against the shared session projection", (
     message: { type: "switchSessionInPlace", sessionID: "session-2" },
   })
 })
+
+test("keeps session mutations as shared Product intents", () => {
+  const actions = [
+    { type: "session.rename", sessionID: "session-a", title: "Renamed" },
+    { type: "session.archive", sessionID: "session-a" },
+    { type: "session.share", sessionID: "session-a" },
+    { type: "session.unshare", sessionID: "session-a" },
+    { type: "session.tag.add", sessionID: "session-a", tag: "ops" },
+    { type: "session.tag.remove", sessionID: "session-a", tag: "docs" },
+  ] as const
+
+  assert.deepEqual(actions.map((action) => toVsCodeProductAction(action)), actions.map((action) => ({
+    kind: "mutation",
+    action,
+  })))
+})

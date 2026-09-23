@@ -88,6 +88,7 @@ describe("shareSession", () => {
     let copied: string | undefined
     let message: string | undefined
     let shared: unknown
+    const mutationEvents: unknown[] = []
 
     await shareSession({
       target: {
@@ -118,6 +119,7 @@ describe("shareSession", () => {
       showInformationMessage: async (value) => {
         message = value
       },
+      onMutationEvent: (event) => mutationEvents.push(event),
     })
 
     assert.deepEqual(shared, {
@@ -126,6 +128,36 @@ describe("shareSession", () => {
     })
     assert.equal(copied, "https://share.example/session-share")
     assert.match(message ?? "", /copied/i)
+    assert.deepEqual(mutationEvents.map((event) => (event as { type: string }).type), ["pending", "success"])
+  })
+
+  test("reports Product failure with the original host diagnostic", async () => {
+    const mutationEvents: unknown[] = []
+
+    await shareSession({
+      target: {
+        runtime: readyRuntime({
+          sdk: {
+            session: {
+              share: async () => { throw Object.assign(new Error("Forbidden"), { name: "HTTP_403" }) },
+            },
+          },
+        }) as any,
+        session: session("session-share", "Share me"),
+      },
+      copyText: async () => undefined,
+      sessions: { refresh: async () => undefined } as any,
+      showErrorMessage: async () => undefined,
+      showInformationMessage: async () => undefined,
+      onMutationEvent: (event) => mutationEvents.push(event),
+    })
+
+    assert.deepEqual(mutationEvents.map((event) => (event as { type: string }).type), ["pending", "failure"])
+    assert.deepEqual((mutationEvents[1] as any).failure.error, {
+      code: "HTTP_403",
+      message: "Forbidden",
+      raw: "Forbidden",
+    })
   })
 })
 

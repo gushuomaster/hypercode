@@ -15,6 +15,14 @@ const textKeys = {
   "model.fallback.provider": "product.model.fallback.provider",
   "error.provider.auth_failed": "product.error.provider.authFailed",
   "error.provider.request_failed": "product.error.provider.requestFailed",
+  "error.session.not_found": "product.error.session.notFound",
+  "error.session.unsupported": "product.error.session.unsupported",
+  "error.session.permission_denied": "product.error.session.permissionDenied",
+  "error.session.already_archived": "product.error.session.alreadyArchived",
+  "error.session.already_shared": "product.error.session.alreadyShared",
+  "error.session.invalid_title": "product.error.session.invalidTitle",
+  "error.session.request_failed": "product.error.session.requestFailed",
+  "error.session.unknown": "product.error.session.unknown",
   "error.unknown": "product.error.unknown",
 } as const satisfies Record<ProductTextKey, Keys>
 

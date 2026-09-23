@@ -32,10 +32,11 @@ import { batch, onMount } from "solid-js"
 import path from "path"
 import { useKV } from "./kv"
 import { usePermission } from "./permission"
-import type { ProductSnapshot } from "@opencode-ai/product"
-import { mergeProductSnapshot } from "@opencode-ai/product"
+import type { ProductSessionMutationAction, ProductSessionMutationState, ProductSnapshot } from "@opencode-ai/product"
+import { createProductSessionMutationState, deriveProductSessionMutationAvailability, hydrateProductMutableSessions, mergeProductSnapshot } from "@opencode-ai/product"
 import { reduceTuiProductEvent, toProductEvent, toProductSnapshot } from "../product/session-adapter"
 import { toTuiProductAction } from "../product/action-adapter"
+import { toTuiMutableSession, toTuiSessionMutationTarget } from "../product/session-mutation-adapter"
 
 const emptyConsoleState: ConsoleState = {
   consoleManagedProviders: [],
@@ -92,6 +93,7 @@ export const {
       product: {
         [sessionID: string]: ProductSnapshot
       }
+      session_mutation: ProductSessionMutationState
       config: Config
       session: Session[]
       session_status: {
@@ -135,6 +137,7 @@ export const {
       permission: {},
       question: {},
       product: {},
+      session_mutation: createProductSessionMutationState(),
       command: [],
       provider: [],
       provider_default: {},
@@ -301,6 +304,7 @@ export const {
           const result = search(store.session, event.properties.info.id, (s) => s.id)
           if (result.found) {
             setStore("session", result.index, reconcile(event.properties.info))
+            hydrateSessionMutations([event.properties.info])
             break
           }
           setStore(
@@ -309,6 +313,7 @@ export const {
               draft.splice(result.index, 0, event.properties.info)
             }),
           )
+          hydrateSessionMutations([event.properties.info])
           break
         }
 
@@ -525,7 +530,10 @@ export const {
               setStore("console_state", reconcile(consoleState))
               setStore("agent", reconcile(agents))
               setStore("config", reconcile(config))
-              if (sessions !== undefined) setStore("session", reconcile(sessions))
+              if (sessions !== undefined) {
+                setStore("session", reconcile(sessions))
+                hydrateSessionMutations(sessions)
+              }
             })
           })
         })
@@ -533,7 +541,10 @@ export const {
           if (store.status !== "complete") setStore("status", "partial")
           // non-blocking
           void Promise.all([
-            ...(args.continue ? [] : [sessionListPromise.then((sessions) => setStore("session", reconcile(sessions)))]),
+            ...(args.continue ? [] : [sessionListPromise.then((sessions) => {
+              setStore("session", reconcile(sessions))
+              hydrateSessionMutations(sessions)
+            })]),
             consoleStatePromise.then((consoleState) => setStore("console_state", reconcile(consoleState))),
             sdk.client.command.list({ workspace }).then((x) => setStore("command", reconcile(x.data ?? []))),
             sdk.client.lsp.status({ workspace }).then((x) => setStore("lsp", reconcile(x.data ?? []))),
@@ -613,6 +624,7 @@ export const {
         async refresh() {
           const list = await listSessions()
           setStore("session", reconcile(list))
+          hydrateSessionMutations(list)
         },
         status(sessionID: string) {
           const session = result.session.get(sessionID)
@@ -623,6 +635,20 @@ export const {
           if (!last) return "idle"
           if (last.role === "user") return "working"
           return last.time.completed ? "idle" : "working"
+        },
+        mutation: {
+          state() {
+            return store.session_mutation
+          },
+          availability(action: ProductSessionMutationAction) {
+            return deriveProductSessionMutationAvailability(currentSessionMutationState(action.sessionID), action)
+          },
+          target(action: ProductSessionMutationAction) {
+            return toTuiSessionMutationTarget(currentSessionMutationState(action.sessionID), action)
+          },
+          set(state: ProductSessionMutationState) {
+            setStore("session_mutation", reconcile(state))
+          },
         },
         async sync(sessionID: string) {
           if (fullSyncedSessions.has(sessionID)) return
@@ -713,6 +739,22 @@ export const {
         permissions: store.permission[sessionID] ?? [],
         questions: store.question[sessionID] ?? [],
       })
+    }
+
+    function currentSessionMutationState(sessionID: string) {
+      const match = search(store.session, sessionID, (session) => session.id)
+      if (!match.found) return store.session_mutation
+      return hydrateProductMutableSessions(store.session_mutation, [toTuiMutableSession(
+        store.session[match.index],
+        { share: store.config.share !== "disabled" },
+      )])
+    }
+
+    function hydrateSessionMutations(sessions: Session[]) {
+      setStore("session_mutation", reconcile(hydrateProductMutableSessions(
+        store.session_mutation,
+        sessions.map((session) => toTuiMutableSession(session, { share: store.config.share !== "disabled" })),
+      )))
     }
   },
 })

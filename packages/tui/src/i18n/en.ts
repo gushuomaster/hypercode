@@ -85,6 +85,14 @@ export const dict = {
   "product.model.fallback.provider": "Provider fallback model",
   "product.error.provider.authFailed": "Provider authentication failed. Check your credentials and try again.",
   "product.error.provider.requestFailed": "The provider request failed. See the original error for details.",
+  "product.error.session.notFound": "The session no longer exists or cannot be found.",
+  "product.error.session.unsupported": "This host does not support that session action.",
+  "product.error.session.permissionDenied": "You do not have permission to modify this session.",
+  "product.error.session.alreadyArchived": "This session is already archived.",
+  "product.error.session.alreadyShared": "This session is already shared.",
+  "product.error.session.invalidTitle": "Enter a valid session title.",
+  "product.error.session.requestFailed": "The session action failed. See the original error for details.",
+  "product.error.session.unknown": "An unexpected session action error occurred.",
   "product.error.unknown": "An unexpected product error occurred.",
 
   // Export

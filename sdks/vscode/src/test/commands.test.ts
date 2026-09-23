@@ -247,6 +247,7 @@ describe("renameSession", () => {
     let inputOptions: vscode.InputBoxOptions | undefined
     let updated: unknown
     let refreshed: unknown
+    const mutationEvents: unknown[] = []
 
     await renameSession({
       target: {
@@ -277,6 +278,7 @@ describe("renameSession", () => {
       },
       showErrorMessage: async () => undefined,
       showInformationMessage: async () => undefined,
+      onMutationEvent: (event) => mutationEvents.push(event),
     })
 
     assert.equal(inputOptions?.value, "Current title")
@@ -287,6 +289,7 @@ describe("renameSession", () => {
       title: "Renamed session",
     })
     assert.deepEqual(refreshed, ["file:///workspace-a", true])
+    assert.deepEqual(mutationEvents.map((event) => (event as { type: string }).type), ["pending", "success"])
   })
 })
 
@@ -294,6 +297,7 @@ describe("manageSessionTags", () => {
   test("prompts with current tags, normalizes comma-separated input, and persists the result", async () => {
     let inputOptions: vscode.InputBoxOptions | undefined
     let saved: unknown
+    const mutationEvents: unknown[] = []
 
     await manageSessionTags({
       target: {
@@ -315,10 +319,12 @@ describe("manageSessionTags", () => {
         inputOptions = options
         return "docs, release, docs"
       },
+      onMutationEvent: (event) => mutationEvents.push(event),
     })
 
     assert.equal(inputOptions?.value, "docs, ops")
     assert.match(inputOptions?.prompt ?? "", /Taggable/)
     assert.deepEqual(saved, ["file:///workspace-a", "session-tags", ["docs", "release"]])
+    assert.deepEqual(mutationEvents.map((event) => (event as { type: string }).type), ["pending", "success", "pending", "success"])
   })
 })

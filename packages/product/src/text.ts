@@ -13,6 +13,14 @@ export type ProductTextKey =
   | "interaction.question.pending"
   | "error.provider.auth_failed"
   | "error.provider.request_failed"
+  | "error.session.not_found"
+  | "error.session.unsupported"
+  | "error.session.permission_denied"
+  | "error.session.already_archived"
+  | "error.session.already_shared"
+  | "error.session.invalid_title"
+  | "error.session.request_failed"
+  | "error.session.unknown"
   | "error.unknown"
 
 export function productTextKeyForModelSection(kind: ProductModelSection["kind"]): ProductTextKey | undefined {

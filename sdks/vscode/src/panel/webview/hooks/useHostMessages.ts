@@ -6,6 +6,7 @@ import { summarizeSessionSnapshot } from "../../shared/session-summary"
 import { bootstrapFromSnapshot, normalizeSessionPickerPayload, normalizeSnapshotPayload, resetSessionScopedComposerState, sameSessionRef, type AppState, type VsCodeApi } from "../app/state"
 import { mergeSessionProductSnapshot } from "../../../product/session"
 import { activateProductSession, beginProductSessionSwitch, rememberProductSessionSnapshot } from "@opencode-ai/product"
+import { reduceVsCodeSessionMutation } from "../lib/product-session-mutation-adapter"
 
 export function dispatchHostMessage(message: HostMessage, handlers: {
   fileRefStatus: Map<string, boolean>
@@ -178,6 +179,17 @@ export function dispatchHostMessage(message: HostMessage, handlers: {
     handlers.setState((current) => ({
       ...current,
       sessionPicker: normalizeSessionPickerPayload(message.payload),
+    }))
+    return
+  }
+
+  if (message?.type === "sessionMutation") {
+    handlers.setState((current) => ({
+      ...current,
+      productSessions: {
+        ...current.productSessions,
+        mutation: reduceVsCodeSessionMutation(current.productSessions.mutation, message.event),
+      },
     }))
     return
   }

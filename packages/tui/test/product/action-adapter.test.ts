@@ -77,3 +77,11 @@ test("validates session switch targets against the shared session projection", (
     input: { sessionID: "session-2" },
   })
 })
+
+test("keeps session mutation actions as shared Product intents", () => {
+  const action = { type: "session.rename", sessionID: "session-1", title: "Renamed" } as const
+  expect(toTuiProductAction(action, { sessionID: "session-1" })).toEqual({
+    kind: "session.mutation",
+    action,
+  })
+})

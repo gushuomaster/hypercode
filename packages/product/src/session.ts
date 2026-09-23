@@ -1,4 +1,5 @@
 import { deriveProductStatus } from "./interaction"
+import { createProductSessionMutationState, type ProductSessionMutationState } from "./session-mutation"
 import type { ProductError, ProductRunState, ProductSnapshot } from "./snapshot"
 
 export type ProductSessionInput = {
@@ -41,6 +42,7 @@ export type ProductSessionState = {
   activeSessionID?: string
   switchingSessionID?: string
   snapshots: Record<string, ProductSnapshot>
+  mutation: ProductSessionMutationState
 }
 
 export function deriveProductSessionList(input: {
@@ -104,6 +106,7 @@ export function createProductSessionState(activeSessionID?: string): ProductSess
   return {
     activeSessionID,
     snapshots: {},
+    mutation: createProductSessionMutationState(),
   }
 }
 
@@ -126,7 +129,8 @@ export function beginProductSessionSwitch(state: ProductSessionState, sessionID:
 }
 
 export function activateProductSession(state: ProductSessionState, sessionID: string, snapshot?: ProductSnapshot): ProductSessionState {
-  return {
+  const next = {
+    ...state,
     activeSessionID: sessionID,
     snapshots: snapshot
       ? {
@@ -135,4 +139,6 @@ export function activateProductSession(state: ProductSessionState, sessionID: st
         }
       : state.snapshots,
   }
+  delete next.switchingSessionID
+  return next
 }

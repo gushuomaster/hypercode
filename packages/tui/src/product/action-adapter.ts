@@ -1,4 +1,4 @@
-import { deriveProductSessionSwitch, type ProductAction, type ProductSelectionAction } from "@opencode-ai/product"
+import { deriveProductSessionSwitch, type ProductAction, type ProductSelectionAction, type ProductSessionMutationAction } from "@opencode-ai/product"
 
 type TuiActionContext = {
   sessionID: string
@@ -18,6 +18,7 @@ export type TuiProductActionTarget =
   | { kind: "question.reply"; input: { requestID: string; answers: string[][]; directory?: string } }
   | { kind: "question.reject"; input: { requestID: string; directory?: string } }
   | { kind: "selection"; action: ProductSelectionAction }
+  | { kind: "session.mutation"; action: ProductSessionMutationAction }
   | { kind: "none" }
   | { kind: "unavailable"; action: "session.retry" }
 
@@ -59,6 +60,14 @@ export function toTuiProductAction(action: ProductAction, context: TuiActionCont
   }
   if (action.type === "model.select" || action.type === "agent.select" || action.type === "variant.select") {
     return { kind: "selection", action }
+  }
+  if (action.type === "session.rename"
+    || action.type === "session.archive"
+    || action.type === "session.share"
+    || action.type === "session.unshare"
+    || action.type === "session.tag.add"
+    || action.type === "session.tag.remove") {
+    return { kind: "session.mutation", action }
   }
   if (action.type === "permission.reply") {
     return {

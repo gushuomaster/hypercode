@@ -31,6 +31,58 @@ function dispatch(message: HostMessage, initial: AppState) {
 }
 
 describe("dispatchHostMessage", () => {
+  test("reduces session mutation lifecycle messages into canonical Product state", () => {
+    let state = createInitialState({ workspaceId: "workspace-a", dir: "/workspace", sessionId: "session-a" })
+    const session = {
+      id: "session-a",
+      title: "Session A",
+      tags: ["docs"],
+      available: true,
+      capabilities: {
+        rename: true,
+        archive: true,
+        share: true,
+        unshare: true,
+        tags: true,
+      },
+    }
+
+    state = dispatch({
+      type: "sessionMutation",
+      event: {
+        type: "pending",
+        session,
+        action: { type: "session.rename", sessionID: "session-a", title: "Renamed" },
+      },
+    }, state)
+    assert.equal(state.productSessions.mutation.sessions["session-a"]?.title, "Session A")
+    assert.equal(state.productSessions.mutation.mutations["session-a"]?.rename?.state, "pending")
+
+    state = dispatch({
+      type: "sessionMutation",
+      event: {
+        type: "failure",
+        failure: {
+          type: "session.rename",
+          sessionID: "session-a",
+          error: { code: "HTTP_403", message: "Forbidden", raw: "HTTP 403 Forbidden" },
+        },
+      },
+    }, state)
+    assert.equal(state.productSessions.mutation.sessions["session-a"]?.title, "Session A")
+    assert.deepEqual(state.productSessions.mutation.mutations["session-a"]?.rename, {
+      state: "error",
+      action: { type: "session.rename", sessionID: "session-a", title: "Renamed" },
+      error: {
+        code: "permission_denied",
+        diagnosticCode: "HTTP_403",
+        message: "Forbidden",
+        raw: "HTTP 403 Forbidden",
+        textKey: "error.session.permission_denied",
+      },
+    })
+  })
+
   test("isolates canonical product state across bootstrap A to B to A switches", () => {
     let state = createInitialState({ workspaceId: "file:///workspace", dir: "/workspace", sessionId: "session-a" })
     const tool = {

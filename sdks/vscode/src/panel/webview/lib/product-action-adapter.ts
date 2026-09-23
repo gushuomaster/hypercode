@@ -1,9 +1,10 @@
-import { deriveProductSessionSwitch, type ProductAction, type ProductSelectionAction } from "@opencode-ai/product"
+import { deriveProductSessionSwitch, type ProductAction, type ProductSelectionAction, type ProductSessionMutationAction } from "@opencode-ai/product"
 import type { WebviewMessage } from "../../../bridge/types"
 
 export type VsCodeProductActionTarget =
   | { kind: "host"; message: WebviewMessage }
   | { kind: "selection"; action: ProductSelectionAction }
+  | { kind: "mutation"; action: ProductSessionMutationAction }
   | { kind: "none" }
   | { kind: "unavailable"; action: "session.retry" }
 
@@ -41,6 +42,9 @@ export function toVsCodeProductAction(action: ProductAction, options: VsCodeProd
       targetSessionID: action.sessionID,
     })
     return target ? { kind: "host", message: { type: "switchSessionInPlace", sessionID: target.sessionID } } : { kind: "none" }
+  }
+  if (action.type === "session.rename" || action.type === "session.archive" || action.type === "session.share" || action.type === "session.unshare" || action.type === "session.tag.add" || action.type === "session.tag.remove") {
+    return { kind: "mutation", action }
   }
   if (action.type === "model.select" || action.type === "agent.select" || action.type === "variant.select") {
     return { kind: "selection", action }
