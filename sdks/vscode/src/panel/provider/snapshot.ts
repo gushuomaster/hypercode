@@ -1,5 +1,6 @@
 import * as path from "node:path"
 import type { SessionPanelRef, SessionSnapshot } from "../../bridge/types"
+import { deriveComposerSelection, projectProductAgents, projectProductProviders } from "@opencode-ai/product"
 import { syncTrackedSession } from "../../core/session-list"
 import { loadSkillCatalog } from "../../core/skills"
 import { getDisplaySettings } from "../../core/settings"
@@ -10,6 +11,7 @@ import { summarizeSessionSnapshot } from "../shared/session-summary"
 import { filterPermission, filterQuestion, nav, relatedSessionMap, subtreeSessionIds } from "./navigation"
 import { sortMessages } from "./mutations"
 import { idle, text } from "./utils"
+import { toProductProviderStates } from "../../product/provider-adapter"
 
 type SnapshotContext = {
   ref: SessionPanelRef
@@ -19,7 +21,7 @@ type SnapshotContext = {
   messageLimit?: number
 }
 
-type DeferredSnapshotData = Pick<SessionSnapshot, "sessionStatus" | "permissions" | "questions" | "providerAuth" | "mcp" | "mcpResources" | "lsp" | "formatter" | "commands">
+type DeferredSnapshotData = Pick<SessionSnapshot, "sessionStatus" | "permissions" | "questions" | "providerAuth" | "providerStates" | "mcp" | "mcpResources" | "lsp" | "formatter" | "commands">
 
 export type SessionSnapshotBuild = {
   snapshot: SessionSnapshot
@@ -107,7 +109,18 @@ export async function buildSessionSnapshot({ ref, mgr, log, isSubmitting, messag
     const defaults = providerDefaults(configProvidersRes.data, providerRes.data)
     const configuredModel = parseModelRef(configRes.data?.model)
     const firstAgent = agents[0]
-    const freshModel = firstAgent?.model || (agents.length === 0 ? configuredModel || fallbackModelRef(providers, defaults) : undefined)
+    const freshModel = deriveComposerSelection({
+      providers: projectProductProviders(providers),
+      agents: projectProductAgents(agents),
+      configuredModel,
+      providerDefaults: defaults,
+      messagesExist: false,
+    }).model
+    const providerStates = toProductProviderStates({
+      providers,
+      connected: providerRes.data?.connected,
+      defaults,
+    })
 
     log([
       `agent count=${agents.length}`,
@@ -141,6 +154,7 @@ export async function buildSessionSnapshot({ ref, mgr, log, isSubmitting, messag
       agents,
       defaultAgent,
       providers,
+      providerStates,
       providerAuth: {},
       providerDefault: defaults,
       configuredModel,
@@ -161,6 +175,9 @@ export async function buildSessionSnapshot({ ref, mgr, log, isSubmitting, messag
         dir: rt.dir,
         sessionId: ref.sessionId,
         requestSessionIds: tree.requestSessionIds,
+        providers,
+        connected: providerRes.data?.connected,
+        defaults,
       }),
     }
   } catch (err) {
@@ -176,11 +193,17 @@ async function loadDeferredSnapshot({
   dir,
   sessionId,
   requestSessionIds,
+  providers,
+  connected,
+  defaults,
 }: {
   sdk: Client
   dir: string
   sessionId: string
   requestSessionIds: string[]
+  providers: ProviderInfo[]
+  connected?: string[]
+  defaults?: Record<string, string>
 }) {
   const [statusRes, permissionRes, questionRes, providerAuthRes, mcpRes, resourceRes, lspRes, formatterRes, commandRes] = await Promise.all([
     sdk.session.status({
@@ -213,6 +236,12 @@ async function loadDeferredSnapshot({
     permissions: filterPermission(permissionRes.data ?? [], requestSessionIds),
     questions: filterQuestion(questionRes.data ?? [], requestSessionIds),
     providerAuth: providerAuthMap(providerAuthRes.data),
+    providerStates: toProductProviderStates({
+      providers,
+      connected,
+      defaults,
+      auth: providerAuthMap(providerAuthRes.data),
+    }),
     mcp: mcpStatusMap(mcpRes.data),
     mcpResources: mcpResourceMap(resourceRes.data),
     lsp: lspStatuses(lspRes.data ?? [], dir),
@@ -417,28 +446,6 @@ function providerAuthMap(data?: Record<string, ProviderAuthMethod[]>) {
 
 function formatterStatuses(data?: FormatterStatus[]) {
   return Array.isArray(data) ? data : []
-}
-
-function fallbackModelRef(providers: ProviderInfo[], defaults?: Record<string, string>) {
-  for (const provider of providers) {
-    const modelID = defaults?.[provider.id]?.trim()
-    if (modelID && provider.models?.[modelID]) {
-      return {
-        providerID: provider.id,
-        modelID,
-      }
-    }
-  }
-
-  for (const provider of providers) {
-    const model = provider.models ? Object.values(provider.models)[0] : undefined
-    if (model?.id) {
-      return {
-        providerID: provider.id,
-        modelID: model.id,
-      }
-    }
-  }
 }
 
 function agentList(data?: AgentInfo[]) {

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { beforeEach, describe, test } from "node:test"
 import type { ProviderInfo } from "../../../core/sdk"
+import type { ProductProviderState } from "@opencode-ai/product"
 import { setLocale } from "../../../i18n"
 import { buildModelPickerCatalog, buildModelPickerRecoveryActions, buildModelPickerSections, filterModelPickerSections } from "./model-picker"
 
@@ -44,20 +45,45 @@ describe("model picker sections", () => {
 
   test("exposes provider auth recovery actions when no models are available but OAuth-capable providers exist", () => {
     const recovery = buildModelPickerRecoveryActions({
-      providers: [{
-        id: "openai",
-        name: "OpenAI",
-        models: {},
+      providerStates: [{
+        providerID: "openai",
+        displayName: "OpenAI",
+        availability: "auth_required",
+        authMethods: ["oauth"],
+        hostAuthMethods: ["oauth"],
+        recovery: "connect",
+        connected: false,
+        configured: true,
+        modelsAvailable: false,
       }],
-      providerAuth: {
-        openai: [{ type: "oauth", label: "Connect OpenAI" }],
-      },
     })
 
     assert.deepEqual(recovery, [{
       providerID: "openai",
       label: "OpenAI",
       actionLabel: "Connect OpenAI",
+      action: { type: "provider.connect", providerID: "openai" },
+    }])
+  })
+
+  test("uses Product provider recovery state for host actions", () => {
+    const providerStates: ProductProviderState[] = [{
+      providerID: "openai",
+      displayName: "OpenAI",
+      availability: "auth_required",
+      authMethods: ["api"],
+      hostAuthMethods: [],
+      recovery: "open_docs",
+      connected: false,
+      configured: true,
+      modelsAvailable: false,
+    }]
+
+    assert.deepEqual(buildModelPickerRecoveryActions({ providerStates }), [{
+      providerID: "openai",
+      label: "OpenAI",
+      actionLabel: "Open HyperCode docs",
+      action: { type: "provider.openDocs", providerID: "openai" },
     }])
   })
 

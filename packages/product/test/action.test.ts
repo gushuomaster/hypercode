@@ -3,6 +3,22 @@ import { deriveProductActionEffect } from "../src"
 import { productActionFixtures } from "./fixtures/product-actions"
 
 describe("deriveProductActionEffect", () => {
+  test("keeps provider recovery intents host-neutral", () => {
+    const actions = [
+      { type: "provider.connect", providerID: "openai" },
+      { type: "provider.authenticate", providerID: "openai" },
+      { type: "provider.openDocs", providerID: "openai" },
+      { type: "provider.retry", providerID: "openai" },
+    ] as const
+
+    expect(actions.map((action) => [action.type, deriveProductActionEffect(action)])).toEqual([
+      ["provider.connect", { clearComposer: false, clearError: true }],
+      ["provider.authenticate", { clearComposer: false, clearError: true }],
+      ["provider.openDocs", { clearComposer: false, clearError: true }],
+      ["provider.retry", { clearComposer: false, clearError: true }],
+    ])
+  })
+
   test("defines composer reset semantics independently of the host", () => {
     expect(productActionFixtures.map((action) => [action.type, deriveProductActionEffect(action)])).toEqual([
       ["composer.submit", { clearComposer: true, clearError: true }],

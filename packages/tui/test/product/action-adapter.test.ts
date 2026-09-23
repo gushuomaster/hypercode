@@ -2,6 +2,17 @@ import { expect, test } from "bun:test"
 import { productActionFixtures, productSelectionActionFixtures } from "../../../product/test/fixtures/product-actions"
 import { toTuiProductAction, toTuiProductSelection } from "../../src/product/action-adapter"
 
+test("maps provider recovery intents without choosing a host implementation", () => {
+  expect(toTuiProductAction({ type: "provider.connect", providerID: "openai" }, { sessionID: "session-1" })).toEqual({
+    kind: "provider",
+    action: { type: "provider.connect", providerID: "openai" },
+  })
+  expect(toTuiProductAction({ type: "provider.openDocs", providerID: "openai" }, { sessionID: "session-1" })).toEqual({
+    kind: "provider",
+    action: { type: "provider.openDocs", providerID: "openai" },
+  })
+})
+
 test("maps shared product actions to TUI SDK intents", () => {
   const context = {
     sessionID: "session-1",

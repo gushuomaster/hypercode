@@ -1,6 +1,6 @@
 import React from "react"
-import { deriveModelCatalog, productTextKeyForModelSection, type ProductModelItem, type ProductModelSection } from "@opencode-ai/product"
-import type { ProviderAuthMethod, ProviderInfo } from "../../../core/sdk"
+import { deriveModelCatalog, productTextKeyForModelSection, type ProductModelItem, type ProductModelSection, type ProductProviderAction, type ProductProviderState } from "@opencode-ai/product"
+import type { ProviderInfo } from "../../../core/sdk"
 import type { ComposerModelRef } from "./state"
 import { t } from "../../../i18n"
 import { toProductProviders } from "../lib/product-adapter"
@@ -33,6 +33,7 @@ export type ModelPickerRecoveryAction = {
   providerID: string
   label: string
   actionLabel: string
+  action: ProductProviderAction
 }
 
 type FilteredModelPickerSection = ModelPickerSection & {
@@ -85,22 +86,23 @@ export function buildModelPickerCatalog({
 }
 
 export function buildModelPickerRecoveryActions({
-  providers,
-  providerAuth,
+  providerStates,
 }: {
-  providers: ProviderInfo[]
-  providerAuth: Record<string, ProviderAuthMethod[]>
+  providerStates: ProductProviderState[]
 }): ModelPickerRecoveryAction[] {
-  return providers.flatMap((provider) => {
-    const oauth = (providerAuth[provider.id] ?? []).find((method) => method.type === "oauth")
-    if (!oauth) {
-      return []
-    }
-
+  return providerStates.flatMap((state) => {
+    if (state.recovery === "none") return []
+    const label = state.displayName || state.providerID
+    const action = state.recovery === "connect"
+      ? { type: "provider.connect", providerID: state.providerID } as const
+      : state.recovery === "open_docs"
+        ? { type: "provider.openDocs", providerID: state.providerID } as const
+        : { type: "provider.retry", providerID: state.providerID } as const
     return [{
-      providerID: provider.id,
-      label: provider.name || provider.id,
-      actionLabel: oauth.label || t("model.connect", { provider: provider.name || provider.id }),
+      providerID: state.providerID,
+      label,
+      actionLabel: state.recovery === "open_docs" ? t("model.openDocs") : t("model.connect", { provider: label }),
+      action,
     }]
   })
 }
@@ -112,7 +114,7 @@ export function ModelPicker({
   currentAgent,
   onClose,
   onOpenProviderDocs,
-  onStartProviderAuth,
+  onProviderRecovery,
   onSelect,
   onToggleFavorite,
   onCycleVariant,
@@ -123,7 +125,7 @@ export function ModelPicker({
   currentAgent?: string
   onClose: () => void
   onOpenProviderDocs: () => void
-  onStartProviderAuth?: (providerID: string) => void
+  onProviderRecovery?: (action: ProductProviderAction) => void
   onSelect: (model: ComposerModelRef) => void
   onToggleFavorite: (model: ComposerModelRef) => void
   onCycleVariant: (model: ComposerModelRef) => void
@@ -251,7 +253,7 @@ export function ModelPicker({
         <div className="oc-modelPickerEmptyActions">
           <div className="oc-modelPickerEmptyText">{t("model.configureProvider")}</div>
           {recoveryActions.map((action) => (
-            <button key={action.providerID} type="button" className="oc-modelPickerAction" onClick={() => onStartProviderAuth?.(action.providerID)}>
+            <button key={action.providerID} type="button" className="oc-modelPickerAction" onClick={() => onProviderRecovery?.(action.action)}>
               {action.actionLabel}
             </button>
           ))}

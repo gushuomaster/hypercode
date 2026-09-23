@@ -32,11 +32,12 @@ import { batch, onMount } from "solid-js"
 import path from "path"
 import { useKV } from "./kv"
 import { usePermission } from "./permission"
-import type { ProductSessionMutationAction, ProductSessionMutationState, ProductSnapshot } from "@opencode-ai/product"
+import type { ProductProviderState, ProductSessionMutationAction, ProductSessionMutationState, ProductSnapshot } from "@opencode-ai/product"
 import { createProductSessionMutationState, deriveProductSessionMutationAvailability, hydrateProductMutableSessions, mergeProductSnapshot } from "@opencode-ai/product"
 import { reduceTuiProductEvent, toProductEvent, toProductSnapshot } from "../product/session-adapter"
 import { toTuiProductAction } from "../product/action-adapter"
 import { toTuiMutableSession, toTuiSessionMutationTarget } from "../product/session-mutation-adapter"
+import { toProductProviderStates } from "../product/provider-adapter"
 
 const emptyConsoleState: ConsoleState = {
   consoleManagedProviders: [],
@@ -82,6 +83,7 @@ export const {
         experimentalBackgroundSubagents: boolean
       }
       provider_auth: Record<string, ProviderAuthMethod[]>
+      provider_product: ProductProviderState[]
       agent: Agent[]
       command: Command[]
       permission: {
@@ -131,6 +133,7 @@ export const {
         experimentalBackgroundSubagents: false,
       },
       provider_auth: {},
+      provider_product: [],
       config: {},
       status: "loading",
       agent: [],
@@ -526,6 +529,11 @@ export const {
               setStore("provider", reconcile(providers.providers))
               setStore("provider_default", reconcile(providers.default))
               setStore("provider_next", reconcile(providerList))
+              setStore("provider_product", reconcile(toProductProviderStates({
+                providers: providerList.all,
+                connected: providerList.connected,
+                defaults: providerList.default,
+              })))
               setStore("capabilities", "experimentalBackgroundSubagents", capabilities?.backgroundSubagents === true)
               setStore("console_state", reconcile(consoleState))
               setStore("agent", reconcile(agents))
@@ -574,7 +582,16 @@ export const {
                 }),
               )
             }),
-            sdk.client.provider.auth({ workspace }).then((x) => setStore("provider_auth", reconcile(x.data ?? {}))),
+            sdk.client.provider.auth({ workspace }).then((x) => {
+              const auth = x.data ?? {}
+              setStore("provider_auth", reconcile(auth))
+              setStore("provider_product", reconcile(toProductProviderStates({
+                providers: store.provider_next.all,
+                connected: store.provider_next.connected,
+                defaults: store.provider_next.default,
+                auth,
+              })))
+            }),
             sdk.client.vcs.get({ workspace }).then((x) => setStore("vcs", reconcile(x.data))),
             project.workspace.sync(),
           ]).then(() => {

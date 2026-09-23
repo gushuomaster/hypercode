@@ -3,6 +3,13 @@ import { test } from "node:test"
 import { productActionFixtures, productSelectionActionFixtures } from "../../../../../../packages/product/test/fixtures/product-actions"
 import { toVsCodeProductAction, toVsCodeProductSelection } from "./product-action-adapter"
 
+test("keeps provider recovery intents as Product actions", () => {
+  expect(toVsCodeProductAction({ type: "provider.authenticate", providerID: "openai" })).toEqual({
+    kind: "provider",
+    action: { type: "provider.authenticate", providerID: "openai" },
+  })
+})
+
 test("maps shared product actions to existing VSCode host messages", () => {
   const options = {
     sessions: [

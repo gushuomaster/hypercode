@@ -62,6 +62,15 @@ const RENDER_EARLIER_MESSAGE_COUNT = 120
 function postProductAction(action: ProductAction, options?: VsCodeProductActionOptions) {
   const target = toVsCodeProductAction(action, options)
   if (target.kind === "host") vscode.postMessage(target.message)
+  if (target.kind === "provider") {
+    if (target.action.type === "provider.openDocs") {
+      vscode.postMessage({ type: "openDocs", target: "providers" })
+    } else if (target.action.type === "provider.retry") {
+      vscode.postMessage({ type: "refresh" })
+    } else {
+      vscode.postMessage({ type: "providerAuthAction", providerID: target.action.providerID })
+    }
+  }
   return target
 }
 
@@ -207,9 +216,8 @@ export function App() {
     variants: state.composerModelVariants,
   }), [currentSelection.model, state.composerFavoriteModels, state.composerModelVariants, state.composerRecentModels, state.snapshot.configuredModel, state.snapshot.providers])
   const modelPickerRecoveryActions = React.useMemo(() => buildModelPickerRecoveryActions({
-    providers: state.snapshot.providers,
-    providerAuth: state.snapshot.providerAuth,
-  }), [state.snapshot.providerAuth, state.snapshot.providers])
+    providerStates: state.snapshot.providerStates,
+  }), [state.snapshot.providerStates])
   const themePickerItems = React.useMemo(() => buildThemePickerItems(
     resolvePanelThemeValue(state.snapshot.display.panelTheme),
     resolvePanelColorSchemeValue(state.snapshot.display.panelColorScheme),
@@ -1318,10 +1326,6 @@ export function App() {
     vscode.postMessage({ type: "openDocs", target: "providers" })
   }, [])
 
-  const startProviderAuth = React.useCallback((providerID: string) => {
-    vscode.postMessage({ type: "providerAuthAction", providerID })
-  }, [])
-
   const selectThemePickerItem = React.useCallback((item: ThemePickerItem) => {
     setThemePickerOpen(false)
     if (item.kind === "theme") {
@@ -2294,7 +2298,7 @@ export function App() {
                           currentAgent={currentSelection.agent}
                           onClose={() => setModelPickerOpen(false)}
                           onOpenProviderDocs={openProviderDocs}
-                          onStartProviderAuth={startProviderAuth}
+                          onProviderRecovery={(action) => postProductAction(action)}
                           onSelect={selectComposerModel}
                           onToggleFavorite={toggleComposerFavorite}
                           onCycleVariant={cycleComposerVariant}

@@ -21,6 +21,10 @@ export type ProductAction =
   | { type: "permission.reply"; requestID: string; reply: "once" | "always" | "reject"; message?: string }
   | { type: "question.reply"; requestID: string; answers: string[][] }
   | { type: "question.reject"; requestID: string }
+  | { type: "provider.connect"; providerID: string }
+  | { type: "provider.authenticate"; providerID: string }
+  | { type: "provider.openDocs"; providerID: string }
+  | { type: "provider.retry"; providerID: string }
 
 export type ProductSelectionAction = Extract<ProductAction, { type: "model.select" | "agent.select" | "variant.select" }>
 

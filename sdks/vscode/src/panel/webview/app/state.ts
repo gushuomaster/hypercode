@@ -2,7 +2,7 @@ import type { ComposerFileSelection, ComposerPathKind, SessionBootstrap, Session
 import type { DisplaySettings, PanelColorScheme, PanelTheme } from "../../../core/settings"
 import type { AgentInfo, CommandInfo, FileDiff, FormatterStatus, LspStatus, McpResource, McpStatus, MessageInfo, PermissionRequest, ProviderAuthMethod, ProviderInfo, QuestionRequest, SessionInfo, SessionMessage, SessionStatus, Todo } from "../../../core/sdk"
 import type { CommandPromptCatalog, CommandPromptInvocation } from "./command-prompt"
-import { createProductSessionState, createProductSnapshot, mergePartialProductSnapshot, mergeProductSnapshot, type ProductSnapshot } from "@opencode-ai/product"
+import { createProductSessionState, createProductSnapshot, mergePartialProductSnapshot, mergeProductSnapshot, type ProductProviderState, type ProductSnapshot } from "@opencode-ai/product"
 import { toProductSnapshot } from "../lib/product-session-adapter"
 
 export type VsCodeApi = {
@@ -92,6 +92,7 @@ export type AppState = {
     agents: AgentInfo[]
     defaultAgent?: string
     providers: ProviderInfo[]
+    providerStates: ProductProviderState[]
     providerAuth: Record<string, ProviderAuthMethod[]>
     providerDefault?: Record<string, string>
     configuredModel?: {
@@ -216,6 +217,7 @@ export function createInitialState(initialRef: SessionBootstrap["sessionRef"] | 
       agents: [],
       defaultAgent: undefined,
       providers: [],
+      providerStates: [],
       providerAuth: {},
       providerDefault: undefined,
       configuredModel: undefined,
@@ -392,6 +394,7 @@ export function normalizeSnapshotPayload(
     agents: Array.isArray(payload.agents) ? payload.agents : [],
     defaultAgent: payload.defaultAgent,
     providers: Array.isArray(payload.providers) ? payload.providers : [],
+    providerStates: Array.isArray(payload.providerStates) ? payload.providerStates : [],
     providerAuth: recordValue(payload.providerAuth) as Record<string, ProviderAuthMethod[]>,
     providerDefault: payload.providerDefault,
     configuredModel: payload.configuredModel,

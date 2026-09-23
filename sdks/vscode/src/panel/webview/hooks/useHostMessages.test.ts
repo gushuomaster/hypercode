@@ -1039,4 +1039,38 @@ describe("dispatchHostMessage", () => {
     assert.equal(state.snapshot.messages[0]?.parts[0]?.type === "text" ? state.snapshot.messages[0].parts[0].text : undefined, "before after")
     assert.equal(state.snapshot.session?.title, "session-1 renamed")
   })
+
+  test("keeps canonical product failures across a deferred legacy status update", () => {
+    let state = createInitialState({ workspaceId: "workspace-a", dir: "/workspace", sessionId: "session-a" })
+    state = dispatch({
+      type: "snapshot",
+      reason: "test:error",
+      payload: {
+        ...state.snapshot,
+        product: createProductSnapshot({
+          status: "error",
+          error: { message: "Bad Request", raw: "HTTP 400" },
+        }),
+        status: "ready",
+        workspaceName: "workspace",
+        sessionRef: state.bootstrap.sessionRef,
+        message: "error",
+        messages: [],
+      },
+    }, state)
+
+    state = dispatch({
+      type: "deferredUpdate",
+      reason: "test:error:deferred",
+      payload: {
+        product: state.snapshot.product,
+        sessionStatus: { type: "idle" },
+        permissions: [],
+        questions: [],
+      },
+    }, state)
+
+    assert.deepEqual(state.snapshot.product.error, { message: "Bad Request", raw: "HTTP 400" })
+    assert.equal(state.snapshot.product.status, "error")
+  })
 })

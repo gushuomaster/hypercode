@@ -140,7 +140,7 @@ export function createDialogProviderOptions() {
 
         const providerID = provider.providerID
         const consoleManaged = isConsoleManagedProvider(sync.data.console_state.consoleManagedProviders, providerID)
-        const connected = sync.data.provider_next.connected.includes(providerID)
+        const connected = sync.data.provider_product.find((item) => item.providerID === providerID)?.connected === true
 
         return {
           title: provider.title,

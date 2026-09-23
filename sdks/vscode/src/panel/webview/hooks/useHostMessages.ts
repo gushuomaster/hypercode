@@ -94,7 +94,9 @@ export function dispatchHostMessage(message: HostMessage, handlers: {
         ...current.snapshot,
         ...message.payload,
       }
-      nextSnapshot.product = mergeSessionProductSnapshot(current.snapshot.product, nextSnapshot)
+      nextSnapshot.product = message.payload.product
+        ? message.payload.product
+        : mergeSessionProductSnapshot(current.snapshot.product, nextSnapshot)
       return {
         ...current,
         bootstrap: {

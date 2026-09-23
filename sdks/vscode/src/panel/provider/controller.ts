@@ -362,9 +362,11 @@ export class SessionPanelController implements vscode.Disposable {
         }
 
         const deferredPayload = {
+          product: this.current.product,
           sessionStatus: this.deferredDirty.sessionStatus ? this.current.sessionStatus : deferred.sessionStatus,
           permissions: this.deferredDirty.permissions ? this.current.permissions : deferred.permissions,
           questions: this.deferredDirty.questions ? this.current.questions : deferred.questions,
+          providerStates: deferred.providerStates,
           mcp: deferred.mcp,
           mcpResources: deferred.mcpResources,
           lsp: deferred.lsp,
@@ -526,6 +528,7 @@ export class SessionPanelController implements vscode.Disposable {
       sessionStatus: this.current.sessionStatus,
       permissions: this.current.permissions,
       questions: this.current.questions,
+      providerStates: this.current.providerStates,
       mcp: this.current.mcp,
       mcpResources: this.current.mcpResources,
       lsp: this.current.lsp,
