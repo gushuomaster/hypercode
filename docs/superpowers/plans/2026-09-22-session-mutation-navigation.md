@@ -386,7 +386,7 @@ type ProductSubagentAction =
 
 The resolver returns `{ available: true, sessionID }` or `{ available: false, reason }`; hosts must not add fallback.
 
-- [ ] **Step 5: Run Product GREEN validation**
+ - [x] **Step 5: Run Product GREEN validation**
 
 ```bash
 cd packages/product && bun test test/session-navigation.test.ts && bun test && bun typecheck
@@ -413,26 +413,26 @@ cd packages/product && bun test test/session-navigation.test.ts && bun test && b
 - Consumes: Product navigation projection and resolver
 - Produces: identical Product targets for equivalent TUI and VSCode relationship graphs
 
-- [ ] **Step 1: Write failing cross-host navigation parity tests**
+- [x] **Step 1: Write failing cross-host navigation parity tests**
 
 Use the shared Product navigation fixture in both adapter suites. Assert equivalent graphs produce the same default child, parent, previous, next, explicit selection, and unavailable reason.
 
-- [ ] **Step 2: Run both adapter tests and verify RED**
+- [x] **Step 2: Run both adapter tests and verify RED**
 
 ```bash
 cd packages/tui && bun test test/product/session-navigation-adapter.test.ts
 cd ../../sdks/vscode && bun test src/panel/webview/lib/product-session-navigation-adapter.test.ts src/panel/provider/navigation.test.ts src/panel/webview/app/session-navigation.test.ts
 ```
 
-- [ ] **Step 3: Replace TUI local navigation rules**
+- [x] **Step 3: Replace TUI local navigation rules**
 
 Remove `moveFirstChild` and `moveChild` target selection. Build the minimal graph from current sync sessions, ask Product to resolve each command, and call existing TUI navigation only for an available Product result. Preserve keybindings, dialog guards, retry alerts, and OpenTUI presentation.
 
-- [ ] **Step 4: Replace VSCode provider and webview fallback**
+- [x] **Step 4: Replace VSCode provider and webview fallback**
 
 Make provider navigation metadata a Product projection. Replace `activeChildSessionId` and direct `navigation.prev/parent/next` fallback with shared actions and exact Product targets. Preserve `navigateSession` bridge execution, tree expansion, breadcrumbs, mouse behavior, and keyboard bindings.
 
-- [ ] **Step 5: Run host GREEN validation**
+- [x] **Step 5: Run host GREEN validation**
 
 ```bash
 cd packages/tui && bun test test/product && bun typecheck
@@ -441,7 +441,7 @@ bun run check-types
 bun run package
 ```
 
-- [ ] **Step 6: Commit Phase 2D**
+- [x] **Step 6: Commit Phase 2D**
 
 Stage Product, TUI, and VSCode navigation files only. Verify the staged diff and focused suites, then commit:
 
@@ -506,3 +506,14 @@ Expected: `git diff --check` exits zero and restricted-path search returns no ma
 - [ ] **Step 7: Produce the final report**
 
 Report audit classifications, commits and hashes, Part A baseline, Phase 2C/2D design and actions, capability behavior, lifecycle/error semantics, cross-host parity, removed duplicate logic, transitional raw fields, validation counts, baseline comparison, restricted-path result, files changed, remaining Phase 3 debt, and final Git status.
+
+## Execution Record
+
+- Part A baseline: `3b4ea32677c6b73ea32b7183ecd499441ab4a976`
+- Phase 2C: `335b34ff6` (`feat(product): unify session mutation behavior`)
+- Phase 2D: `66f152525` (`feat(product): unify subagent navigation behavior`)
+- Product final focused suite: 41 pass; typecheck pass.
+- TUI final related suite: 26 pass; typecheck pass.
+- VSCode final related suite: 60 pass; `check-types` pass; VSIX package pass.
+- VSCode full suite: 578 pass / 16 known fail / 1 known error; baseline was 568 / 16 / 1, so new regression count is 0.
+- No Protocol, HttpApi, generated client, or Phase 3 files changed.
