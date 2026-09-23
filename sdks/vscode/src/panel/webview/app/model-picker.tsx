@@ -1,8 +1,10 @@
 import React from "react"
+import { deriveModelCatalog, productTextKeyForModelSection, type ProductModelItem, type ProductModelSection } from "@opencode-ai/product"
 import type { ProviderAuthMethod, ProviderInfo } from "../../../core/sdk"
 import type { ComposerModelRef } from "./state"
-import { isValidModelRef, modelKey, modelVariants, providerById, providerModelById, sameModelRef } from "../lib/session-meta"
 import { t } from "../../../i18n"
+import { toProductProviders } from "../lib/product-adapter"
+import { toVsCodeTextKey } from "../lib/product-text-adapter"
 
 export type ModelPickerItem = {
   id: string
@@ -19,6 +21,12 @@ export type ModelPickerSection = {
   id: string
   label: string
   items: ModelPickerItem[]
+  collapsedCount?: number
+}
+
+export type ModelPickerCatalog = {
+  sections: ModelPickerSection[]
+  searchItems: ModelPickerItem[]
 }
 
 export type ModelPickerRecoveryAction = {
@@ -44,57 +52,36 @@ export function buildModelPickerSections({
   currentModel?: ComposerModelRef
   variants?: Record<string, string>
 }): ModelPickerSection[] {
-  const seen = new Set<string>()
-  const favoriteKeys = new Set(favorites.map((item) => modelKey(item)).filter(Boolean))
-  const sections: ModelPickerSection[] = []
+  return buildModelPickerCatalog({ providers, favorites, recents, currentModel, variants }).sections
+}
 
-  const buildItem = (model: ComposerModelRef): ModelPickerItem | undefined => {
-    if (!isValidModelRef(providers, model)) {
-      return undefined
-    }
-
-    const provider = providerById(providers, model.providerID)
-    const providerLabel = provider?.name || model.providerID
-    const modelLabel = providerModelById(provider, model.modelID)?.name || model.modelID
-    const key = modelKey(model)
-    return {
-      id: key,
-      providerLabel,
-      modelLabel,
-      model,
-      selected: sameModelRef(model, currentModel),
-      favorite: favoriteKeys.has(key),
-      variant: variants?.[key],
-      variantOptions: modelVariants(providers, model),
-    }
+export function buildModelPickerCatalog({
+  providers,
+  favorites,
+  recents,
+  configured = [],
+  currentModel,
+  variants,
+}: {
+  providers: ProviderInfo[]
+  favorites: ComposerModelRef[]
+  recents: ComposerModelRef[]
+  configured?: ComposerModelRef[]
+  currentModel?: ComposerModelRef
+  variants?: Record<string, string>
+}): ModelPickerCatalog {
+  const catalog = deriveModelCatalog({
+    providers: toProductProviders(providers),
+    favorites,
+    recents,
+    configured,
+    current: currentModel,
+    variants,
+  })
+  return {
+    sections: catalog.sections.map(toModelPickerSection),
+    searchItems: catalog.searchItems.map(toModelPickerItem),
   }
-
-  const pushSection = (id: string, label: string, models: ComposerModelRef[]) => {
-    const items = models
-      .map(buildItem)
-      .filter((item): item is ModelPickerItem => !!item)
-      .filter((item) => {
-        if (seen.has(item.id)) {
-          return false
-        }
-        seen.add(item.id)
-        return true
-      })
-
-    if (items.length > 0) {
-      sections.push({ id, label, items })
-    }
-  }
-
-  pushSection("favorites", t("model.favorites"), favorites)
-  pushSection("recent", t("model.recent"), recents)
-
-  for (const provider of providers) {
-    const models = Object.values(provider.models ?? {}).map((model) => ({ providerID: provider.id, modelID: model.id }))
-    pushSection(`provider:${provider.id}`, provider.name || provider.id, models)
-  }
-
-  return sections
 }
 
 export function buildModelPickerRecoveryActions({
@@ -120,6 +107,7 @@ export function buildModelPickerRecoveryActions({
 
 export function ModelPicker({
   sections,
+  searchItems,
   recoveryActions = [],
   currentAgent,
   onClose,
@@ -130,6 +118,7 @@ export function ModelPicker({
   onCycleVariant,
 }: {
   sections: ModelPickerSection[]
+  searchItems?: ModelPickerItem[]
   recoveryActions?: ModelPickerRecoveryAction[]
   currentAgent?: string
   onClose: () => void
@@ -142,8 +131,9 @@ export function ModelPicker({
   const [query, setQuery] = React.useState("")
   const inputRef = React.useRef<HTMLInputElement | null>(null)
   const listRef = React.useRef<HTMLDivElement | null>(null)
-  const filteredSections = React.useMemo(() => filterSections(sections, query), [sections, query])
+  const filteredSections = React.useMemo(() => filterModelPickerSections(sections, searchItems ?? sections.flatMap((section) => section.items), query), [query, searchItems, sections])
   const flatItems = React.useMemo(() => filteredSections.flatMap((section) => section.items), [filteredSections])
+  const itemIndexes = React.useMemo(() => new Map(flatItems.map((item, index) => [item.id, index])), [flatItems])
   const [selectedIndex, setSelectedIndex] = React.useState(() => Math.max(0, flatItems.findIndex((item) => item.selected)))
   const activeItem = flatItems[selectedIndex]
 
@@ -293,10 +283,10 @@ export function ModelPicker({
         {filteredSections.length > 0 ? filteredSections.map((section) => {
           return (
             <div key={section.id} className="oc-modelPickerSection">
-              {!query ? <div className="oc-modelPickerSectionTitle">{section.label}</div> : null}
+              {!query ? <div className="oc-modelPickerSectionTitle">{section.label}{section.collapsedCount && section.collapsedCount > section.items.length ? <span className="oc-modelPickerSectionHint">{t("model.collapsed", { count: section.collapsedCount })}</span> : null}</div> : null}
               <div className="oc-modelPickerList">
                 {section.items.map((item) => {
-                  const index = flatItems.findIndex((entry) => entry.id === item.id)
+                  const index = itemIndexes.get(item.id) ?? -1
                   return (
                     <div
                       key={item.id}
@@ -337,24 +327,53 @@ export function ModelPicker({
               </div>
             </div>
           )
-        }) : <div className="oc-modelPickerEmptyText">{t("model.noMatch", { query })}</div>}
+        }) : <div className="oc-modelPickerEmptyText">{t(toVsCodeTextKey("model.no_match"), { query })}</div>}
       </div>
     </div>
   )
 }
 
-function filterSections(sections: ModelPickerSection[], query: string): FilteredModelPickerSection[] {
+export function filterModelPickerSections(sections: ModelPickerSection[], searchItems: ModelPickerItem[], query: string): FilteredModelPickerSection[] {
   const needle = query.trim().toLowerCase()
   if (!needle) {
     return sections
   }
 
-  return sections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => [item.modelLabel, item.providerLabel, section.label, item.variant ?? ""].join(" ").toLowerCase().includes(needle)),
-    }))
-    .filter((section) => section.items.length > 0)
+  const items = searchItems.filter((item) => [item.modelLabel, item.providerLabel, item.variant ?? ""].join(" ").toLowerCase().includes(needle))
+  if (items.length === 0) return []
+  return [{
+    id: "search",
+    label: "",
+    items,
+  }]
+}
+
+function toModelPickerSection(section: ProductModelSection): ModelPickerSection {
+  return {
+    id: section.id,
+    label: sectionLabel(section),
+    items: section.items.map(toModelPickerItem),
+    collapsedCount: section.collapsedCount,
+  }
+}
+
+function toModelPickerItem(item: ProductModelItem): ModelPickerItem {
+  return {
+    id: item.id,
+    providerLabel: item.provider.name || item.provider.id,
+    modelLabel: item.model.name || item.model.id,
+    model: item.modelRef,
+    selected: item.selected,
+    favorite: item.favorite,
+    variant: item.variant,
+    variantOptions: item.variantOptions,
+  }
+}
+
+function sectionLabel(section: ProductModelSection) {
+  const key = productTextKeyForModelSection(section.kind)
+  if (key) return t(toVsCodeTextKey(key))
+  return section.items[0]?.provider.name || section.providerID || ""
 }
 
 function clampIndex(index: number, size: number) {

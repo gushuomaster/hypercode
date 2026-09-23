@@ -12,7 +12,7 @@ import { useHostMessages } from "../hooks/useHostMessages"
 import { useModifierState } from "../hooks/useModifierState"
 import { useTimelineScroll } from "../hooks/useTimelineScroll"
 import { formatComposerFileContent, parseComposerFileQuery } from "../lib/composer-file-selection"
-import { agentColorClass, composerIdentity, composerMetrics, composerSelection, cycleModelVariant, formatUsd, isSessionRunning, lastUserSelection, modelKey, modelVariants, overallLspStatus, overallMcpStatus, pushRecentModel, sessionTitle, toggleFavoriteModel } from "../lib/session-meta"
+import { agentColorClass, composerIdentity, composerMetrics, composerSelection, cycleComposerModelVariantState, formatUsd, lastUserSelection, modelKey, modelVariants, overallLspStatus, overallMcpStatus, pushRecentModel, sameModelRef, sessionTitle, toggleFavoriteModel } from "../lib/session-meta"
 import { buildComposerSubmitParts, composerMentionAgentOverride } from "./composer-mentions"
 import { ComposerFooter } from "./composer-footer"
 import { absorbFileSelectionSuffix, composerMentions as mentionsFromParts, composerPartsEqual, composerText, deleteStructuredRange, emptyComposerParts, ensureTextPart, replaceRangeWithMention, replaceRangeWithText } from "./composer-editor"
@@ -23,7 +23,7 @@ import { autocompleteItemView, buildComposerMenuItems, mentionForQuery } from ".
 import { composerPrimaryAction } from "./composer-primary-action"
 import { composerEnterIntent, composerTabIntent, cycleAgentName, isShortcutTarget, leaderAction, shouldEnterShellMode, shouldExitShellModeOnBackspace, type ComposerMode } from "./keyboard-shortcuts"
 import { HIDDEN_CODEX_TODO_DOCK_STATE, nextCodexTodoDockState, sameCodexTodoDockState, type CodexTodoDockState } from "./codex-todo-dock-state"
-import { buildModelPickerRecoveryActions, buildModelPickerSections, ModelPicker } from "./model-picker"
+import { buildModelPickerCatalog, buildModelPickerRecoveryActions, ModelPicker } from "./model-picker"
 import { buildComposerHostMessage } from "./composer-submit"
 import { mergeRestoredComposerParts, restoredComposerCursor } from "./composer-seed"
 import { activeChildSessionId } from "./session-navigation"
@@ -37,6 +37,9 @@ import { t } from "../../../i18n"
 import { buildThemePickerItems, ThemePicker, type ThemePickerItem } from "./theme-picker"
 import { resolveTranscriptHistoryMode, shouldAutoLoadEarlierMessages, transcriptHistoryScrollThreshold } from "./transcript-history"
 import { AgentPicker, buildAgentPickerItems, type AgentPickerItem } from "./agent-picker"
+import { derivePendingInteraction, isProductSessionRunning, type ProductAction } from "@opencode-ai/product"
+import { toVsCodeProductAction, toVsCodeProductSelection, type VsCodeProductActionOptions } from "../lib/product-action-adapter"
+import { formatVsCodeProductError } from "../lib/product-text-adapter"
 
 declare global {
   interface Window {
@@ -54,6 +57,12 @@ const fileRefStatus = new Map<string, boolean>()
 const ESC_INTERRUPT_WINDOW_MS = 5000
 const INITIAL_RENDERED_MESSAGE_COUNT = 120
 const RENDER_EARLIER_MESSAGE_COUNT = 120
+
+function postProductAction(action: ProductAction, options?: VsCodeProductActionOptions) {
+  const target = toVsCodeProductAction(action, options)
+  if (target.kind === "host") vscode.postMessage(target.message)
+  return target
+}
 
 function sameAutocompleteMatch(
   left: { trigger: ComposerAutocompleteState["trigger"]; query: string; start: number; end: number } | null,
@@ -188,13 +197,14 @@ export function App() {
     composerModelVariants: state.composerModelVariants,
   }), [state.composerAgentOverride, state.composerMentionAgentOverride, state.composerModelOverrides, state.composerModelVariants, state.composerRecentModels, state.snapshot])
   const latestUserSelection = React.useMemo(() => lastUserSelection(state.snapshot.messages, state.snapshot.providers), [state.snapshot.messages, state.snapshot.providers])
-  const modelPickerSections = React.useMemo(() => buildModelPickerSections({
+  const modelPickerCatalog = React.useMemo(() => buildModelPickerCatalog({
     providers: state.snapshot.providers,
     favorites: state.composerFavoriteModels,
     recents: state.composerRecentModels,
+    configured: state.snapshot.configuredModel ? [state.snapshot.configuredModel] : [],
     currentModel: currentSelection.model,
     variants: state.composerModelVariants,
-  }), [currentSelection.model, state.composerFavoriteModels, state.composerModelVariants, state.composerRecentModels, state.snapshot.providers])
+  }), [currentSelection.model, state.composerFavoriteModels, state.composerModelVariants, state.composerRecentModels, state.snapshot.configuredModel, state.snapshot.providers])
   const modelPickerRecoveryActions = React.useMemo(() => buildModelPickerRecoveryActions({
     providers: state.snapshot.providers,
     providerAuth: state.snapshot.providerAuth,
@@ -208,11 +218,23 @@ export function App() {
     [currentSelection.agent, state.snapshot.agents],
   )
 
-  const blocked = state.snapshot.permissions.length > 0 || state.snapshot.questions.length > 0
+  const pendingInteraction = React.useMemo(
+    () => derivePendingInteraction(state.snapshot.product),
+    [state.snapshot.product],
+  )
+  const productError = React.useMemo(
+    () => state.snapshot.product.error ? formatVsCodeProductError(state.snapshot.product.error) : undefined,
+    [state.snapshot.product.error],
+  )
+  const blocked = pendingInteraction?.kind === "permission" || pendingInteraction?.kind === "question"
   const isChildSession = !!state.bootstrap.session?.parentID
   const contextPanelOpen = sidePanelTab === "context"
-  const firstPermission = state.snapshot.permissions[0]
-  const firstQuestion = state.snapshot.questions[0]
+  const firstPermission = pendingInteraction?.kind === "permission"
+    ? state.snapshot.permissions.find((request) => request.id === pendingInteraction.requestID)
+    : undefined
+  const firstQuestion = pendingInteraction?.kind === "question"
+    ? state.snapshot.questions.find((request) => request.id === pendingInteraction.requestID)
+    : undefined
   const transcriptSessionKey = `${state.bootstrap.sessionRef.workspaceId}:${state.bootstrap.sessionRef.sessionId}`
   const visibleTranscriptMessages = React.useMemo(() => {
     if (renderedMessageCount >= state.snapshot.messages.length) {
@@ -913,7 +935,20 @@ export function App() {
       return
     }
 
-    vscode.postMessage(hostMessage)
+    if (hostMessage.type === "submit") {
+      postProductAction({
+        type: "composer.submit",
+        text: hostMessage.text,
+        agent: hostMessage.agent,
+        model: hostMessage.model,
+        variant: hostMessage.variant,
+      }, {
+        parts: hostMessage.parts,
+        images: hostMessage.images,
+      })
+    } else {
+      vscode.postMessage(hostMessage)
+    }
     setState((current) => ({
       ...current,
       draft: "",
@@ -939,8 +974,8 @@ export function App() {
     ? t("composer.placeholder.shell")
     : t("composer.placeholder.prompt")
 
-  const composerRunningStatus = React.useMemo(() => composerRunningState(state.snapshot.sessionStatus, escPending), [escPending, state.snapshot.sessionStatus])
-  const composerRunning = isSessionRunning(state.snapshot.sessionStatus)
+  const composerRunningStatus = React.useMemo(() => composerRunningState(state.snapshot.product.status, escPending), [escPending, state.snapshot.product.status])
+  const composerRunning = isProductSessionRunning(state.snapshot.product.status)
   const primaryAction = composerPrimaryAction({
     draft: state.draft,
     imageCount: state.imageAttachments.length,
@@ -1091,8 +1126,14 @@ export function App() {
 
   const switchSessionInPlace = React.useCallback((sessionID: string) => {
     setSessionPickerOpen(false)
-    vscode.postMessage({ type: "switchSessionInPlace", sessionID })
-  }, [])
+    postProductAction(
+      { type: "session.switch", sessionID },
+      {
+        currentSessionID: state.snapshotRef.sessionId,
+        sessions: state.sessionPicker.items.map((item) => ({ id: item.session.id, available: true })),
+      },
+    )
+  }, [state.sessionPicker.items, state.snapshotRef.sessionId])
 
   const openModelPicker = React.useCallback(() => {
     setSessionPickerOpen(false)
@@ -1122,9 +1163,11 @@ export function App() {
   function selectAgentPickerItem(item: AgentPickerItem) {
     setAgentPickerOpen(false)
     if (item.group === "primary") {
+      const action = toVsCodeProductSelection({ type: "agent.select", agent: item.agent.name })
+      if (!action || action.type !== "agent.select") return
       setState((current) => ({
         ...current,
-        composerAgentOverride: item.agent.name,
+        composerAgentOverride: action.agent,
         error: "",
       }))
       restoreComposerCursor(state.draft, state.draft.length)
@@ -1193,6 +1236,8 @@ export function App() {
   }, [])
 
   const selectComposerModel = React.useCallback((model: { providerID: string; modelID: string }) => {
+    const action = toVsCodeProductSelection({ type: "model.select", model })
+    if (!action || action.type !== "model.select") return
     setState((current) => {
       const agent = composerSelection({
         ...current.snapshot,
@@ -1210,9 +1255,9 @@ export function App() {
         ...current,
         composerModelOverrides: {
           ...current.composerModelOverrides,
-          [agent]: model,
+          [agent]: action.model,
         },
-        composerRecentModels: pushRecentModel(current.composerRecentModels, model),
+        composerRecentModels: pushRecentModel(current.composerRecentModels, action.model),
         error: "",
       }
     })
@@ -1228,28 +1273,42 @@ export function App() {
 
   const cycleComposerVariant = React.useCallback((model?: { providerID: string; modelID: string }) => {
     setState((current) => {
-      const target = model || composerSelection({
+      const selection = composerSelection({
         ...current.snapshot,
         composerAgentOverride: current.composerAgentOverride,
         composerMentionAgentOverride: current.composerMentionAgentOverride,
         composerRecentModels: current.composerRecentModels,
         composerModelOverrides: current.composerModelOverrides,
         composerModelVariants: current.composerModelVariants,
-      }).model
-      const nextVariant = cycleModelVariant(current.snapshot.providers, target, target ? current.composerModelVariants[modelKey(target)] : undefined)
-      const nextVariants = { ...current.composerModelVariants }
-      const key = modelKey(target)
-      if (!key) {
+      })
+      const target = model || selection.model
+      if (!target) {
         return current
       }
-      if (nextVariant) {
-        nextVariants[key] = nextVariant
-      } else {
-        delete nextVariants[key]
-      }
+      const key = modelKey(target)
+      const storedVariant = current.composerModelVariants[key]
+      const activeVariant = sameModelRef(target, selection.model)
+        ? selection.variant
+        : storedVariant === "default" ? undefined : storedVariant
+      const variants = cycleComposerModelVariantState(
+        current.snapshot.providers,
+        target,
+        activeVariant,
+        current.composerModelVariants,
+      )
+      if (variants === current.composerModelVariants) return current
+      const action = toVsCodeProductSelection({
+        type: "variant.select",
+        model: target,
+        variant: variants[key] === "default" ? undefined : variants[key],
+      })
+      if (!action || action.type !== "variant.select") return current
       return {
         ...current,
-        composerModelVariants: nextVariants,
+        composerModelVariants: {
+          ...current.composerModelVariants,
+          [key]: action.variant ?? "default",
+        },
       }
     })
   }, [])
@@ -1269,10 +1328,6 @@ export function App() {
       return
     }
     vscode.postMessage({ type: "updatePanelColorScheme", colorScheme: item.id })
-  }, [])
-
-  const postComposerAction = React.useCallback((action: "refreshSession" | "compactSession" | "undoSession" | "redoSession" | "interruptSession", model?: { providerID: string; modelID: string }) => {
-    vscode.postMessage({ type: "composerAction", action, model })
   }, [])
 
   const postMessageAction = React.useCallback((action: "forkUserMessage" | "undoUserMessage", messageID: string) => {
@@ -1301,8 +1356,8 @@ export function App() {
   }, [])
 
   const redoSession = React.useCallback(() => {
-    postComposerAction("redoSession")
-  }, [postComposerAction])
+    postProductAction({ type: "session.redo" })
+  }, [])
 
   const undoUserMessage = React.useCallback((message: SessionMessage) => {
     postMessageAction("undoUserMessage", message.info.id)
@@ -1338,7 +1393,7 @@ export function App() {
     if (primaryAction.kind === "interrupt") {
       if (escPendingRef.current) {
         clearEscPending()
-        postComposerAction("interruptSession")
+        postProductAction({ type: "session.interrupt" })
         return
       }
 
@@ -1347,7 +1402,7 @@ export function App() {
     }
 
     submit()
-  }, [clearEscPending, postComposerAction, primaryAction.disabled, primaryAction.kind, startEscPending, submit])
+  }, [clearEscPending, primaryAction.disabled, primaryAction.kind, startEscPending, submit])
 
   const composerFooterContextStats = React.useMemo(() => {
     const metrics = composerMetrics({
@@ -1376,10 +1431,12 @@ export function App() {
     if (!next) {
       return false
     }
+    const action = toVsCodeProductSelection({ type: "agent.select", agent: next })
+    if (!action || action.type !== "agent.select") return false
 
     setState((currentState) => ({
       ...currentState,
-      composerAgentOverride: next,
+      composerAgentOverride: action.agent,
       error: "",
     }))
     return true
@@ -1410,14 +1467,14 @@ export function App() {
         return false
       }
       clearComposerDraft()
-      postComposerAction("redoSession")
+      postProductAction({ type: "session.redo" })
       return true
     }
 
     clearComposerDraft()
-    postComposerAction("undoSession")
+    postProductAction({ type: "session.undo" })
     return true
-  }, [clearComposerDraft, navigateSession, postComposerAction, postNewSession, state.snapshot.childMessages, state.snapshot.childSessions, state.snapshot.messages, state.snapshot.session])
+  }, [clearComposerDraft, navigateSession, postNewSession, state.snapshot.childMessages, state.snapshot.childSessions, state.snapshot.messages, state.snapshot.session])
 
   React.useEffect(() => () => clearLeaderPending(), [clearLeaderPending])
   React.useEffect(() => () => clearEscPending(), [clearEscPending])
@@ -1429,10 +1486,10 @@ export function App() {
   }, [activeAutocomplete, clearLeaderPending])
 
   React.useEffect(() => {
-    if (!isSessionRunning(state.snapshot.sessionStatus)) {
+    if (!isProductSessionRunning(state.snapshot.product.status)) {
       clearEscPending()
     }
-  }, [clearEscPending, state.snapshot.sessionStatus])
+  }, [clearEscPending, state.snapshot.product.status])
 
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1520,21 +1577,21 @@ export function App() {
 
       if (autocompleteAction.type === "undoSession") {
         clearComposerDraft()
-        postComposerAction("undoSession")
+        postProductAction({ type: "session.undo" })
         composerAutocomplete.close()
         return
       }
 
       if (autocompleteAction.type === "redoSession") {
         clearComposerDraft()
-        postComposerAction("redoSession")
+        postProductAction({ type: "session.redo" })
         composerAutocomplete.close()
         return
       }
 
       if (autocompleteAction.type === "compactSession") {
         clearComposerDraft()
-        postComposerAction("compactSession", currentSelection.model)
+        postProductAction({ type: "session.compact", model: currentSelection.model })
         composerAutocomplete.close()
         return
       }
@@ -1569,7 +1626,7 @@ export function App() {
 
       if (autocompleteAction.type === "refreshSession") {
         clearComposerDraft()
-        postComposerAction("refreshSession")
+        vscode.postMessage({ type: "composerAction", action: "refreshSession" })
         composerAutocomplete.close()
         return
       }
@@ -1618,7 +1675,7 @@ export function App() {
       composerAutocomplete.close()
       restoreComposerCursor(result.draft, next.cursor)
     }
-  }, [clearComposerDraft, composerAutocomplete, composerMode, currentSelection.model, openAgentPicker, openModelPicker, openSkillPicker, openThemePicker, postComposerAction, restoreComposerCursor, setComposerState, state.composerParts, state.snapshot])
+  }, [clearComposerDraft, composerAutocomplete, composerMode, currentSelection.model, openAgentPicker, openModelPicker, openSkillPicker, openThemePicker, restoreComposerCursor, setComposerState, state.composerParts, state.snapshot])
 
   const sendQuestionReply = React.useCallback((request: QuestionRequest) => {
     const answers = request.questions.map((_item, index) => {
@@ -1628,11 +1685,7 @@ export function App() {
       return custom ? [...base, custom] : base
     })
 
-    vscode.postMessage({
-      type: "questionReply",
-      requestID: request.id,
-      answers,
-    })
+    postProductAction({ type: "question.reply", requestID: request.id, answers })
 
     setState((current) => ({ ...current, error: "" }))
   }, [state.form.custom, state.form.selected])
@@ -1791,7 +1844,7 @@ export function App() {
                   }))
                 }}
                 onReply={(reply: "once" | "always" | "reject", message?: string) => {
-                  vscode.postMessage({ type: "permissionReply", requestID: firstPermission.id, reply, message })
+                  postProductAction({ type: "permission.reply", requestID: firstPermission.id, reply, message })
                   setState((current) => ({ ...current, error: "" }))
                 }}
                 FileRefText={FileRefText}
@@ -1804,11 +1857,7 @@ export function App() {
                 onOption={(index, label, multiple) => {
                   const key = answerKey(firstQuestion.id, index)
                   if (!multiple && firstQuestion.questions.length === 1) {
-                    vscode.postMessage({
-                      type: "questionReply",
-                      requestID: firstQuestion.id,
-                      answers: [[label]],
-                    })
+                    postProductAction({ type: "question.reply", requestID: firstQuestion.id, answers: [[label]] })
                     setState((current) => ({ ...current, error: "" }))
                     return
                   }
@@ -1851,13 +1900,13 @@ export function App() {
                   }))
                 }}
                 onReject={() => {
-                  vscode.postMessage({ type: "questionReject", requestID: firstQuestion.id })
+                  postProductAction({ type: "question.reject", requestID: firstQuestion.id })
                   setState((current) => ({ ...current, error: "" }))
                 }}
                 onSubmit={() => sendQuestionReply(firstQuestion)}
               />
             ) : null}
-            {!blocked && !isChildSession ? <RetryStatus status={state.snapshot.sessionStatus} /> : null}
+            {pendingInteraction?.kind === "status" && !isChildSession ? <RetryStatus status={state.snapshot.sessionStatus} /> : null}
             {isChildSession ? (
               <>
                 <SubagentNavigation navigation={state.snapshot.navigation} onNavigate={(sessionID) => vscode.postMessage({ type: "navigateSession", sessionID })} />
@@ -2156,14 +2205,14 @@ export function App() {
                             }
 
                             if (event.key === "Escape" && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
-                              if (!isSessionRunning(state.snapshot.sessionStatus)) {
+                              if (!isProductSessionRunning(state.snapshot.product.status)) {
                                 return
                               }
 
                               event.preventDefault()
                               if (escPendingRef.current) {
                                 clearEscPending()
-                                postComposerAction("interruptSession")
+                                postProductAction({ type: "session.interrupt" })
                                 return
                               }
 
@@ -2235,7 +2284,8 @@ export function App() {
                       ) : null}
                       {modelPickerOpen ? (
                         <ModelPicker
-                          sections={modelPickerSections}
+                          sections={modelPickerCatalog.sections}
+                          searchItems={modelPickerCatalog.searchItems}
                           recoveryActions={modelPickerRecoveryActions}
                           currentAgent={currentSelection.agent}
                           onClose={() => setModelPickerOpen(false)}
@@ -2261,7 +2311,7 @@ export function App() {
                     status={composerRunningStatus}
                     contextOpen={contextPanelOpen}
                     badges={composerFooterBadges}
-                    error={state.error || undefined}
+                    error={state.error || productError}
                     onOpenContext={toggleContextPanel}
                     pendingActions={pendingMcpActions}
                     onActionStart={(name) => setPendingMcpActions((current) => ({ ...current, [name]: true }))}

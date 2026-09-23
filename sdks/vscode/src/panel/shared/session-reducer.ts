@@ -1,8 +1,22 @@
 import type { SessionSnapshot } from "../../bridge/types"
 import type { FileDiff, MessagePart, PermissionRequest, QuestionRequest, SessionEvent, SessionMessage, SessionStatus, Todo } from "../../core/sdk"
 import { displaySessionTitle } from "../../core/session-titles"
+import { reduceProductEvent } from "@opencode-ai/product"
+import { toProductEvent, toProductSnapshot } from "../../product/session"
 
 export function reduceSessionSnapshot(payload: SessionSnapshot, event: SessionEvent) {
+  const next = reduceHostSessionSnapshot(payload, event)
+  const productEvent = toProductEvent(event)
+  if (!productEvent) return next
+  const baseProduct = payload.product ?? toProductSnapshot(payload)
+  if (productEvent.sessionID && !payload.relatedSessionIds.includes(productEvent.sessionID)) return next ? { ...next, product: baseProduct } : { ...payload, product: baseProduct }
+  if (productEvent.sessionID && productEvent.sessionID !== payload.sessionRef.sessionId && productEvent.type !== "permission.asked" && productEvent.type !== "permission.replied" && productEvent.type !== "question.asked" && productEvent.type !== "question.replied" && productEvent.type !== "question.rejected") return next ? { ...next, product: baseProduct } : { ...payload, product: baseProduct }
+  const product = reduceProductEvent(baseProduct, productEvent)
+  if (!next) return { ...payload, product }
+  return { ...next, product }
+}
+
+function reduceHostSessionSnapshot(payload: SessionSnapshot, event: SessionEvent) {
   if (event.type === "session.diff") {
     const props = event.properties as { sessionID: string; diff: FileDiff[] }
     if (props.sessionID !== payload.sessionRef.sessionId) {

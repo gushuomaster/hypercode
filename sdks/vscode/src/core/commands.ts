@@ -322,6 +322,7 @@ export function commands(
         relatedSessionIds: relatedSessionIds ?? [],
         sessions: sessions.list(rt.workspaceId),
         tagsBySessionId: tags.tagsBySession(rt.workspaceId),
+        statusesBySessionId: Object.fromEntries(rt.sessionStatuses),
       })
     }),
     vscode.commands.registerCommand("hypercode.switchSessionInPlace", async (current?: WorkspaceRef & { sessionId: string }, sessionID?: string) => {

@@ -8,7 +8,7 @@ describe("composerRunningState", () => {
   beforeEach(() => setLocale("zh"))
 
   test("maps a busy session to the default thinking interrupt state", () => {
-    assert.deepEqual(composerRunningState({ type: "busy" }, false), {
+    assert.deepEqual(composerRunningState("running", false), {
       label: "思考中",
       hint: "按 Esc 键中断",
       tone: "running",
@@ -19,7 +19,7 @@ describe("composerRunningState", () => {
   })
 
   test("maps a retry session to a retrying status strip", () => {
-    assert.deepEqual(composerRunningState({ type: "retry", attempt: 2, message: "Waiting to retry", next: Date.now() }, false), {
+    assert.deepEqual(composerRunningState("retry", false), {
       label: "重试中",
       hint: "按 Esc 键中断",
       tone: "retry",
@@ -30,7 +30,7 @@ describe("composerRunningState", () => {
   })
 
   test("arms the interrupt confirmation after the first escape press", () => {
-    assert.deepEqual(composerRunningState({ type: "busy" }, true), {
+    assert.deepEqual(composerRunningState("running", true), {
       label: "思考中",
       hint: "再按 Esc 键中断",
       tone: "armed",
@@ -41,6 +41,6 @@ describe("composerRunningState", () => {
   })
 
   test("returns nothing when the session is idle", () => {
-    assert.equal(composerRunningState({ type: "idle" }, false), undefined)
+    assert.equal(composerRunningState("idle", false), undefined)
   })
 })

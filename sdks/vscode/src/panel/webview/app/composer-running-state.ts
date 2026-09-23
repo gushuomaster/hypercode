@@ -1,4 +1,4 @@
-import type { SessionStatus } from "../../../core/sdk"
+import { isProductSessionRunning, type ProductRunState } from "@opencode-ai/product"
 import { t } from "../../../i18n"
 
 export type ComposerRunningState = {
@@ -10,12 +10,10 @@ export type ComposerRunningState = {
   ariaLabel: string
 }
 
-export function composerRunningState(status: SessionStatus | undefined, escPending: boolean): ComposerRunningState | undefined {
-  if (status?.type !== "busy" && status?.type !== "retry") {
-    return undefined
-  }
+export function composerRunningState(status: ProductRunState, escPending: boolean): ComposerRunningState | undefined {
+  if (!isProductSessionRunning(status)) return undefined
 
-  const label = status.type === "retry" ? t("composer.retrying") : t("composer.thinking")
+  const label = status === "retry" ? t("composer.retrying") : t("composer.thinking")
   if (escPending) {
     return {
       label,
@@ -30,7 +28,7 @@ export function composerRunningState(status: SessionStatus | undefined, escPendi
   return {
     label,
     hint: t("composer.escHint"),
-    tone: status.type === "retry" ? "retry" : "running",
+    tone: status === "retry" ? "retry" : "running",
     icon: "stop",
     title: t("composer.interrupt"),
     ariaLabel: t("composer.interrupt"),

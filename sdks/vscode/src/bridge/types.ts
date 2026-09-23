@@ -1,5 +1,6 @@
 import type { AgentInfo, CommandInfo, FileDiff, FormatterStatus, LspStatus, McpResource, McpStatus, PermissionRequest, PromptFilePartInput, PromptSource, ProviderAuthMethod, ProviderInfo, QuestionRequest, SessionEvent, SessionInfo, SessionMessage, SessionStatus, Todo } from "../core/sdk"
 import type { DisplaySettings, PanelColorScheme, PanelTheme } from "../core/settings"
+import type { ProductSnapshot } from "@opencode-ai/product"
 
 export const SESSION_PANEL_VIEW_TYPE = "hypercode.session"
 
@@ -34,9 +35,11 @@ export type SessionMessageHistory = {
 }
 
 export type SessionSnapshot = SessionBootstrap & {
+  product?: ProductSnapshot
   display: DisplaySettings
   skillCatalog?: SkillCatalogEntry[]
   messageHistory?: SessionMessageHistory
+  // TRANSITIONAL_LEGACY: ProductSnapshot owns lifecycle semantics; raw retry details still render in the host.
   sessionStatus?: SessionStatus
   messages: SessionMessage[]
   childMessages: Record<string, SessionMessage[]>
@@ -44,6 +47,7 @@ export type SessionSnapshot = SessionBootstrap & {
   submitting: boolean
   todos: Todo[]
   diff: FileDiff[]
+  // TRANSITIONAL_LEGACY: ProductSnapshot selects pending IDs; raw requests remain until it carries renderer detail payloads.
   permissions: PermissionRequest[]
   questions: QuestionRequest[]
   agents: AgentInfo[]
@@ -90,6 +94,7 @@ export type SessionPickerItem = {
   session: SessionInfo
   tags: string[]
   related: boolean
+  status?: SessionStatus
 }
 
 export type SessionPickerPayload = {

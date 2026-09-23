@@ -106,6 +106,40 @@ describe("session picker view", () => {
     assert.deepEqual(view.availableTags, ["docs", "ops", "planning"])
   })
 
+  test("uses shared product rules for root filtering, deduplication, fallback titles, ordering, and status", () => {
+    const duplicate = session("ses_duplicate", "2026-04-19T07:00:00Z", "")
+    const replacement = session("ses_duplicate", "2026-04-19T08:30:00Z", "")
+    const child = {
+      ...session("ses_child", "2026-04-19T11:30:00Z", "Child"),
+      parentID: "ses_current",
+    }
+    const archived = {
+      ...session("ses_archived", "2026-04-19T11:45:00Z", "Archived"),
+      time: {
+        ...session("ses_archived", "2026-04-19T11:45:00Z").time,
+        archived: new Date("2026-04-19T11:50:00Z").getTime(),
+      },
+    }
+    const view = buildSessionPickerView({
+      sessions: [duplicate, child, archived, replacement],
+      currentSessionId: "ses_current",
+      statusesBySessionId: {
+        ses_duplicate: { type: "busy" },
+      },
+      now,
+    })
+
+    assert.deepEqual(view.sections.flatMap((section) => section.items.map((item) => ({
+      id: item.session.id,
+      title: item.title,
+      status: item.status,
+    }))), [{
+      id: "ses_duplicate",
+      title: "ses_dupl",
+      status: "running",
+    }])
+  })
+
   test("renders a workspace-only picker with search and no extra controls", () => {
     const html = renderToStaticMarkup(
       <SessionPicker

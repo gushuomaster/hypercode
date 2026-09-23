@@ -394,6 +394,7 @@ describe("normalizeSessionPickerPayload", () => {
         },
         tags: ["docs", 1, null] as unknown as string[],
         related: true,
+        status: { type: "busy" },
       }],
     }), {
       workspaceName: "workspace",
@@ -407,6 +408,7 @@ describe("normalizeSessionPickerPayload", () => {
         },
         tags: ["docs"],
         related: true,
+        status: { type: "busy" },
       }],
     })
   })

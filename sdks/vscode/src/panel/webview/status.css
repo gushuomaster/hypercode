@@ -781,6 +781,13 @@
   text-transform: uppercase;
 }
 
+.oc-modelPickerSectionHint {
+  margin-left: 8px;
+  color: var(--vscode-descriptionForeground);
+  font-weight: 400;
+  text-transform: none;
+}
+
 .oc-modelPickerList {
   display: flex;
   flex-direction: column;

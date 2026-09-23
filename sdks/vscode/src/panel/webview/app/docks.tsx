@@ -2,6 +2,7 @@ import React from "react"
 import type { PermissionRequest, QuestionInfo, QuestionRequest, SessionStatus } from "../../../core/sdk"
 import type { AppState, FormState } from "./state"
 import { t } from "../../../i18n"
+import { toVsCodeTextKey } from "../lib/product-text-adapter"
 
 type FileRefTextComponent = ({ value, display, tone }: { value: string; display?: string; tone?: "default" | "muted" }) => React.JSX.Element
 
@@ -33,7 +34,7 @@ export function PermissionDock(props: {
     <section className="oc-dock oc-dock-warning">
       <div className="oc-dockHeader">
         <span className="oc-kicker">{t("permission.kicker")}</span>
-        <span className="oc-dockTitle">{info.label || t("permission.approvalNeeded")}</span>
+        <span className="oc-dockTitle">{info.label || t(toVsCodeTextKey("interaction.permission.title"))}</span>
       </div>
       <div className="oc-dockText">{info.intro || t("permission.approvalIntro")}</div>
       <div className="oc-inlineValue">{renderPermissionLine(info.title, FileRefText)}</div>
@@ -104,7 +105,7 @@ export function QuestionDock(props: {
   return (
     <section className="oc-dock oc-dock-warning">
       <div className="oc-dockHeader">
-        <span className="oc-kicker">{t("question.kicker")}</span>
+        <span className="oc-kicker">{t(toVsCodeTextKey("interaction.question.pending"))}</span>
         <span className="oc-dockTitle">{meta.title}</span>
       </div>
       <div className="oc-dockText">{meta.text}</div>
@@ -419,7 +420,7 @@ function permissionInfo(request: PermissionRequest): PermissionInfo {
   const input = permissionInput(request)
   const details: PermissionLine[] = []
   const base = {
-    label: t("permission.approvalNeeded"),
+    label: t(toVsCodeTextKey("interaction.permission.title")),
     intro: t("permission.approvalIntro"),
   }
 

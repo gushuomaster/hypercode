@@ -3,7 +3,7 @@ import * as path from "node:path"
 import { URL } from "node:url"
 import { postToWebview } from "../../bridge/host"
 import type { ComposerPromptPart, SessionPanelRef, SessionPickerPayload, SkillCatalogEntry } from "../../bridge/types"
-import type { MessageInfo, PermissionReply, PromptFilePartInput, PromptPartInput, SessionInfo, SessionMessage } from "../../core/sdk"
+import type { MessageInfo, PermissionReply, PromptFilePartInput, PromptPartInput, SessionInfo, SessionMessage, SessionStatus } from "../../core/sdk"
 import { WorkspaceManager } from "../../core/workspace"
 import { loadSkillCatalog } from "../../core/skills"
 import { text, textError, wait } from "./utils"
@@ -241,6 +241,7 @@ export function buildSessionPickerPayload(input: {
   relatedSessionIds: string[]
   sessions: SessionInfo[]
   tagsBySessionId?: Record<string, string[]>
+  statusesBySessionId?: Record<string, SessionStatus>
 }): SessionPickerPayload {
   const related = new Set(input.relatedSessionIds)
   const tagsBySessionId = input.tagsBySessionId ?? {}
@@ -252,6 +253,7 @@ export function buildSessionPickerPayload(input: {
       session,
       tags: Array.isArray(tagsBySessionId[session.id]) ? tagsBySessionId[session.id]!.filter((tag): tag is string => typeof tag === "string") : [],
       related: related.has(session.id),
+      status: input.statusesBySessionId?.[session.id],
     })),
   }
 }

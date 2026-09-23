@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { beforeEach, describe, test } from "node:test"
 import type { ProviderInfo } from "../../../core/sdk"
 import { setLocale } from "../../../i18n"
-import { buildModelPickerRecoveryActions, buildModelPickerSections } from "./model-picker"
+import { buildModelPickerCatalog, buildModelPickerRecoveryActions, buildModelPickerSections, filterModelPickerSections } from "./model-picker"
 
 beforeEach(() => setLocale("en"))
 
@@ -59,5 +59,40 @@ describe("model picker sections", () => {
       label: "OpenAI",
       actionLabel: "Connect OpenAI",
     }])
+  })
+
+  test("uses shared TUI model grouping while keeping every model searchable", () => {
+    const catalog = buildModelPickerCatalog({
+      providers: [{
+        id: "opencode",
+        name: "HyperCode Zen",
+        models: Object.fromEntries(Array.from({ length: 8 }, (_, index) => {
+          const id = `m${index}`
+          return [id, {
+            id,
+            name: `Model ${index}`,
+            cost: { input: index < 2 ? 0 : 1 },
+            release_date: `2026-01-${String(10 - index).padStart(2, "0")}`,
+          }]
+        })),
+      }],
+      favorites: [{ providerID: "opencode", modelID: "m2" }],
+      recents: [{ providerID: "opencode", modelID: "m3" }],
+      configured: [{ providerID: "opencode", modelID: "m4" }],
+      currentModel: { providerID: "opencode", modelID: "m5" },
+    })
+
+    assert.deepEqual(catalog.sections.map((section) => section.label), [
+      "Favorites",
+      "Recent",
+      "Configured",
+      "Current model",
+      "Free models",
+      "HyperCode Zen",
+    ])
+    assert.deepEqual(catalog.sections.at(-1)?.items.map((item) => item.id), ["opencode/m6", "opencode/m7"])
+    assert.equal(catalog.sections.at(-1)?.collapsedCount, 6)
+    assert.equal(catalog.searchItems.length, 8)
+    assert.deepEqual(filterModelPickerSections(catalog.sections, catalog.searchItems, "missing"), [])
   })
 })

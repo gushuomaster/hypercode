@@ -4,6 +4,8 @@ import { t } from "../../../i18n"
 import { reduceSessionSnapshot } from "../../shared/session-reducer"
 import { summarizeSessionSnapshot } from "../../shared/session-summary"
 import { bootstrapFromSnapshot, normalizeSessionPickerPayload, normalizeSnapshotPayload, resetSessionScopedComposerState, sameSessionRef, type AppState, type VsCodeApi } from "../app/state"
+import { mergeSessionProductSnapshot } from "../../../product/session"
+import { activateProductSession, beginProductSessionSwitch, rememberProductSessionSnapshot } from "@opencode-ai/product"
 
 export function dispatchHostMessage(message: HostMessage, handlers: {
   fileRefStatus: Map<string, boolean>
@@ -16,19 +18,42 @@ export function dispatchHostMessage(message: HostMessage, handlers: {
   setState: React.Dispatch<React.SetStateAction<AppState>>
 }) {
   if (message?.type === "bootstrap") {
-    handlers.setState((current) => ({ ...current, bootstrap: message.payload, error: "" }))
+    handlers.setState((current) => ({
+      ...current,
+      bootstrap: message.payload,
+      productSessions: sameSessionRef(current.snapshotRef, message.payload.sessionRef)
+        ? current.productSessions
+        : beginProductSessionSwitch(current.productSessions, message.payload.sessionRef.sessionId),
+      error: "",
+    }))
     return
   }
 
   if (message?.type === "snapshot") {
     handlers.setState((current) => {
-      const nextSnapshot = normalizeSnapshotPayload(message.payload, current.snapshot)
-      const nextState = sameSessionRef(current.bootstrap.sessionRef, message.payload.sessionRef)
+      const sameSession = sameSessionRef(current.snapshotRef, message.payload.sessionRef)
+      const remembered = rememberProductSessionSnapshot(
+        current.productSessions,
+        current.snapshotRef.sessionId,
+        current.snapshot.product,
+      )
+      const nextSnapshot = normalizeSnapshotPayload(
+        message.payload,
+        sameSession ? current.snapshot : undefined,
+        remembered.snapshots[message.payload.sessionRef.sessionId],
+      )
+      const nextState = sameSession
         ? current
         : resetSessionScopedComposerState(current)
       return {
         ...nextState,
         bootstrap: bootstrapFromSnapshot(message.payload),
+        snapshotRef: message.payload.sessionRef,
+        productSessions: activateProductSession(
+          remembered,
+          message.payload.sessionRef.sessionId,
+          nextSnapshot.product,
+        ),
         snapshot: nextSnapshot,
         error: "",
       }
@@ -51,6 +76,11 @@ export function dispatchHostMessage(message: HostMessage, handlers: {
           message: summarizeSessionSnapshot(nextSnapshotState),
         },
         snapshot: nextSnapshot,
+        productSessions: rememberProductSessionSnapshot(
+          current.productSessions,
+          current.snapshotRef.sessionId,
+          nextSnapshot.product,
+        ),
         error: "",
       }
     })
@@ -63,6 +93,7 @@ export function dispatchHostMessage(message: HostMessage, handlers: {
         ...current.snapshot,
         ...message.payload,
       }
+      nextSnapshot.product = mergeSessionProductSnapshot(current.snapshot.product, nextSnapshot)
       return {
         ...current,
         bootstrap: {
@@ -77,6 +108,11 @@ export function dispatchHostMessage(message: HostMessage, handlers: {
         snapshot: {
           ...nextSnapshot,
         },
+        productSessions: rememberProductSessionSnapshot(
+          current.productSessions,
+          current.snapshotRef.sessionId,
+          nextSnapshot.product,
+        ),
         error: "",
       }
     })

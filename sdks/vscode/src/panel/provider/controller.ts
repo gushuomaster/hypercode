@@ -463,6 +463,10 @@ export class SessionPanelController implements vscode.Disposable {
     this.markDeferredDirty(event)
 
     if (this.current && needsRefresh(event, this.current)) {
+      if (event.type === "session.error" && this.current.status === "ready") {
+        const next = reduce(this.current, event)
+        if (next) this.current = patch(next)
+      }
       await this.push(true, refreshReason(event, this.current))
       return
     }
@@ -509,6 +513,7 @@ export class SessionPanelController implements vscode.Disposable {
     // snapshot already contains the latest transcript/session tree data.
     return patch({
       ...snapshot,
+      product: this.current.product,
       sessionStatus: this.current.sessionStatus,
       permissions: this.current.permissions,
       questions: this.current.questions,

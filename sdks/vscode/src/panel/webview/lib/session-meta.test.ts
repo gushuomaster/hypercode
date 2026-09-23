@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import type { AgentInfo, FormatterStatus, ProviderInfo, SessionMessage } from "../../../core/sdk"
 import { setLocale } from "../../../i18n"
-import { composerIdentity, composerMetrics, composerSelection, cycleModelVariant, lastUserSelection, overallFormatterStatus, providerModelById, pushRecentModel, statusItemForMcp, toggleFavoriteModel } from "./session-meta"
+import { composerIdentity, composerMetrics, composerSelection, cycleComposerModelVariant, cycleComposerModelVariantState, lastUserSelection, overallFormatterStatus, providerModelById, pushRecentModel, statusItemForMcp, toggleFavoriteModel } from "./session-meta"
 
 const providers: ProviderInfo[] = [{
   id: "p1",
@@ -284,9 +284,29 @@ describe("session meta composer state", () => {
   })
 
   test("cycleModelVariant follows upstream undefined to next to undefined semantics", () => {
-    assert.equal(cycleModelVariant(providers, { providerID: "p1", modelID: "m1" }, undefined), "fast")
-    assert.equal(cycleModelVariant(providers, { providerID: "p1", modelID: "m1" }, "fast"), "deep")
-    assert.equal(cycleModelVariant(providers, { providerID: "p1", modelID: "m1" }, "deep"), undefined)
+    assert.equal(cycleComposerModelVariant(providers, { providerID: "p1", modelID: "m1" }, undefined), "fast")
+    assert.equal(cycleComposerModelVariant(providers, { providerID: "p1", modelID: "m1" }, "fast"), "deep")
+    assert.equal(cycleComposerModelVariant(providers, { providerID: "p1", modelID: "m1" }, "deep"), undefined)
+  })
+
+  test("cycleComposerModelVariantState preserves an explicit provider default override", () => {
+    const model = { providerID: "p1", modelID: "m1" }
+    const variants = cycleComposerModelVariantState(providers, model, "deep", {})
+
+    assert.deepEqual(variants, { "p1/m1": "default" })
+    assert.equal(composerSelection({
+      messages: [],
+      agents: [{ name: "build", mode: "primary", model, variant: "deep" }],
+      defaultAgent: "build",
+      providers,
+      composerModelVariants: variants,
+    }).variant, undefined)
+  })
+
+  test("cycleComposerModelVariantState ignores models without variants", () => {
+    const variants = { "p1/m1": "fast" }
+
+    assert.strictEqual(cycleComposerModelVariantState(providers, { providerID: "p1", modelID: "m2" }, undefined, variants), variants)
   })
 
   test("statusItemForMcp maps needs_auth to an explicit authenticate action", () => {

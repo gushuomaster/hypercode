@@ -19,7 +19,7 @@ describe("ComposerFooter", () => {
           cost: "$0.5203",
           percent: 68,
         }}
-        status={composerRunningState({ type: "busy" }, false)}
+        status={composerRunningState("running", false)}
         onOpenContext={() => {}}
         badges={[
           { label: "MCP", tone: "gray", items: [] },

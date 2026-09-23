@@ -1,7 +1,9 @@
 import type { SessionBootstrap } from "../../../bridge/types"
-import type { AgentInfo, FormatterStatus, LspStatus, McpStatus, MessageInfo, ProviderInfo, SessionMessage, SessionStatus } from "../../../core/sdk"
+import { cycleModelVariant, deriveComposerSelection } from "@opencode-ai/product"
+import type { AgentInfo, FormatterStatus, LspStatus, McpStatus, MessageInfo, ProviderInfo, SessionMessage } from "../../../core/sdk"
 import { displaySessionTitle } from "../../../core/session-titles"
 import { t } from "../../../i18n"
+import { toProductAgents, toProductProviders } from "./product-adapter"
 
 export type ModelRef = NonNullable<MessageInfo["model"]>
 
@@ -17,10 +19,6 @@ export type StatusItem = {
 
 export function sessionTitle(bootstrap: SessionBootstrap) {
   return displaySessionTitle(bootstrap.session?.title, bootstrap.sessionRef.sessionId?.slice(0, 8) || "session")
-}
-
-export function isSessionRunning(status?: SessionStatus) {
-  return status?.type === "busy" || status?.type === "retry"
 }
 
 export function contextUsage(messages: SessionMessage[], providers: ProviderInfo[], fallbackModel?: MessageInfo["model"]) {
@@ -135,18 +133,22 @@ export function modelVariants(providers: ProviderInfo[], model: MessageInfo["mod
   return Object.keys(info?.variants ?? {})
 }
 
-export function cycleModelVariant(providers: ProviderInfo[], model: MessageInfo["model"] | undefined, current?: string) {
-  const variants = modelVariants(providers, model)
-  if (variants.length === 0) {
-    return undefined
-  }
+export function cycleComposerModelVariant(providers: ProviderInfo[], model: MessageInfo["model"] | undefined, current?: string) {
+  return cycleModelVariant(toProductProviders(providers), normalizeModelRef(model), current)
+}
 
-  const currentIndex = current ? variants.indexOf(current) : -1
-  if (currentIndex < 0) {
-    return variants[0]
+export function cycleComposerModelVariantState(
+  providers: ProviderInfo[],
+  model: MessageInfo["model"] | undefined,
+  current: string | undefined,
+  variants: Record<string, string>,
+) {
+  const key = modelKey(model)
+  if (!key || modelVariants(providers, model).length === 0) return variants
+  return {
+    ...variants,
+    [key]: cycleComposerModelVariant(providers, model, current) ?? "default",
   }
-
-  return currentIndex === variants.length - 1 ? undefined : variants[currentIndex + 1]
 }
 
 export function displayModelRef(model: MessageInfo["model"] | undefined, providers: ProviderInfo[]) {
@@ -167,32 +169,6 @@ export function displayProviderRef(model: MessageInfo["model"] | undefined, prov
   return providerById(providers, providerID)?.name || providerID
 }
 
-export function fallbackModelRef(providers: ProviderInfo[], defaults?: Record<string, string>) {
-  const provider = preferredProvider(providers, defaults)
-  if (!provider?.id) {
-    return undefined
-  }
-
-  const modelID = defaults?.[provider.id]?.trim()
-  const model = modelID ? providerModelById(provider, modelID) : firstProviderModel(provider)
-  if (!model?.id) {
-    return undefined
-  }
-
-  return {
-    providerID: provider.id,
-    modelID: model.id,
-  }
-}
-
-export function fallbackRecentModel(recents: ModelRef[] | undefined, providers: ProviderInfo[]) {
-  if (!Array.isArray(recents)) {
-    return undefined
-  }
-
-  return recents.find((item) => isValidModelRef(providers, item))
-}
-
 export function lastUserMessage(messages: SessionMessage[]) {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     if (messages[i]?.info.role === "user") {
@@ -207,37 +183,6 @@ export function providerModelById(provider: ProviderInfo | undefined, modelID: s
   }
 
   return provider.models[modelID] || Object.values(provider.models).find((item) => item.id === modelID)
-}
-
-export function firstProviderModel(provider: ProviderInfo | undefined) {
-  if (!provider?.models) {
-    return undefined
-  }
-  return Object.values(provider.models)[0]
-}
-
-export function preferredProvider(providers: ProviderInfo[], defaults?: Record<string, string>) {
-  if (defaults) {
-    for (const provider of providers) {
-      const modelID = defaults[provider.id]?.trim()
-      if (modelID && providerModelById(provider, modelID)) {
-        return provider
-      }
-    }
-  }
-
-  return providers.find((provider) => !!firstProviderModel(provider))
-}
-
-export function primaryAgent(agents: AgentInfo[], name?: string) {
-  if (name) {
-    const match = agents.find((item) => item.name === name)
-    if (match) {
-      return match
-    }
-  }
-
-  return agents[0]
 }
 
 export function lastAssistantWithOutput(messages: SessionMessage[]) {
@@ -409,24 +354,20 @@ export function composerSelection(snapshot: {
   composerModelOverrides?: Record<string, ModelRef>
   composerModelVariants?: Record<string, string>
 }) {
-  const preferredAgent = snapshot.composerMentionAgentOverride
-    || snapshot.composerAgentOverride
-    || (!snapshot.messages.length ? snapshot.agentMode : undefined)
-    || snapshot.defaultAgent
-  const agent = primaryAgent(snapshot.agents, preferredAgent)
-  const overrideModel = agent?.name ? snapshot.composerModelOverrides?.[agent.name] : undefined
-  const manualModel = isValidModelRef(snapshot.providers, overrideModel) ? overrideModel : undefined
-  const agentModel = isValidModelRef(snapshot.providers, agent?.model) ? agent.model : undefined
-  const configuredModel = isValidModelRef(snapshot.providers, snapshot.configuredModel) ? snapshot.configuredModel : undefined
-  const recentModel = fallbackRecentModel(snapshot.composerRecentModels, snapshot.providers)
-  const model = manualModel || agentModel || configuredModel || recentModel || fallbackModelRef(snapshot.providers, snapshot.providerDefault)
-  const variant = model ? snapshot.composerModelVariants?.[modelKey(model)] : undefined
-
-  return {
-    agent: agent?.name,
-    model,
-    variant: variant || (agentModel && model && sameModelRef(agentModel, model) ? agent?.variant : undefined),
-  }
+  return deriveComposerSelection({
+    providers: toProductProviders(snapshot.providers),
+    agents: toProductAgents(snapshot.agents),
+    defaultAgent: snapshot.defaultAgent,
+    agentMode: snapshot.agentMode,
+    messagesExist: snapshot.messages.length > 0,
+    configuredModel: snapshot.configuredModel,
+    providerDefaults: snapshot.providerDefault,
+    recentModels: snapshot.composerRecentModels,
+    modelOverrides: snapshot.composerModelOverrides,
+    mentionAgentOverride: snapshot.composerMentionAgentOverride,
+    agentOverride: snapshot.composerAgentOverride,
+    modelVariants: snapshot.composerModelVariants,
+  })
 }
 
 export function lastUserSelection(messages: SessionMessage[], providers: ProviderInfo[]) {

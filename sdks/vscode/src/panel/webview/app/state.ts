@@ -2,6 +2,8 @@ import type { ComposerFileSelection, ComposerPathKind, SessionBootstrap, Session
 import type { DisplaySettings, PanelColorScheme, PanelTheme } from "../../../core/settings"
 import type { AgentInfo, CommandInfo, FileDiff, FormatterStatus, LspStatus, McpResource, McpStatus, MessageInfo, PermissionRequest, ProviderAuthMethod, ProviderInfo, QuestionRequest, SessionInfo, SessionMessage, SessionStatus, Todo } from "../../../core/sdk"
 import type { CommandPromptCatalog, CommandPromptInvocation } from "./command-prompt"
+import { createProductSessionState, createProductSnapshot, mergePartialProductSnapshot, mergeProductSnapshot, type ProductSnapshot } from "@opencode-ai/product"
+import { toProductSnapshot } from "../lib/product-session-adapter"
 
 export type VsCodeApi = {
   postMessage(message: unknown): void
@@ -70,7 +72,10 @@ export type ImageAttachment = {
 
 export type AppState = {
   bootstrap: SessionBootstrap
+  snapshotRef: SessionBootstrap["sessionRef"]
+  productSessions: ReturnType<typeof createProductSessionState>
   snapshot: {
+    product: ReturnType<typeof createProductSnapshot>
     session?: SessionInfo
     display: DisplaySettings
     skillCatalog: SkillCatalogEntry[]
@@ -180,14 +185,18 @@ export function resetSessionScopedComposerState(state: AppState): AppState {
 export function createInitialState(initialRef: SessionBootstrap["sessionRef"] | null, persisted?: PersistedAppState, initialDisplay?: DisplaySettings): AppState {
   const sameSession = samePersistedSession(initialRef, persisted)
   const display = initialDisplaySettings(initialDisplay)
+  const sessionRef = initialRef ?? { workspaceId: "-", dir: "-", sessionId: "-" }
   return {
     bootstrap: {
       status: "loading",
       workspaceName: initialRef?.dir ? initialRef.dir.split(/[\\/]/).pop() || initialRef.dir : "-",
-      sessionRef: initialRef ?? { workspaceId: "-", dir: "-", sessionId: "-" },
+      sessionRef,
       message: "Waiting for workspace server and session metadata.",
     },
+    snapshotRef: sessionRef,
+    productSessions: createProductSessionState(initialRef?.sessionId),
     snapshot: {
+      product: createProductSnapshot(),
       messages: [],
       session: undefined,
       display,
@@ -340,13 +349,27 @@ export function normalizeSessionPickerPayload(payload: SessionPickerPayload | un
           session: item.session,
           tags: Array.isArray(item.tags) ? item.tags.filter((tag): tag is string => typeof tag === "string") : [],
           related: !!item.related,
+          ...(item.status ? { status: item.status } : {}),
         }))
       : [],
   }
 }
 
-export function normalizeSnapshotPayload(payload: SessionSnapshot, previous?: AppState["snapshot"]): AppState["snapshot"] {
+export function normalizeSnapshotPayload(
+  payload: SessionSnapshot,
+  previous?: AppState["snapshot"],
+  cachedProduct?: ProductSnapshot,
+): AppState["snapshot"] {
+  const currentProduct = cachedProduct ?? previous?.product
+  const product = payload.product
+    ? mergeProductSnapshot(currentProduct, payload.product)
+    : mergePartialProductSnapshot(currentProduct, toProductSnapshot(payload), {
+        status: false,
+        permissions: false,
+        questions: false,
+      })
   return {
+    product,
     session: payload.session,
     display: {
       ...payload.display,

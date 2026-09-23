@@ -1,13 +1,16 @@
 import React from "react"
+import { deriveProductSessionList, type ProductRunState } from "@opencode-ai/product"
 import type { SessionPickerPayload as SessionPickerPayloadData } from "../../../bridge/types"
-import type { SessionInfo } from "../../../core/sdk"
+import type { SessionInfo, SessionStatus } from "../../../core/sdk"
 import { t } from "../../../i18n"
+import { toProductSessionInput } from "../lib/product-session-adapter"
 
 export type SessionPickerItem = {
   session: SessionInfo
   title: string
   shortId: string
   tags: string[]
+  status: ProductRunState
 }
 
 export type SessionPickerSection = {
@@ -26,36 +29,36 @@ export function buildSessionPickerView(input: {
   currentSessionId: string
   query?: string
   tagsBySessionId?: Record<string, string[]>
+  statusesBySessionId?: Record<string, SessionStatus>
   now?: number
 }): SessionPickerView {
   const tagsBySessionId = input.tagsBySessionId ?? {}
-  const baseItems = [...input.sessions]
-    .filter((session) => session.id !== input.currentSessionId)
-    .sort((a, b) => b.time.updated - a.time.updated)
-    .map((session) => {
-      const tags = normalizeTags(tagsBySessionId[session.id])
-      return {
-        session,
-        title: displayTitle(session),
-        shortId: session.id.slice(0, 8),
-        tags,
-      } satisfies SessionPickerItem
-    })
-
-  const availableTags = [...new Set(baseItems.flatMap((item) => item.tags))].sort((a, b) => a.localeCompare(b))
-  const needle = input.query?.trim().toLowerCase() ?? ""
-  const filtered = baseItems.filter((item) => {
-    if (!needle) {
-      return true
-    }
-
-    const haystack = [item.title, item.shortId, item.session.id, ...item.tags].join(" ").toLowerCase()
-    return haystack.includes(needle)
+  const sessionsByID = new Map(input.sessions.map((session) => [session.id, session]))
+  const projection = deriveProductSessionList({
+    sessions: input.sessions.map((session) => toProductSessionInput(
+      session,
+      input.statusesBySessionId?.[session.id],
+      tagsBySessionId[session.id],
+    )),
+    activeSessionID: input.currentSessionId,
+    query: input.query,
+    includeActive: false,
+  })
+  const items = projection.items.flatMap((item) => {
+    const session = sessionsByID.get(item.id)
+    if (!session) return []
+    return [{
+      session,
+      title: item.title,
+      shortId: item.shortID,
+      tags: item.tags,
+      status: item.status,
+    } satisfies SessionPickerItem]
   })
 
   return {
-    sections: groupSections(filtered, input.now ?? Date.now()),
-    availableTags,
+    sections: groupSections(items, input.now ?? Date.now()),
+    availableTags: projection.availableTags,
   }
 }
 
@@ -77,13 +80,18 @@ export function SessionPicker({
     () => Object.fromEntries(payload.items.map((item) => [item.session.id, item.tags])),
     [payload.items],
   )
+  const statusesBySessionId = React.useMemo(
+    () => Object.fromEntries(payload.items.flatMap((item) => item.status ? [[item.session.id, item.status]] : [])),
+    [payload.items],
+  )
   const view = React.useMemo(() => buildSessionPickerView({
     sessions: payload.items.map((item) => item.session),
     currentSessionId: payload.currentSessionId,
     query,
     tagsBySessionId,
+    statusesBySessionId,
     now,
-  }), [now, payload.currentSessionId, payload.items, query, tagsBySessionId])
+  }), [now, payload.currentSessionId, payload.items, query, statusesBySessionId, tagsBySessionId])
   const flatItems = React.useMemo(() => view.sections.flatMap((section) => section.items), [view.sections])
   const [selectedIndex, setSelectedIndex] = React.useState(0)
   const activeItem = flatItems[selectedIndex]
@@ -267,17 +275,6 @@ function localDateKey(value: number) {
   const month = String(date.getMonth() + 1).padStart(2, "0")
   const day = String(date.getDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
-}
-
-function displayTitle(session: SessionInfo) {
-  const title = session.title?.trim()
-  return title || session.id.slice(0, 8)
-}
-
-function normalizeTags(tags: string[] | undefined) {
-  return Array.isArray(tags)
-    ? tags.map((tag) => tag.trim()).filter(Boolean)
-    : []
 }
 
 function clampIndex(index: number, size: number) {

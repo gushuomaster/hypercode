@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import * as vscode from "vscode"
+import { createProductSnapshot } from "@opencode-ai/product"
 
 import type { HostMessage, SessionSnapshot } from "../../bridge/types"
 import type { PermissionRequest, QuestionRequest, SessionEvent, SessionInfo, SessionMessage } from "../../core/sdk"
@@ -195,6 +196,20 @@ function createWebviewMessageHarness(rt: Record<string, unknown>) {
 }
 
 describe("SessionPanelController.handle", () => {
+  test("preserves canonical product state while seeding a refresh snapshot", () => {
+    const current = snapshot()
+    current.product = createProductSnapshot({
+      status: "retry",
+      retry: { attempt: 2, message: "rate limited" },
+      resolved: { permissions: ["permission-1"], questions: [] },
+    })
+    const { controller } = createHarness(current)
+
+    const next = (controller as any).seedDeferredFields(snapshot()) as SessionSnapshot
+
+    assert.equal(next.product, current.product)
+  })
+
   test("keeps transcript delta events on sessionEvent when incremental routing is ready", async () => {
     const current = snapshot()
     const { controller, pushes, snapshots, events } = createHarness(current)
@@ -382,6 +397,8 @@ describe("SessionPanelController.handle", () => {
     assert.deepEqual(events, [])
     assert.deepEqual(snapshots, [])
     assert.deepEqual(pushes, [{ force: true, reason: "event:session.error:refresh" }])
+    assert.equal((controller as any).current.product?.status, "error")
+    assert.equal((controller as any).current.product?.error?.raw, "Bad Request")
   })
 
   test("keeps transcript events incremental while a refresh is in progress and transcript state is already hydrated", async () => {

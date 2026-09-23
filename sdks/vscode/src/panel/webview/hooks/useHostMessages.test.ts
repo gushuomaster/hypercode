@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import type { Dispatch, SetStateAction } from "react"
+import { createProductSnapshot } from "@opencode-ai/product"
 
 import type { HostMessage } from "../../../bridge/types"
 import { setLocale } from "../../../i18n"
@@ -13,7 +14,234 @@ function applyStateUpdate(update: SetStateAction<AppState>, state: AppState) {
     : update
 }
 
+function dispatch(message: HostMessage, initial: AppState) {
+  let state = initial
+  dispatchHostMessage(message, {
+    fileRefStatus: new Map<string, boolean>(),
+    onFileSearchResults: () => {},
+    onFocusComposer: () => {},
+    onRestoreComposer: () => {},
+    onShellCommandSucceeded: () => {},
+    setPendingMcpActions: (() => {}) as Dispatch<SetStateAction<Record<string, boolean>>>,
+    setState: ((update: SetStateAction<AppState>) => {
+      state = applyStateUpdate(update, state)
+    }) as Dispatch<SetStateAction<AppState>>,
+  })
+  return state
+}
+
 describe("dispatchHostMessage", () => {
+  test("isolates canonical product state across bootstrap A to B to A switches", () => {
+    let state = createInitialState({ workspaceId: "file:///workspace", dir: "/workspace", sessionId: "session-a" })
+    const tool = {
+      id: "tool-a",
+      sessionID: "session-a",
+      messageID: "message-a",
+      type: "tool" as const,
+      tool: "bash",
+      state: { status: "running" as const, input: {} },
+    }
+    const message = {
+      info: {
+        id: "message-a",
+        sessionID: "session-a",
+        role: "assistant" as const,
+        time: { created: 1 },
+      },
+      parts: [tool],
+    }
+    const productA = createProductSnapshot({
+      status: "error",
+      messages: [{
+        id: "message-a",
+        sessionID: "session-a",
+        role: "assistant",
+        createdAt: 1,
+        parts: [{
+          id: "tool-a",
+          sessionID: "session-a",
+          messageID: "message-a",
+          type: "tool",
+          tool: { name: "bash", status: "running" },
+        }],
+      }],
+      permissions: [{ id: "permission-a", sessionID: "session-a" }],
+      questions: [{ id: "question-pending-a", sessionID: "session-a" }],
+      resolved: { permissions: [], questions: ["question-a"] },
+      error: { message: "failed", raw: "HTTP 500" },
+    })
+
+    state = dispatch({
+      type: "snapshot",
+      reason: "test:session-a",
+      payload: {
+        ...state.snapshot,
+        product: productA,
+        status: "ready",
+        workspaceName: "workspace",
+        sessionRef: state.bootstrap.sessionRef,
+        session: { id: "session-a", directory: "/workspace", title: "A", time: { created: 1, updated: 1 } },
+        message: "ready",
+        messages: [message],
+      },
+    }, state)
+
+    state = dispatch({
+      type: "bootstrap",
+      payload: {
+        status: "ready",
+        workspaceName: "workspace",
+        sessionRef: { ...state.bootstrap.sessionRef, sessionId: "session-b" },
+        message: "switching",
+      },
+    }, state)
+    state = dispatch({
+      type: "snapshot",
+      reason: "test:session-b",
+      payload: {
+        ...state.snapshot,
+        product: undefined,
+        status: "ready",
+        workspaceName: "workspace",
+        sessionRef: state.bootstrap.sessionRef,
+        session: { id: "session-b", directory: "/workspace", title: "B", time: { created: 2, updated: 2 } },
+        message: "ready",
+        sessionStatus: { type: "idle" },
+        messages: [],
+        permissions: [],
+        questions: [],
+      },
+    }, state)
+
+    assert.equal(state.snapshot.product.status, "idle")
+    assert.deepEqual(state.snapshot.product.permissions, [])
+    assert.deepEqual(state.snapshot.product.questions, [])
+    assert.deepEqual(state.snapshot.product.tools, [])
+    assert.deepEqual(state.snapshot.product.resolved.questions, [])
+    assert.equal(state.snapshot.product.error, undefined)
+
+    state = dispatch({
+      type: "bootstrap",
+      payload: {
+        status: "ready",
+        workspaceName: "workspace",
+        sessionRef: { ...state.bootstrap.sessionRef, sessionId: "session-a" },
+        message: "switching",
+      },
+    }, state)
+    state = dispatch({
+      type: "snapshot",
+      reason: "test:return-session-a",
+      payload: {
+        ...state.snapshot,
+        product: undefined,
+        status: "ready",
+        workspaceName: "workspace",
+        sessionRef: state.bootstrap.sessionRef,
+        session: { id: "session-a", directory: "/workspace", title: "A", time: { created: 1, updated: 3 } },
+        message: "ready",
+        sessionStatus: { type: "idle" },
+        messages: [message],
+        permissions: [],
+        questions: [],
+      },
+    }, state)
+
+    assert.equal(state.snapshot.product.status, "error")
+    assert.deepEqual(state.snapshot.product.permissions, [{ id: "permission-a", sessionID: "session-a" }])
+    assert.deepEqual(state.snapshot.product.questions, [{ id: "question-pending-a", sessionID: "session-a" }])
+    assert.equal(state.snapshot.product.tools[0]?.id, "tool-a")
+    assert.deepEqual(state.snapshot.product.resolved.questions, ["question-a"])
+    assert.equal(state.snapshot.product.error?.raw, "HTTP 500")
+  })
+
+  test("preserves resolved interactions across same-session snapshot refreshes", () => {
+    const initial = createInitialState({ workspaceId: "file:///workspace", dir: "/workspace", sessionId: "session-1" })
+    const state = dispatch({
+      type: "snapshot",
+      reason: "test:same-session",
+      payload: {
+        ...initial.snapshot,
+        product: undefined,
+        status: "ready",
+        workspaceName: "workspace",
+        sessionRef: initial.bootstrap.sessionRef,
+        message: "ready",
+        questions: [{ id: "question-1", sessionID: "session-1", questions: [] }],
+      },
+    }, {
+      ...initial,
+      snapshot: {
+        ...initial.snapshot,
+        product: createProductSnapshot({ resolved: { permissions: [], questions: ["question-1"] } }),
+      },
+    })
+
+    assert.deepEqual(state.snapshot.product.questions, [])
+    assert.deepEqual(state.snapshot.product.resolved.questions, ["question-1"])
+  })
+
+  test("does not inherit canonical product state when a snapshot switches sessions", () => {
+    const initial = createInitialState({ workspaceId: "file:///workspace", dir: "/workspace", sessionId: "session-1" })
+    const state = dispatch({
+      type: "snapshot",
+      reason: "test:session-switch",
+      payload: {
+        ...initial.snapshot,
+        product: undefined,
+        status: "ready",
+        workspaceName: "workspace",
+        sessionRef: { ...initial.bootstrap.sessionRef, sessionId: "session-2" },
+        message: "ready",
+        questions: [{ id: "question-1", sessionID: "session-2", questions: [] }],
+      },
+    }, {
+      ...initial,
+      snapshot: {
+        ...initial.snapshot,
+        product: createProductSnapshot({ resolved: { permissions: [], questions: ["question-1"] } }),
+      },
+    })
+
+    assert.deepEqual(state.snapshot.product.questions, [{ id: "question-1", sessionID: "session-2" }])
+    assert.deepEqual(state.snapshot.product.resolved.questions, [])
+  })
+
+  test("hydrates canonical pending interaction from deferred updates", () => {
+    const fileRefStatus = new Map<string, boolean>()
+    let state = createInitialState({ workspaceId: "file:///workspace", dir: "/workspace", sessionId: "session-1" })
+
+    dispatchHostMessage({
+      type: "deferredUpdate",
+      reason: "initial:deferred",
+      payload: {
+        sessionStatus: { type: "busy" },
+        permissions: [{ id: "permission-1", sessionID: "session-1", permission: "read", patterns: [] }],
+        questions: [{ id: "question-1", sessionID: "session-1", questions: [] }],
+        providerAuth: {},
+        mcp: {},
+        mcpResources: {},
+        lsp: [],
+        formatter: [],
+        commands: [],
+      },
+    } satisfies HostMessage, {
+      fileRefStatus,
+      onFileSearchResults: () => {},
+      onFocusComposer: () => {},
+      onRestoreComposer: () => {},
+      onShellCommandSucceeded: () => {},
+      setPendingMcpActions: (() => {}) as Dispatch<SetStateAction<Record<string, boolean>>>,
+      setState: ((update: SetStateAction<AppState>) => {
+        state = applyStateUpdate(update, state)
+      }) as Dispatch<SetStateAction<AppState>>,
+    })
+
+    assert.equal(state.snapshot.product.status, "running")
+    assert.deepEqual(state.snapshot.product.permissions, [{ id: "permission-1", sessionID: "session-1" }])
+    assert.deepEqual(state.snapshot.product.questions, [{ id: "question-1", sessionID: "session-1" }])
+  })
+
   test("localizes missing host error details", () => {
     setLocale("zh")
     const fileRefStatus = new Map<string, boolean>()

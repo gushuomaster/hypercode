@@ -4,6 +4,7 @@ import { describe, test } from "node:test"
 import type { SessionSnapshot } from "../../bridge/types"
 import type { DisplaySettings } from "../../core/settings"
 import { reduceSessionSnapshot } from "./session-reducer"
+import { rawSessionLifecycleEvents } from "../../../../../packages/product/test/fixtures/session-events"
 
 function snapshot(overrides: Partial<SessionSnapshot> & { display?: DisplaySettings } = {}): SessionSnapshot {
   return {
@@ -198,5 +199,61 @@ describe("reduceSessionSnapshot subtree sessions", () => {
     assert.deepEqual(next.childMessages, {})
     assert.deepEqual(next.permissions, [])
     assert.deepEqual(next.questions, [])
+  })
+})
+
+describe("reduceSessionSnapshot product projection", () => {
+  test("maintains the canonical product snapshot while applying incremental host events", () => {
+    const final = rawSessionLifecycleEvents.reduce((current, event) => {
+      const next = reduceSessionSnapshot(current, event)
+      assert.ok(next)
+      return next
+    }, snapshot({
+      sessionRef: { workspaceId: "file:///workspace", dir: "/workspace", sessionId: "session-1" },
+      session: {
+        id: "session-1",
+        directory: "/workspace",
+        title: "session",
+        time: { created: 1, updated: 1 },
+      },
+      messages: [],
+      relatedSessionIds: ["session-1"],
+    }))
+
+    assert.equal(final.product?.status, "idle")
+    assert.equal(final.product?.messages.length, 1)
+    assert.deepEqual(final.product?.tools, [{
+      id: "part-tool",
+      messageID: "message-1",
+      sessionID: "session-1",
+      name: "bash",
+      callID: "call-1",
+      status: "completed",
+    }])
+    assert.deepEqual(final.product?.resolved, {
+      permissions: ["permission-1"],
+      questions: ["question-1"],
+    })
+  })
+
+  test("keeps child lifecycle events out of the root product status", () => {
+    const payload = snapshot({
+      childSessions: {
+        child: {
+          id: "child",
+          directory: "/workspace",
+          parentID: "root",
+          title: "child",
+          time: { created: 1, updated: 1 },
+        },
+      },
+      relatedSessionIds: ["root", "child"],
+    })
+    const next = reduceSessionSnapshot(payload, {
+      type: "session.status",
+      properties: { sessionID: "child", status: { type: "busy" } },
+    } as SessionEvent)
+
+    assert.equal(next?.product?.status, "idle")
   })
 })

@@ -72,7 +72,21 @@ export type FileDiff = {
 export type ProviderModel = {
   id: string
   name?: string
+  cost?: {
+    input?: number
+  }
+  release_date?: string
+  status?: string
   variants?: Record<string, Record<string, unknown>>
+  reasoning?: boolean
+  tool_call?: boolean
+  capabilities?: {
+    reasoning?: boolean
+    input?: Record<string, boolean>
+  }
+  modalities?: {
+    input?: string[]
+  }
   limit?: {
     context?: number
   }

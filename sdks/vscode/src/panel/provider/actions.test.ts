@@ -176,6 +176,9 @@ describe("provider actions submitting", () => {
         "session-2": ["ops"],
         "session-3": ["docs", "shared"],
       },
+      statusesBySessionId: {
+        "session-2": { type: "busy" },
+      },
     })
 
     assert.deepEqual(payload, {
@@ -191,6 +194,7 @@ describe("provider actions submitting", () => {
           },
           tags: [],
           related: true,
+          status: undefined,
         },
         {
           session: {
@@ -201,6 +205,7 @@ describe("provider actions submitting", () => {
           },
           tags: ["ops"],
           related: true,
+          status: { type: "busy" },
         },
         {
           session: {
@@ -212,6 +217,7 @@ describe("provider actions submitting", () => {
           },
           tags: ["docs", "shared"],
           related: false,
+          status: undefined,
         },
       ],
     })
