@@ -32,6 +32,10 @@ import { batch, onMount } from "solid-js"
 import path from "path"
 import { useKV } from "./kv"
 import { usePermission } from "./permission"
+import type { ProductSnapshot } from "@opencode-ai/product"
+import { mergeProductSnapshot } from "@opencode-ai/product"
+import { reduceTuiProductEvent, toProductEvent, toProductSnapshot } from "../product/session-adapter"
+import { toTuiProductAction } from "../product/action-adapter"
 
 const emptyConsoleState: ConsoleState = {
   consoleManagedProviders: [],
@@ -85,6 +89,9 @@ export const {
       question: {
         [sessionID: string]: QuestionRequest[]
       }
+      product: {
+        [sessionID: string]: ProductSnapshot
+      }
       config: Config
       session: Session[]
       session_status: {
@@ -127,6 +134,7 @@ export const {
       agent: [],
       permission: {},
       question: {},
+      product: {},
       command: [],
       provider: [],
       provider_default: {},
@@ -174,6 +182,14 @@ export const {
     }
 
     event.subscribe((event, { directory, workspace }) => {
+      const sessionID = toProductEvent(event)?.sessionID
+      if (sessionID) {
+        setStore(
+          "product",
+          sessionID,
+          reduceTuiProductEvent(store.product[sessionID] ?? currentProductSnapshot(sessionID), event),
+        )
+      }
       switch (event.type) {
         case "server.instance.disposed":
           void bootstrap()
@@ -196,12 +212,11 @@ export const {
         case "permission.asked": {
           const request = event.properties
           if (permission.mode === "auto") {
-            void sdk.client.permission.reply({
-              requestID: request.id,
-              reply: "once",
-              directory,
-              workspace,
-            })
+            const target = toTuiProductAction(
+              { type: "permission.reply", requestID: request.id, reply: "once" },
+              { sessionID: request.sessionID, directory, workspace },
+            )
+            if (target.kind === "permission.reply") void sdk.client.permission.reply(target.input)
             break
           }
           const requests = store.permission[request.sessionID]
@@ -528,7 +543,25 @@ export const {
               .then((x) => setStore("mcp_resource", reconcile(x.data ?? {}))),
             sdk.client.formatter.status({ workspace }).then((x) => setStore("formatter", reconcile(x.data ?? []))),
             sdk.client.session.status({ workspace }).then((x) => {
-              setStore("session_status", reconcile(x.data ?? {}))
+              setStore(
+                produce((draft) => {
+                  const statuses = x.data ?? {}
+                  draft.session_status = statuses
+                  for (const [sessionID, status] of Object.entries(statuses)) {
+                    draft.product[sessionID] = mergeProductSnapshot(
+                      draft.product[sessionID],
+                      toProductSnapshot({
+                        sessionID,
+                        status,
+                        messages: draft.message[sessionID] ?? [],
+                        parts: draft.part,
+                        permissions: draft.permission[sessionID] ?? [],
+                        questions: draft.question[sessionID] ?? [],
+                      }),
+                    )
+                  }
+                }),
+              )
             }),
             sdk.client.provider.auth({ workspace }).then((x) => setStore("provider_auth", reconcile(x.data ?? {}))),
             sdk.client.vcs.get({ workspace }).then((x) => setStore("vcs", reconcile(x.data))),
@@ -657,6 +690,7 @@ export const {
                 draft.session_diff[sessionID] = diff.data ?? []
               }),
             )
+            setStore("product", sessionID, mergeProductSnapshot(store.product[sessionID], currentProductSnapshot(sessionID)))
             fullSyncedSessions.add(sessionID)
           })().finally(() => {
             syncingSessions.delete(sessionID)
@@ -669,5 +703,16 @@ export const {
       bootstrap,
     }
     return result
+
+    function currentProductSnapshot(sessionID: string) {
+      return toProductSnapshot({
+        sessionID,
+        status: store.session_status[sessionID],
+        messages: store.message[sessionID] ?? [],
+        parts: store.part,
+        permissions: store.permission[sessionID] ?? [],
+        questions: store.question[sessionID] ?? [],
+      })
+    }
   },
 })

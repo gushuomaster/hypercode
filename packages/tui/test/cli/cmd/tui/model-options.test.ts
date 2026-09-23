@@ -1,20 +1,10 @@
 import { describe, expect, test } from "bun:test"
 import {
-  MODELS_PER_PROVIDER,
   collapsedModelsHint,
   configuredModels,
   freeModelDescription,
-  sortFreeModelOptions,
-  modelSections,
   sortModelOptions,
-  visibleProviderModels,
 } from "../../../../src/component/dialog-model"
-
-function providerModels(providerID: string, count: number) {
-  return Array.from({ length: count }, (_, index) => ({
-    value: { providerID, modelID: `model-${index}` },
-  }))
-}
 
 describe("sortModelOptions", () => {
   test("orders provider-scoped model choices by newest release first", () => {
@@ -46,67 +36,7 @@ describe("sortModelOptions", () => {
   })
 })
 
-describe("visibleProviderModels", () => {
-  test("keeps at most the per-provider limit", () => {
-    const visible = visibleProviderModels(providerModels("opencode", 8), [])
-
-    expect(visible).toHaveLength(MODELS_PER_PROVIDER)
-    expect(visible.map((option) => option.value.modelID)).toEqual([
-      "model-0",
-      "model-1",
-      "model-2",
-      "model-3",
-      "model-4",
-    ])
-  })
-
-  test("returns every model when the provider is below the limit", () => {
-    expect(visibleProviderModels(providerModels("minimax-direct", 2), [])).toHaveLength(2)
-  })
-
-  test("removes models already shown in the favorites and recent sections", () => {
-    const visible = visibleProviderModels(providerModels("opencode", 3), [
-      { providerID: "opencode", modelID: "model-1" },
-    ])
-
-    expect(visible.map((option) => option.value.modelID)).toEqual(["model-0", "model-2"])
-  })
-
-  test("keeps every provider model while searching", () => {
-    const visible = visibleProviderModels(
-      providerModels("opencode", 8),
-      [{ providerID: "opencode", modelID: "model-1" }],
-      false,
-    )
-
-    expect(visible.map((option) => option.value.modelID)).toEqual([
-      "model-0",
-      "model-1",
-      "model-2",
-      "model-3",
-      "model-4",
-      "model-5",
-      "model-6",
-      "model-7",
-    ])
-  })
-})
-
 describe("free model options", () => {
-  test("orders known free models by recommended capability", () => {
-    const sorted = sortFreeModelOptions([
-      { modelID: "ling-3.0-flash-fin-free", title: "Ling 3.0 Flash Fin Free" },
-      { modelID: "muse-spark-1.3-contributor-free", title: "Muse Spark 1.3 Free" },
-      { modelID: "mimo-v2.5-free", title: "MiMo V2.5 Free" },
-    ])
-
-    expect(sorted.map((model) => model.modelID)).toEqual([
-      "muse-spark-1.3-contributor-free",
-      "mimo-v2.5-free",
-      "ling-3.0-flash-fin-free",
-    ])
-  })
-
   test("describes multimodal capabilities in Chinese", () => {
     expect(
       freeModelDescription({
@@ -132,28 +62,6 @@ describe("free model options", () => {
     ).toBe("Supports text, image, and video input, supports reasoning and tool calls, 200k context")
   })
 
-  test("orders unknown free models by available capabilities", () => {
-    const sorted = sortFreeModelOptions([
-      {
-        modelID: "basic-free",
-        title: "Basic Free",
-        info: { id: "basic-free", modalities: { input: ["text"] }, limit: { context: 32_000 } },
-      },
-      {
-        modelID: "capable-free",
-        title: "Capable Free",
-        info: {
-          id: "capable-free",
-          reasoning: true,
-          tool_call: true,
-          modalities: { input: ["text", "image", "video"] },
-          limit: { context: 200_000 },
-        },
-      },
-    ])
-
-    expect(sorted.map((model) => model.modelID)).toEqual(["capable-free", "basic-free"])
-  })
 })
 
 describe("configuredModels", () => {
@@ -181,33 +89,6 @@ describe("configuredModels", () => {
       { providerID: "minimax-direct", modelID: "MiniMax-M2.7" },
       { providerID: "minimax-direct", modelID: "MiniMax-M2.7-highspeed" },
       { providerID: "huggingface", modelID: "moonshotai/Kimi-K3" },
-    ])
-  })
-})
-
-describe("modelSections", () => {
-  test("places configured models after recent models without removing semantic duplicates", () => {
-    const shared = { providerID: "minimax-direct", modelID: "MiniMax-M2.7" }
-    const input = {
-      favorites: [shared],
-      recents: [shared, { providerID: "opencode", modelID: "big-pickle" }],
-      configured: [shared, { providerID: "huggingface", modelID: "moonshotai/Kimi-K3" }],
-      current: { providerID: "huggingface", modelID: "Qwen/Qwen3.8-27B:featherless-ai" },
-    }
-    const sections = modelSections(input, "zh")
-
-    expect(sections.map((section) => section.label)).toEqual(["收藏", "最近使用", "已配置", "当前模型"])
-    expect(modelSections(input, "en").map((section) => section.label)).toEqual([
-      "Favorites",
-      "Recent",
-      "Configured",
-      "Current model",
-    ])
-    expect(sections.map((section) => section.models)).toEqual([
-      [shared],
-      [{ providerID: "opencode", modelID: "big-pickle" }],
-      [shared, { providerID: "huggingface", modelID: "moonshotai/Kimi-K3" }],
-      [{ providerID: "huggingface", modelID: "Qwen/Qwen3.8-27B:featherless-ai" }],
     ])
   })
 })

@@ -81,6 +81,11 @@ export const dict = {
   "dialog.help.close": "Close help",
   "dialog.help.message": "Press {{key}} to see all available actions and commands in any context.",
   "toast.error.unknown": "An unknown error has occurred",
+  "product.model.fallback.default": "Default fallback model",
+  "product.model.fallback.provider": "Provider fallback model",
+  "product.error.provider.authFailed": "Provider authentication failed. Check your credentials and try again.",
+  "product.error.provider.requestFailed": "The provider request failed. See the original error for details.",
+  "product.error.unknown": "An unexpected product error occurred.",
 
   // Export
   "dialog.export.title": "Export options",

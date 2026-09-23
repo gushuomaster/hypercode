@@ -13,6 +13,10 @@ import { useTheme } from "./theme"
 import { useToast } from "../ui/toast"
 import { useRoute } from "./route"
 import { usePermission } from "./permission"
+import { cycleModelVariant, deriveComposerSelection, deriveProductSessionList, isValidModelRef } from "@opencode-ai/product"
+import { toProductAgents, toProductProviders } from "../product/model-adapter"
+import { toTuiProductAction, toTuiProductSelection } from "../product/action-adapter"
+import { toTuiProductSessionInput } from "../product/session-list-adapter"
 
 export type LocalTheme = {
   secondary: RGBA
@@ -66,14 +70,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       return !!provider?.models[model.modelID]
     }
 
-    function getFirstValidModel(...modelFns: (() => { providerID: string; modelID: string } | undefined)[]) {
-      for (const modelFn of modelFns) {
-        const model = modelFn()
-        if (!model) continue
-        if (isModelValid(model)) return model
-      }
-    }
-
     function createAgent() {
       const agents = createMemo(() => sync.data.agent.filter((agent) => agent.mode !== "subagent" && !agent.hidden))
       const visibleAgents = createMemo(() => sync.data.agent.filter((agent) => !agent.hidden))
@@ -100,13 +96,15 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           return agents().find((x) => x.name === agentStore.current) ?? agents().at(0)
         },
         set(name: string) {
-          if (!agents().some((x) => x.name === name))
+          const action = toTuiProductSelection({ type: "agent.select", agent: name })
+          if (!action || action.type !== "agent.select") return
+          if (!agents().some((x) => x.name === action.agent))
             return toast.show({
               variant: "warning",
-              message: `Agent not found: ${name}`,
+              message: `Agent not found: ${action.agent}`,
               duration: 3000,
             })
-          setAgentStore("current", name)
+          setAgentStore("current", action.agent)
         },
         move(direction: 1 | -1) {
           batch(() => {
@@ -116,7 +114,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             if (next < 0) next = agents().length - 1
             if (next >= agents().length) next = 0
             const value = agents()[next]
-            setAgentStore("current", value.name)
+            this.set(value.name)
           })
         },
         color(name: string) {
@@ -197,55 +195,24 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           if (state.pending) save()
         })
 
-      const fallbackModel = createMemo(() => {
-        if (args.model) {
-          const { providerID, modelID } = parseModel(args.model)
-          if (isModelValid({ providerID, modelID })) {
-            return {
-              providerID,
-              modelID,
-            }
-          }
-        }
-
-        if (sync.data.config.model) {
-          const { providerID, modelID } = parseModel(sync.data.config.model)
-          if (isModelValid({ providerID, modelID })) {
-            return {
-              providerID,
-              modelID,
-            }
-          }
-        }
-
-        for (const item of modelStore.recent) {
-          if (isModelValid(item)) {
-            return item
-          }
-        }
-
-        const provider = sync.data.provider[0]
-        if (!provider) return undefined
-        const defaultModel = sync.data.provider_default[provider.id]
-        const firstModel = Object.values(provider.models)[0]
-        const model = defaultModel ?? firstModel?.id
-        if (!model) return undefined
-        return {
-          providerID: provider.id,
-          modelID: model,
-        }
+      const productProviders = createMemo(() => toProductProviders(sync.data.provider))
+      const selection = createMemo(() => {
+        const configuredModel = [args.model, sync.data.config.model]
+          .filter((value): value is string => !!value)
+          .map(parseModel)
+          .find((model) => isValidModelRef(productProviders(), model))
+        return deriveComposerSelection({
+          providers: productProviders(),
+          agents: toProductAgents(sync.data.agent),
+          agentOverride: agent.current()?.name,
+          configuredModel,
+          providerDefaults: sync.data.provider_default,
+          recentModels: modelStore.recent,
+          modelOverrides: modelStore.model,
+          modelVariants: modelStore.variant,
+        })
       })
-
-      const currentModel = createMemo(() => {
-        const a = agent.current()
-        return (
-          getFirstValidModel(
-            () => a && modelStore.model[a.name],
-            () => a && a.model,
-            fallbackModel,
-          ) ?? undefined
-        )
-      })
+      const currentModel = createMemo(() => selection().model)
 
       return {
         current: currentModel,
@@ -286,9 +253,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           if (next >= recent.length) next = 0
           const val = recent[next]
           if (!val) return
-          const a = agent.current()
-          if (!a) return
-          setModelStore("model", a.name, { ...val })
+          this.set(val)
         },
         cycleFavorite(direction: 1 | -1) {
           const favorites = modelStore.favorite.filter((item) => isModelValid(item))
@@ -314,17 +279,15 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           }
           const next = favorites[index]
           if (!next) return
-          const a = agent.current()
-          if (!a) return
-          setModelStore("model", a.name, { ...next })
-          setModelStore("recent", recentModels(next, modelStore.recent))
-          save()
+          this.set(next, { recent: true })
         },
         set(model: { providerID: string; modelID: string }, options?: { recent?: boolean }) {
+          const action = toTuiProductSelection({ type: "model.select", model })
+          if (!action || action.type !== "model.select") return
           batch(() => {
-            if (!isModelValid(model)) {
+            if (!isModelValid(action.model)) {
               toast.show({
-                message: `Model ${model.providerID}/${model.modelID} is not valid`,
+                message: `Model ${action.model.providerID}/${action.model.modelID} is not valid`,
                 variant: "warning",
                 duration: 3000,
               })
@@ -332,9 +295,9 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             }
             const a = agent.current()
             if (!a) return
-            setModelStore("model", a.name, model)
+            setModelStore("model", a.name, action.model)
             if (options?.recent) {
-              setModelStore("recent", recentModels(model, modelStore.recent))
+              setModelStore("recent", recentModels(action.model, modelStore.recent))
               save()
             }
           })
@@ -367,7 +330,8 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             const m = currentModel()
             if (!m) return undefined
             const key = `${m.providerID}/${m.modelID}`
-            return modelStore.variant[key]
+            if (Object.hasOwn(modelStore.variant, key)) return modelStore.variant[key]
+            return selection().variant
           },
           current() {
             const v = this.selected()
@@ -386,24 +350,15 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           set(value: string | undefined) {
             const m = currentModel()
             if (!m) return
-            const key = `${m.providerID}/${m.modelID}`
-            setModelStore("variant", key, value ?? "default")
+            const action = toTuiProductSelection({ type: "variant.select", model: m, variant: value })
+            if (!action || action.type !== "variant.select") return
+            const key = `${action.model.providerID}/${action.model.modelID}`
+            setModelStore("variant", key, action.variant ?? "default")
             save()
           },
           cycle() {
-            const variants = this.list()
-            if (variants.length === 0) return
-            const current = this.current()
-            if (!current) {
-              this.set(variants[0])
-              return
-            }
-            const index = variants.indexOf(current)
-            if (index === -1 || index === variants.length - 1) {
-              this.set(undefined)
-              return
-            }
-            this.set(variants[index + 1])
+            if (this.list().length === 0) return
+            this.set(cycleModelVariant(productProviders(), currentModel(), this.current()))
           },
         },
       }
@@ -452,8 +407,11 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           if (state.pending) save()
         })
 
+      const productSessions = createMemo(() => deriveProductSessionList({
+          sessions: sync.data.session.map((item) => toTuiProductSessionInput(item)),
+        }))
       const slots = createMemo(() => {
-        const existing = new Set(sync.data.session.filter((x) => x.parentID === undefined).map((x) => x.id))
+        const existing = new Set(productSessions().items.map((item) => item.id))
         return sessionStore.pinned.filter((id) => existing.has(id)).slice(0, 9)
       })
 
@@ -497,8 +455,15 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         quickSwitch(slot: number) {
           const target = slots()[slot - 1]
           if (!target) return
-          if (route.data.type === "session" && route.data.sessionID === target) return
-          route.navigate({ type: "session", sessionID: target })
+          const action = toTuiProductAction(
+            { type: "session.switch", sessionID: target },
+            {
+              sessionID: route.data.type === "session" ? route.data.sessionID : "",
+              sessions: productSessions().items,
+            },
+          )
+          if (action.kind !== "session.switch") return
+          route.navigate({ type: "session", sessionID: action.input.sessionID })
         },
       }
     }

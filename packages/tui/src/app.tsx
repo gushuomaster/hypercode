@@ -62,6 +62,9 @@ import { DialogAlert } from "./ui/dialog-alert"
 import { DialogConfirm } from "./ui/dialog-confirm"
 import { ToastProvider, useToast } from "./ui/toast"
 import { isDefaultTitle } from "./util/session"
+import { deriveProductSessionList } from "@opencode-ai/product"
+import { toTuiProductAction } from "./product/action-adapter"
+import { toTuiProductSessionInput } from "./product/session-list-adapter"
 import { KVProvider, useKV } from "./context/kv"
 import * as Model from "./util/model"
 import { ArgsProvider, useArgs, type Args } from "./context/args"
@@ -508,9 +511,9 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
   createEffect(() => {
     // When using -c, session list is loaded in blocking phase, so we can navigate at "partial"
     if (continued || sync.status === "loading" || !args.continue) return
-    const match = sync.data.session
-      .toSorted((a, b) => b.time.updated - a.time.updated)
-      .find((x) => x.parentID === undefined)?.id
+    const match = deriveProductSessionList({
+      sessions: sync.data.session.map((session) => toTuiProductSessionInput(session, sync.data.session_status?.[session.id])),
+    }).selectedSessionID
     if (match) {
       continued = true
       if (args.fork) {
@@ -1017,10 +1020,19 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
 
   event.on("tui.session.select", (evt, { workspace }) => {
     if (workspace !== project.workspace.current()) return
-    route.navigate({
-      type: "session",
-      sessionID: evt.properties.sessionID,
-    })
+    const target = toTuiProductAction(
+      { type: "session.select", sessionID: evt.properties.sessionID },
+      {
+        sessionID: route.data.type === "session" ? route.data.sessionID : "",
+        sessions: deriveProductSessionList({
+          sessions: sync.data.session.map((session) => toTuiProductSessionInput(
+            session,
+            sync.data.session_status[session.id],
+          )),
+        }).items,
+      },
+    )
+    if (target.kind === "session.switch") route.navigate({ type: "session", sessionID: target.input.sessionID })
   })
 
   event.on("session.deleted", (evt) => {

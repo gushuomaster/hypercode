@@ -17,6 +17,8 @@ import { useTuiConfig } from "../../config"
 import { OPENCODE_BASE_MODE, useBindings, useCommandShortcut } from "../../keymap"
 import { usePathFormatter } from "../../context/path-format"
 import { translate as t } from "../../context/language"
+import { toTuiProductAction } from "../../product/action-adapter"
+import { toTuiTextKey } from "../../product/text-adapter"
 
 type PermissionStage = "permission" | "always" | "reject"
 
@@ -134,6 +136,18 @@ export function PermissionPrompt(props: { request: PermissionRequest; directory?
 
   const { theme } = useTheme()
 
+  function reply(reply: "once" | "always" | "reject", message?: string) {
+    const target = toTuiProductAction(
+      { type: "permission.reply", requestID: props.request.id, reply, message },
+      {
+        sessionID: props.request.sessionID,
+        directory: props.directory,
+        workspace: project.workspace.current(),
+      },
+    )
+    if (target.kind === "permission.reply") void sdk.client.permission.reply(target.input)
+  }
+
   return (
     <Switch>
       <Match when={store.stage === "always"}>
@@ -166,25 +180,14 @@ export function PermissionPrompt(props: { request: PermissionRequest; directory?
           onSelect={(option) => {
             setStore("stage", "permission")
             if (option === "cancel") return
-            void sdk.client.permission.reply({
-              reply: "always",
-              requestID: props.request.id,
-              directory: props.directory,
-              workspace: project.workspace.current(),
-            })
+            reply("always")
           }}
         />
       </Match>
       <Match when={store.stage === "reject"}>
         <RejectPrompt
           onConfirm={(message) => {
-            void sdk.client.permission.reply({
-              reply: "reject",
-              requestID: props.request.id,
-              directory: props.directory,
-              message: message || undefined,
-              workspace: project.workspace.current(),
-            })
+            reply("reject", message || undefined)
           }}
           onCancel={() => {
             setStore("stage", "permission")
@@ -387,7 +390,7 @@ export function PermissionPrompt(props: { request: PermissionRequest; directory?
             <box flexDirection="column" gap={0}>
               <box flexDirection="row" gap={1} flexShrink={0}>
                 <text fg={theme.warning}>{"△"}</text>
-                <text fg={theme.text}>{t("permission.required")}</text>
+                <text fg={theme.text}>{t(toTuiTextKey("interaction.permission.title"))}</text>
               </box>
               <box flexDirection="row" gap={1} paddingLeft={2} flexShrink={0}>
                 <text fg={theme.textMuted} flexShrink={0}>
@@ -400,7 +403,7 @@ export function PermissionPrompt(props: { request: PermissionRequest; directory?
 
           const body = (
             <Prompt
-              title={t("permission.required")}
+              title={t(toTuiTextKey("interaction.permission.title"))}
               header={header()}
               body={current.body}
               options={{
@@ -420,20 +423,10 @@ export function PermissionPrompt(props: { request: PermissionRequest; directory?
                     setStore("stage", "reject")
                     return
                   }
-                  void sdk.client.permission.reply({
-                    reply: "reject",
-                    requestID: props.request.id,
-                    directory: props.directory,
-                    workspace: project.workspace.current(),
-                  })
+                  reply("reject")
                   return
                 }
-                void sdk.client.permission.reply({
-                  reply: "once",
-                  requestID: props.request.id,
-                  directory: props.directory,
-                  workspace: project.workspace.current(),
-                })
+                reply("once")
               }}
             />
           )

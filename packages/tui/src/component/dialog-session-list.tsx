@@ -19,6 +19,9 @@ import { DialogSessionDeleteFailed } from "./dialog-session-delete-failed"
 import { useCommandShortcut } from "../keymap"
 import { useEvent } from "../context/event"
 import { translate as t } from "../context/language"
+import { deriveProductSessionList } from "@opencode-ai/product"
+import { toTuiProductAction } from "../product/action-adapter"
+import { toTuiProductSessionInput } from "../product/session-list-adapter"
 
 type SessionListFilter = { scope?: "project"; path?: string }
 
@@ -87,10 +90,8 @@ export function DialogSessionList() {
       if (session) ids.add(id)
       return session ? [session] : []
     })
-    const query = search().trim().toLowerCase()
     return [...result.map((session) => synced.get(session.id) ?? session), ...extra]
       .filter((session) => !deleted().has(session.id))
-      .filter((session) => !query || session.title.toLowerCase().includes(query))
   })
 
   onCleanup(
@@ -186,15 +187,6 @@ export function DialogSessionList() {
     ))
   }
 
-  function orderByRecency(sessionsList: NonNullable<ReturnType<typeof sessions>>) {
-    return sessionsList
-      .filter((x) => x.parentID === undefined)
-      .toSorted((a, b) => b.time.updated - a.time.updated)
-      .map((x) => x.id)
-  }
-
-  const browseOrder = createMemo(() => orderByRecency(browseResults() ?? sync.data.session))
-
   const quickSwitchHint = createMemo(() => {
     const first = quickSwitch1()
     const last = quickSwitch9()
@@ -206,18 +198,24 @@ export function DialogSessionList() {
     return hint && local.session.slots().length > 0 ? [{ title: t("dialog.sessionList.switch"), label: hint }] : []
   })
 
+  const productSessions = createMemo(() => deriveProductSessionList({
+    sessions: sessions().map((session) => toTuiProductSessionInput(
+      session,
+      sync.data.session_status?.[session.id],
+    )),
+    activeSessionID: currentSessionID(),
+    query: search(),
+  }))
+
   const options = createMemo(() => {
     const today = new Date().toDateString()
+    const productList = productSessions()
     const sessionMap = new Map(
       sessions()
-        .filter((x) => x.parentID === undefined)
         .map((x) => [x.id, x]),
     )
-
-    const searchResult = searchResults()
-    const order = searchResult ? orderByRecency(sessions()) : browseOrder()
-    const current = currentSessionID()
-    const displayOrder = current && sessionMap.has(current) && !order.includes(current) ? [...order, current] : order
+    const productSessionMap = new Map(productList.items.map((session) => [session.id, session]))
+    const displayOrder = productList.items.map((session) => session.id)
 
     const pinned = local.session.pinned().filter((id) => sessionMap.has(id))
     const pinnedSet = new Set(pinned)
@@ -235,8 +233,8 @@ export function DialogSessionList() {
         directory && directory !== project.data.project.mainDir ? Locale.truncate(path.basename(directory), 20) : ""
 
       const isDeleting = toDelete() === x.id
-      const status = sync.data.session_status?.[x.id]
-      const isWorking = status?.type === "busy" || status?.type === "retry"
+      const productSession = productSessionMap.get(x.id)
+      const isWorking = productSession?.status === "running" || productSession?.status === "retry"
       const slot = slotByID.get(x.id)
       const gutter = isWorking
         ? () => <Spinner />
@@ -244,7 +242,7 @@ export function DialogSessionList() {
           ? () => <text fg={theme.accent}>{slot}</text>
           : undefined
       return {
-        title: isDeleting ? t("dialog.sessionList.confirmDelete", { key: deleteHint() }) : x.title,
+        title: isDeleting ? t("dialog.sessionList.confirmDelete", { key: deleteHint() }) : productSession?.title ?? x.id.slice(0, 8),
         bg: isDeleting ? theme.error : undefined,
         value: x.id,
         category,
@@ -282,10 +280,14 @@ export function DialogSessionList() {
         setToDelete(undefined)
       }}
       onSelect={(option) => {
-        route.navigate({
-          type: "session",
-          sessionID: option.value,
-        })
+        const target = toTuiProductAction(
+          { type: "session.switch", sessionID: option.value },
+          {
+            sessionID: currentSessionID() ?? "",
+            sessions: productSessions().items,
+          },
+        )
+        if (target.kind === "session.switch") route.navigate({ type: "session", sessionID: target.input.sessionID })
         dialog.clear()
       }}
       actions={[

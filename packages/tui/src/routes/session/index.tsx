@@ -82,6 +82,9 @@ import { OPENCODE_BASE_MODE, useBindings, useCommandShortcut, useOpencodeKeymap 
 import { usePathFormatter } from "../../context/path-format"
 import { LocationProvider } from "../../context/location"
 import { translate as t } from "../../context/language"
+import { derivePendingInteraction } from "@opencode-ai/product"
+import { toPendingInteractionInput } from "../../product/session-adapter"
+import { toTuiProductAction } from "../../product/action-adapter"
 
 addDefaultParsers(parsers.parsers)
 
@@ -238,8 +241,26 @@ export function Session() {
     if (session()?.parentID) return []
     return children().flatMap((x) => sync.data.question[x.id] ?? [])
   })
-  const visible = createMemo(() => !session()?.parentID && permissions().length === 0 && questions().length === 0)
-  const disabled = createMemo(() => permissions().length > 0 || questions().length > 0)
+  const pendingInteraction = createMemo(() => derivePendingInteraction(toPendingInteractionInput({
+    permissions: children().flatMap((child) => sync.data.product[child.id]?.permissions ?? (sync.data.permission[child.id] ?? [])),
+    questions: children().flatMap((child) => sync.data.product[child.id]?.questions ?? (sync.data.question[child.id] ?? [])),
+    status: sync.data.product[route.sessionID]
+      ? { type: sync.data.product[route.sessionID].status }
+      : sync.data.session_status[route.sessionID],
+  })))
+  const activePermission = createMemo(() => {
+    const pending = pendingInteraction()
+    if (pending?.kind !== "permission") return undefined
+    return permissions().find((request) => request.id === pending.requestID)
+  })
+  const activeQuestion = createMemo(() => {
+    const pending = pendingInteraction()
+    if (pending?.kind !== "question") return undefined
+    return questions().find((request) => request.id === pending.requestID)
+  })
+  const blocked = createMemo(() => pendingInteraction()?.kind === "permission" || pendingInteraction()?.kind === "question")
+  const visible = createMemo(() => !session()?.parentID && !blocked())
+  const disabled = blocked
 
   const pending = createMemo(() => {
     const completed = messages().findLastIndex((message) => message.role === "assistant" && message.time.completed)
@@ -581,11 +602,11 @@ export function Session() {
           })
           return
         }
-        void sdk.client.session.summarize({
-          sessionID: route.sessionID,
-          modelID: selectedModel.modelID,
-          providerID: selectedModel.providerID,
-        })
+        const target = toTuiProductAction(
+          { type: "session.compact", model: selectedModel },
+          { sessionID: route.sessionID },
+        )
+        if (target.kind === "session.summarize") void sdk.client.session.summarize(target.input)
         dialog.clear()
       },
     },
@@ -621,14 +642,19 @@ export function Session() {
       },
       run: async () => {
         const status = sync.data.session_status?.[route.sessionID]
-        if (status?.type !== "idle") await sdk.client.session.abort({ sessionID: route.sessionID }).catch(() => {})
+        if (status?.type !== "idle") {
+          const target = toTuiProductAction({ type: "session.interrupt" }, { sessionID: route.sessionID })
+          if (target.kind === "session.abort") await sdk.client.session.abort(target.input).catch(() => {})
+        }
         const message = messagesBeforeRevert().findLast((item) => item.role === "user")
         if (!message) return
+        const target = toTuiProductAction(
+          { type: "session.undo", messageID: message.id },
+          { sessionID: route.sessionID },
+        )
+        if (target.kind !== "session.revert" || !target.input.messageID) return
         void sdk.client.session
-          .revert({
-            sessionID: route.sessionID,
-            messageID: message.id,
-          })
+          .revert({ sessionID: target.input.sessionID, messageID: target.input.messageID })
           .then(() => {
             toBottom()
           })
@@ -1299,17 +1325,21 @@ export function Session() {
                 </For>
               </scrollbox>
               <box flexShrink={0}>
-                <Show when={permissions().length > 0}>
-                  <PermissionPrompt
-                    request={permissions()[0]}
-                    directory={sync.session.get(permissions()[0].sessionID)?.directory}
-                  />
+                <Show when={activePermission()} keyed>
+                  {(request) => (
+                    <PermissionPrompt
+                      request={request}
+                      directory={sync.session.get(request.sessionID)?.directory}
+                    />
+                  )}
                 </Show>
-                <Show when={permissions().length === 0 && questions().length > 0}>
-                  <QuestionPrompt
-                    request={questions()[0]}
-                    directory={sync.session.get(questions()[0].sessionID)?.directory}
-                  />
+                <Show when={activeQuestion()} keyed>
+                  {(request) => (
+                    <QuestionPrompt
+                      request={request}
+                      directory={sync.session.get(request.sessionID)?.directory}
+                    />
+                  )}
                 </Show>
                 <Show when={session()?.parentID}>
                   <SubagentFooter />

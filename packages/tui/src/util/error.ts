@@ -146,12 +146,23 @@ export function errorMessage(error: unknown): string {
 }
 
 export function sessionErrorMessage(error: unknown, locale?: Locale): string {
-  if (!isRecord(error) || error.name !== "APIError" || !isRecord(error.data)) return errorMessage(error)
+  if (!isRecord(error) || error.name !== "APIError" || !isRecord(error.data)) {
+    const raw = errorMessage(error)
+    const code = isRecord(error) && typeof error.name === "string" ? error.name : undefined
+    return formatTuiProductError({ message: raw, raw, textKey: deriveProductErrorTextKey(code, raw) }, locale)
+  }
   if (
     typeof error.data.responseBody !== "string" ||
     !error.data.responseBody.includes("FreeUsageLimitError")
-  )
-    return errorMessage(error)
+  ) {
+    const raw = errorMessage(error)
+    return formatTuiProductError({
+      code: error.name,
+      message: raw,
+      raw,
+      textKey: deriveProductErrorTextKey(error.name, raw),
+    }, locale)
+  }
 
   const reset = retryAfter(error.data.responseHeaders)
   if (reset === undefined) return t("session.error.freeUsageLimit", undefined, locale)
@@ -221,3 +232,5 @@ export function errorData(error: unknown) {
   data.formatted = errorFormat(error)
   return data
 }
+import { deriveProductErrorTextKey } from "@opencode-ai/product"
+import { formatTuiProductError } from "../product/text-adapter"

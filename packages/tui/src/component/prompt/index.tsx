@@ -60,6 +60,7 @@ import { usePromptMove } from "./move"
 import { readLocalAttachment } from "./local-attachment"
 import { prepareAgentMention } from "../../prompt/agent"
 import { useLocation } from "../../context/location"
+import { toTuiProductAction } from "../../product/action-adapter"
 
 registerOpencodeSpinner()
 
@@ -418,9 +419,8 @@ export function Prompt(props: PromptProps) {
           }, 5000)
 
           if (store.interrupt >= 2) {
-            void sdk.client.session.abort({
-              sessionID: props.sessionID,
-            })
+            const target = toTuiProductAction({ type: "session.interrupt" }, { sessionID: props.sessionID })
+            if (target.kind === "session.abort") void sdk.client.session.abort(target.input)
             setStore("interrupt", 0)
           }
           dialog.clear()
@@ -1135,19 +1135,27 @@ export function Prompt(props: PromptProps) {
       })
     } else {
       move.startSubmit()
+      const target = toTuiProductAction({
+        type: "composer.submit",
+        text: inputText,
+        agent: agent.name,
+        model: selectedModel,
+        variant,
+      }, { sessionID })
+      if (target.kind !== "session.prompt") return false
       sdk.client.session
         .prompt(
           {
-            sessionID,
-            ...selectedModel,
-            agent: agent.name,
-            model: selectedModel,
-            variant,
+            sessionID: target.input.sessionID,
+            ...target.input.model,
+            agent: target.input.agent,
+            model: target.input.model,
+            variant: target.input.variant,
             parts: [
               ...editorParts,
               {
                 type: "text",
-                text: inputText,
+                text: target.input.text,
               },
               ...nonTextParts,
             ],

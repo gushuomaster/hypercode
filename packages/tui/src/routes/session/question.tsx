@@ -9,8 +9,11 @@ import { SplitBorder } from "../../ui/border"
 import { useTuiConfig } from "../../config"
 import { useBindings, useOpencodeModeStack } from "../../keymap"
 import { translate as t } from "../../context/language"
+import { toTuiProductAction } from "../../product/action-adapter"
+import { toTuiTextKey } from "../../product/text-adapter"
 
 const QUESTION_MODE = "question"
+const QUESTION_TEXT_KEY = toTuiTextKey("interaction.question.pending")
 
 export function QuestionPrompt(props: { request: QuestionRequest; directory?: string }) {
   const sdk = useSDK()
@@ -46,20 +49,25 @@ export function QuestionPrompt(props: { request: QuestionRequest; directory?: st
     return store.answers[store.tab]?.includes(value) ?? false
   })
 
+  function reply(answers: string[][]) {
+    const target = toTuiProductAction(
+      { type: "question.reply", requestID: props.request.id, answers },
+      { sessionID: props.request.sessionID, directory: props.directory },
+    )
+    if (target.kind === "question.reply") void sdk.client.question.reply(target.input)
+  }
+
   function submit() {
     const answers = questions().map((_, i) => store.answers[i] ?? [])
-    void sdk.client.question.reply({
-      requestID: props.request.id,
-      directory: props.directory,
-      answers,
-    })
+    reply(answers)
   }
 
   function reject() {
-    void sdk.client.question.reject({
-      requestID: props.request.id,
-      directory: props.directory,
-    })
+    const target = toTuiProductAction(
+      { type: "question.reject", requestID: props.request.id },
+      { sessionID: props.request.sessionID, directory: props.directory },
+    )
+    if (target.kind === "question.reject") void sdk.client.question.reject(target.input)
   }
 
   function pick(answer: string, custom: boolean = false) {
@@ -72,11 +80,7 @@ export function QuestionPrompt(props: { request: QuestionRequest; directory?: st
       setStore("custom", inputs)
     }
     if (single()) {
-      void sdk.client.question.reply({
-        requestID: props.request.id,
-        directory: props.directory,
-        answers: [[answer]],
-      })
+      reply([[answer]])
       return
     }
     setStore("tab", store.tab + 1)
@@ -138,7 +142,7 @@ export function QuestionPrompt(props: { request: QuestionRequest; directory?: st
       {
         name: "prompt.clear",
         title: t("question.clearEdit"),
-        category: t("question.category"),
+        category: t(QUESTION_TEXT_KEY),
         run() {
           const text = textarea?.plainText ?? ""
           if (!text) {
@@ -153,7 +157,7 @@ export function QuestionPrompt(props: { request: QuestionRequest; directory?: st
       {
         key: "escape",
         desc: t("question.cancelEdit"),
-        group: t("question.category"),
+        group: t(QUESTION_TEXT_KEY),
         cmd: () => {
           setStore("editing", false)
         },
@@ -162,7 +166,7 @@ export function QuestionPrompt(props: { request: QuestionRequest; directory?: st
       {
         key: "return",
         desc: t("question.submitEdit"),
-        group: t("question.category"),
+        group: t(QUESTION_TEXT_KEY),
         cmd: () => {
           const text = textarea?.plainText?.trim() ?? ""
           const prev = store.custom[store.tab]
@@ -219,7 +223,7 @@ export function QuestionPrompt(props: { request: QuestionRequest; directory?: st
         {
           name: "app.exit",
           title: t("question.reject"),
-          category: t("question.category"),
+          category: t(QUESTION_TEXT_KEY),
           run() {
             reject()
           },
@@ -229,36 +233,36 @@ export function QuestionPrompt(props: { request: QuestionRequest; directory?: st
         {
           key: "left",
           desc: t("question.previous"),
-          group: t("question.category"),
+          group: t(QUESTION_TEXT_KEY),
           cmd: () => selectTab((store.tab - 1 + tabs()) % tabs()),
         },
         {
           key: "h",
           desc: t("question.previous"),
-          group: t("question.category"),
+          group: t(QUESTION_TEXT_KEY),
           cmd: () => selectTab((store.tab - 1 + tabs()) % tabs()),
         },
-        { key: "right", desc: t("question.next"), group: t("question.category"), cmd: () => selectTab((store.tab + 1) % tabs()) },
-        { key: "l", desc: t("question.next"), group: t("question.category"), cmd: () => selectTab((store.tab + 1) % tabs()) },
+        { key: "right", desc: t("question.next"), group: t(QUESTION_TEXT_KEY), cmd: () => selectTab((store.tab + 1) % tabs()) },
+        { key: "l", desc: t("question.next"), group: t(QUESTION_TEXT_KEY), cmd: () => selectTab((store.tab + 1) % tabs()) },
         {
           key: "tab",
           desc: t("question.next"),
-          group: t("question.category"),
+          group: t(QUESTION_TEXT_KEY),
           cmd: ({ event }: { event: { shift: boolean } }) => {
             selectTab((store.tab + (event.shift ? -1 : 1) + tabs()) % tabs())
           },
         },
         ...(confirm()
           ? [
-              { key: "return", desc: t("question.submit"), group: t("question.category"), cmd: () => submit() },
-              { key: "escape", desc: t("question.reject"), group: t("question.category"), cmd: () => reject() },
+              { key: "return", desc: t("question.submit"), group: t(QUESTION_TEXT_KEY), cmd: () => submit() },
+              { key: "escape", desc: t("question.reject"), group: t(QUESTION_TEXT_KEY), cmd: () => reject() },
               ...tuiConfig.keybinds.get("app.exit"),
             ]
           : [
               ...Array.from({ length: max }, (_, index) => ({
                 key: String(index + 1),
                 desc: t("question.selectNumber", { number: index + 1 }),
-                group: t("question.category"),
+                group: t(QUESTION_TEXT_KEY),
                 cmd: () => {
                   moveTo(index)
                   selectOption()
@@ -267,19 +271,19 @@ export function QuestionPrompt(props: { request: QuestionRequest; directory?: st
               {
                 key: "up",
                 desc: t("question.previousAnswer"),
-                group: t("question.category"),
+                group: t(QUESTION_TEXT_KEY),
                 cmd: () => moveTo((store.selected - 1 + total) % total),
               },
               {
                 key: "k",
                 desc: t("question.previousAnswer"),
-                group: t("question.category"),
+                group: t(QUESTION_TEXT_KEY),
                 cmd: () => moveTo((store.selected - 1 + total) % total),
               },
-              { key: "down", desc: t("question.nextAnswer"), group: t("question.category"), cmd: () => moveTo((store.selected + 1) % total) },
-              { key: "j", desc: t("question.nextAnswer"), group: t("question.category"), cmd: () => moveTo((store.selected + 1) % total) },
-              { key: "return", desc: t("question.selectAnswer"), group: t("question.category"), cmd: () => selectOption() },
-              { key: "escape", desc: t("question.reject"), group: t("question.category"), cmd: () => reject() },
+              { key: "down", desc: t("question.nextAnswer"), group: t(QUESTION_TEXT_KEY), cmd: () => moveTo((store.selected + 1) % total) },
+              { key: "j", desc: t("question.nextAnswer"), group: t(QUESTION_TEXT_KEY), cmd: () => moveTo((store.selected + 1) % total) },
+              { key: "return", desc: t("question.selectAnswer"), group: t(QUESTION_TEXT_KEY), cmd: () => selectOption() },
+              { key: "escape", desc: t("question.reject"), group: t(QUESTION_TEXT_KEY), cmd: () => reject() },
               ...tuiConfig.keybinds.get("app.exit"),
             ]),
       ],

@@ -85,6 +85,11 @@ export const dict: Record<Keys, string> = {
   "dialog.help.close": "关闭帮助",
   "dialog.help.message": "按 {{key}} 查看当前上下文中的所有操作和命令。",
   "toast.error.unknown": "发生未知错误",
+  "product.model.fallback.default": "默认回退模型",
+  "product.model.fallback.provider": "Provider 首选回退模型",
+  "product.error.provider.authFailed": "Provider 身份验证失败，请检查凭据后重试。",
+  "product.error.provider.requestFailed": "Provider 请求失败，请结合原始错误排查。",
+  "product.error.unknown": "发生未知产品错误。",
 
   // 导出
   "dialog.export.title": "导出选项",
