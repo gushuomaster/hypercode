@@ -51,6 +51,7 @@
   "dependencies": {
     "@opencode-ai/core": "workspace:*",
     "@opencode-ai/plugin": "workspace:*",
+    "@opencode-ai/product": "workspace:*",
     "@opencode-ai/sdk": "workspace:*",
     "@opencode-ai/ui": "workspace:*",
     "@solid-primitives/i18n": "2.2.1",

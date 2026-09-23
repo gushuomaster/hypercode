@@ -720,6 +720,15 @@
         "@opentui/solid",
       ],
     },
+    "packages/product": {
+      "name": "@opencode-ai/product",
+      "version": "1.18.30",
+      "devDependencies": {
+        "@tsconfig/bun": "catalog:",
+        "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
+      },
+    },
     "packages/protocol": {
       "name": "@opencode-ai/protocol",
       "dependencies": {
@@ -944,6 +953,7 @@
       "dependencies": {
         "@opencode-ai/core": "workspace:*",
         "@opencode-ai/plugin": "workspace:*",
+        "@opencode-ai/product": "workspace:*",
         "@opencode-ai/sdk": "workspace:*",
         "@opencode-ai/ui": "workspace:*",
         "@opentui/core": "catalog:",
@@ -1983,6 +1993,8 @@
     "@opencode-ai/llm": ["@opencode-ai/llm@workspace:packages/llm"],
 
     "@opencode-ai/plugin": ["@opencode-ai/plugin@workspace:packages/plugin"],
+
+    "@opencode-ai/product": ["@opencode-ai/product@workspace:packages/product"],
 
     "@opencode-ai/protocol": ["@opencode-ai/protocol@workspace:packages/protocol"],
 
