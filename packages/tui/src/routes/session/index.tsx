@@ -77,6 +77,7 @@ import { getScrollAcceleration } from "../../util/scroll"
 import { collapseToolOutput } from "../../util/collapse-tool-output"
 import { usePluginRuntime } from "../../plugin/runtime"
 import { DialogRetryAction } from "../../component/dialog-retry-action"
+import { resolveTuiSessionNavigation } from "../../product/session-navigation-adapter"
 import { getRevertDiffFiles } from "../../util/revert-diff"
 import { OPENCODE_BASE_MODE, useBindings, useCommandShortcut, useOpencodeKeymap } from "../../keymap"
 import { usePathFormatter } from "../../context/path-format"
@@ -463,20 +464,17 @@ export function Session() {
   }
 
   function moveFirstChild() {
-    if (children().length === 1) return
-    const next = children().find((x) => !!x.parentID)
-    if (next) enterChild(next.id)
+    const target = resolveTuiSessionNavigation(sync.data.session, { type: "subagent.open", sessionID: route.sessionID })
+    if (target.available) enterChild(target.sessionID)
   }
 
   function moveChild(direction: number) {
-    if (children().length === 1) return
-
-    const sessions = children().filter((x) => !!x.parentID)
-    let next = sessions.findIndex((x) => x.id === session()?.id) - direction
-
-    if (next >= sessions.length) next = 0
-    if (next < 0) next = sessions.length - 1
-    if (sessions[next]) enterChild(sessions[next].id)
+    const target = resolveTuiSessionNavigation(sync.data.session, {
+      type: "subagent.sibling",
+      sessionID: route.sessionID,
+      direction: direction > 0 ? "previous" : "next",
+    })
+    if (target.available) enterChild(target.sessionID)
   }
 
   function childSessionHandler(func: () => void) {
@@ -1094,12 +1092,8 @@ export function Session() {
       enabled: !!session()?.parentID,
       run: childSessionHandler(() => {
         const parentID = session()?.parentID
-        if (parentID) {
-          navigate({
-            type: "session",
-            sessionID: parentID,
-          })
-        }
+        const target = resolveTuiSessionNavigation(sync.data.session, { type: "subagent.back", sessionID: route.sessionID })
+        if (parentID && target.available) navigate({ type: "session", sessionID: target.sessionID })
         dialog.clear()
       }),
     },

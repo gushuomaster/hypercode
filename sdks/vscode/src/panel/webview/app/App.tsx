@@ -27,6 +27,7 @@ import { buildModelPickerCatalog, buildModelPickerRecoveryActions, ModelPicker }
 import { buildComposerHostMessage } from "./composer-submit"
 import { mergeRestoredComposerParts, restoredComposerCursor } from "./composer-seed"
 import { activeChildSessionId } from "./session-navigation"
+import { resolveVsCodeSessionNavigation } from "../lib/product-session-navigation-adapter"
 import { captureCommandPromptInvocations, consumeFailedCommandPrompt, shouldTrackCommandPromptInvocation, type CommandPromptInvocation } from "./command-prompt"
 import { CodexTodoPopover } from "./codex-todo-popover"
 import { ContextPanel } from "./context-panel"
@@ -1448,11 +1449,14 @@ export function App() {
     }
 
     if (action === "childFirst") {
-      const childSessionID = activeChildSessionId(state.snapshot.messages, state.snapshot.childMessages, state.snapshot.childSessions)
-      if (!childSessionID) {
+      const target = resolveVsCodeSessionNavigation([
+        ...(state.snapshot.session ? [state.snapshot.session] : []),
+        ...Object.values(state.snapshot.childSessions),
+      ], { type: "subagent.open", sessionID: state.snapshotRef.sessionId }, activeChildSessionId(state.snapshot.messages, state.snapshot.childMessages, state.snapshot.childSessions))
+      if (!target.available) {
         return false
       }
-      navigateSession(childSessionID)
+      navigateSession(target.sessionID)
       return true
     }
 
