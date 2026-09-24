@@ -34,10 +34,10 @@
 - `deriveProductThemeCatalog(inputs): ProductThemeEntry[]`
 - `deriveProductThemeSelection(input): ProductThemeSelection`
 
-- [ ] Write failing tests for locale fallback, theme deduplication, deterministic order, and selection fallback.
-- [ ] Run the focused Product tests and observe the expected missing-contract failures.
-- [ ] Implement pure locale/theme projection without UI or host imports.
-- [ ] Run focused Product tests and `bun typecheck` from `packages/product`.
+- [x] Write failing tests for locale fallback, theme deduplication, deterministic order, and selection fallback.
+- [x] Run the focused Product tests and observe the expected missing-contract failures.
+- [x] Implement pure locale/theme projection without UI or host imports.
+- [x] Run focused Product tests and `bun typecheck` from `packages/product`.
 
 ### Task 2: TUI locale/theme adapters
 
@@ -50,10 +50,10 @@
 - `toProductLocale(value?: string): ProductLocaleState`
 - `toProductThemes(themes, selected): ProductThemeEntry[]`
 
-- [ ] Add adapter parity tests using locale/theme fixtures.
-- [ ] Replace local locale normalization and theme list sorting with Product adapters.
-- [ ] Preserve OpenTUI theme application, preview rollback, and key/value persistence.
-- [ ] Run TUI focused tests and `bun typecheck`.
+- [x] Add adapter parity tests using locale/theme fixtures.
+- [x] Replace local locale normalization and theme list sorting with Product adapters.
+- [x] Preserve OpenTUI theme application, preview rollback, and key/value persistence.
+- [x] Run TUI focused tests and `bun typecheck`.
 
 ### Task 3: VSCode locale/theme adapters
 
@@ -66,10 +66,10 @@
 - `toVsCodeProductLocale(value?: string): ProductLocaleState`
 - `toVsCodeProductThemes(theme, colorScheme): ProductThemeEntry[]`
 
-- [ ] Add adapter tests for equivalent locale/theme inputs and invalid persisted values.
-- [ ] Build picker items from Product theme entries without changing labels or VS Code messages.
-- [ ] Preserve existing configuration normalization and webview rendering behavior.
-- [ ] Run VSCode theme/i18n focused tests, `bun run check-types`, and `bun run package`.
+- [x] Add adapter tests for equivalent locale/theme inputs and invalid persisted values.
+- [x] Build picker items from Product theme entries without changing labels or VS Code messages.
+- [x] Preserve existing configuration normalization and webview rendering behavior.
+- [x] Run VSCode theme/i18n focused tests, `bun run check-types`, and `bun run package`.
 
 ### Task 4: Product command and help contracts
 
@@ -82,9 +82,9 @@
 - `deriveProductCommandCatalog(inputs): ProductCommandEntry[]`
 - `deriveProductHelpCatalog(inputs): ProductHelpEntry[]`
 
-- [ ] Write tests for hidden filtering, name normalization, deduplication, deterministic order, and unsupported help topics.
-- [ ] Implement pure command/help projections and explicit capability reasons.
-- [ ] Run Product full tests and typecheck.
+- [x] Write tests for hidden filtering, name normalization, deduplication, deterministic order, and unsupported help topics.
+- [x] Implement pure command/help projections and explicit capability reasons.
+- [x] Run Product full tests and typecheck.
 
 ### Task 5: Host command/help adapters
 
@@ -99,15 +99,15 @@
 - `toVsCodeProductCommands(entries): ProductCommandEntry[]`
 - `toProductHelpTopics(host): ProductHelpEntry[]`
 
-- [ ] Add cross-host fixtures proving shared sorting/visibility semantics.
-- [ ] Feed TUI palette and VSCode slash command builders through Product catalogs.
-- [ ] Keep command execution in the host and report unavailable help as `unsupported`.
-- [ ] Run TUI/VSCode focused suites and typechecks.
+- [x] Add cross-host fixtures proving shared sorting/visibility semantics.
+- [x] Feed TUI palette and VSCode slash command builders through Product catalogs.
+- [x] Keep command execution in the host and report unavailable help as `unsupported`.
+- [x] Run TUI/VSCode focused suites and typechecks.
 
 ### Task 6: Full validation and commits
 
-- [ ] Run Product full tests/typecheck.
-- [ ] Run TUI related tests/typecheck.
-- [ ] Run VSCode related tests/check-types/package and record full-suite baseline failures without fixing unrelated tests.
-- [ ] Run `git diff --check` and inspect Protocol/HttpApi/generated-client scope.
-- [ ] Commit Phase 3C and Phase 3D at the smallest independently verifiable boundaries.
+- [x] Run Product full tests/typecheck.
+- [x] Run TUI related tests/typecheck.
+- [x] Run VSCode related tests/check-types/package and record full-suite baseline failures without fixing unrelated tests.
+- [x] Run `git diff --check` and inspect Protocol/HttpApi/generated-client scope.
+- [x] Commit Phase 3C and Phase 3D at the smallest independently verifiable boundaries.
