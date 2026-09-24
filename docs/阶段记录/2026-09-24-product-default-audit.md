@@ -46,6 +46,79 @@
 
 不写入或改写用户配置。升级后只有完全省略 `lsp` 的用户从关闭变为默认按需启用；显式 `lsp: false` 的用户行为不变，显式 `true` 和对象配置也保持原义。
 
-## 待补验证
+## 实施结果
 
-本记录将在实现完成后补充 Product、Core/config、LSP、offline package、TUI、VSCode、parity、package 和 typecheck 的精确结果，并区分已知债务与新增回归。
+本轮完成以下行为闭环：
+
+- 最终配置合并后，省略 `lsp` 解析为 `true`；显式 `false`、`true` 和 server override 对象保持原义。
+- LSP server catalog 仍延迟构建，具体 server 仍只在处理匹配文件时启动；默认启用不等于启动时预热全部 server。
+- offline Linux/Windows 交付设置 `OPENCODE_DISABLE_LSP_DOWNLOAD=1`，只禁止公网依赖下载，不关闭本地可用的 LSP。
+- Core 在 LSP 启动失败后返回协议已有的 `status: "error"` 并发布 `lsp.updated`；没有扩展 Protocol 或 Server `HttpApi`。
+- TUI 和 VSCode adapter 对相同 connected/error fixture 产生相同 Product 投影；共享错误语义为 `error.lsp.connection_failed`，raw diagnostic 继续由 Core/Host 保留。
+- TUI status dialog 和 footer 消费 Product LSP 投影，不在 Host 重新判断错误优先级或文案语义。
+- 中英文 LSP 文档均已更新为 HyperCode 的默认启用、按需启动和下载策略。
+
+`script/translate-app.ts` 中的 `lsp: false` 明确保留。它是翻译任务隔离外部进程与副作用的任务级策略，不是产品 omission default。
+
+## 验证基线
+
+2026-09-24 在 Windows / PowerShell / Bun `1.3.14` 上重新执行：
+
+```text
+Product full                    62 pass / 0 fail
+Product typecheck               pass
+Core config + LSP + offline    186 pass / 0 fail
+LSP config focused               3 pass / 0 fail
+LSP full                        60 pass / 0 fail
+Offline package                  5 pass / 0 fail
+TUI Product adapter             31 pass / 0 fail
+TUI typecheck                   pass
+VSCode Product adapter           9 pass / 0 fail
+VSCode check-types              pass
+VSCode package                  pass
+git diff --check                pass
+```
+
+全量测试与既有 [Product Alignment Maintenance Baseline](../superpowers/specs/2026-09-24-product-alignment-maintenance-baseline.md) 对比：
+
+- TUI full：`243 pass / 4 known fail / 1 skip`，失败身份和旧基线一致：过期的 `opencode` 品牌断言、两个 Windows path/session continuation 断言，以及环境敏感的 DiffViewer empty-state 断言。
+- VSCode full：`406 pass / 29 known fail / 18 known errors`，失败身份和旧基线一致：缺少运行时 `vscode`、CSS animation 断言、autocomplete parity fixtures 和 malformed timeline fixture。
+- 本轮没有新增 Product Default 或 LSP 回归；全量 suite 仍不是全绿声明。
+
+`packages/opencode` 全包 `bun typecheck` 仍失败，错误集合属于实施前已知债务：
+
+- `script/run-real-doubao.ts` 引用已删除的 skill runtime 模块、旧 layer API，并有连带 implicit `any`；
+- `test/config/config.test.ts:284` 的 `Option` fixture 类型不匹配；
+- `test/script/windows-validation-build.test.ts:16` 的环境变量 fixture 类型过窄。
+
+本轮修改文件没有出现在该 typecheck 错误集合中。该事实只证明本轮未扩展错误集合，不将 Core 全包 typecheck 记为通过。
+
+## Fork Tax
+
+需要在未来 upstream synchronization 中持续审查的 downstream surface：
+
+| 路径 | 维护责任 |
+| --- | --- |
+| `packages/opencode/src/config/config.ts` | 在最终 merge 后解析 HyperCode LSP omission default，避免覆盖显式 `false` |
+| `packages/core/src/v1/config/config.ts` | 描述 HyperCode 的默认启用与显式关闭语义 |
+| `packages/opencode/src/lsp/lsp.ts` | 保留 lazy activation，并将启动失败投影为现有 `error` status |
+| `packages/opencode/script/offline-package.ts` | Linux offline profile 禁止 LSP 依赖下载 |
+| `packages/opencode/script/offline-windows-package.ts` | Windows offline installer 同时设置持久和当前进程下载策略 |
+| `packages/tui/src/component/dialog-status.tsx`、`packages/tui/src/routes/session/footer.tsx` | 只渲染共享 Product LSP error projection |
+| `packages/web/src/content/docs/lsp.mdx`、`packages/web/src/content/docs/zh-cn/lsp.mdx` | 维护 HyperCode 中英文用户行为说明 |
+
+同步时必须分别审查“分析是否启用”“何时启动 server”“是否允许下载”“失败如何投影”，不能把它们重新合并成一个布尔开关。TUI/VSCode 仍不得各自实现 LSP availability、severity、状态优先级或错误语义。
+
+## 最终状态
+
+```text
+NEW_REGRESSION=0
+LSP_OMISSION_DEFAULT=ENABLED_LAZY
+LSP_EXPLICIT_FALSE=PRESERVED
+OFFLINE_LSP_DOWNLOAD=DISABLED
+TUI_VSCODE_PRODUCT_PARITY=PRESERVED
+PROTOCOL_HTTPAPI_UNCHANGED
+GENERATED_CLIENT_UNCHANGED
+```
+
+Formatter、configured MCP、权限默认、付费模型选择和 Skill/Plugin 下载边界仍维持矩阵中的 `NEEDS_HUMAN_DECISION`，没有被本轮 LSP 决策隐式改写。
