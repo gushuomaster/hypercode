@@ -55,6 +55,13 @@ describe("lsp.spawn", () => {
       Effect.gen(function* () {
         const dir = (yield* TestInstance).directory
         const spy = spyOn(LSPServer.Typescript, "spawn").mockResolvedValue(undefined)
+        const updated = yield* Deferred.make<void>()
+        const events = yield* EventV2Bridge.Service
+        const unsubscribe = yield* events.listen((event) => {
+          if (event.type === LSP.Event.Updated.type) Deferred.doneUnsafe(updated, Effect.void)
+          return Effect.void
+        })
+        yield* Effect.addFinalizer(() => unsubscribe)
 
         try {
           yield* lsp.hover({
@@ -63,6 +70,13 @@ describe("lsp.spawn", () => {
             character: 0,
           })
           expect(spy).toHaveBeenCalledTimes(1)
+          expect(yield* lsp.status()).toContainEqual({
+            id: "typescript",
+            name: "typescript",
+            root: "",
+            status: "error",
+          })
+          yield* awaitWithTimeout(Deferred.await(updated), "lsp.updated was not published for an unavailable server")
         } finally {
           spy.mockRestore()
         }

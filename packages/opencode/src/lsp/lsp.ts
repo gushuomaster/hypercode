@@ -112,7 +112,7 @@ type LocInput = { file: string; line: number; character: number }
 interface State {
   clients: LSPClient.Info[]
   servers: Record<string, LSPServer.Info>
-  broken: Set<string>
+  broken: Map<string, { serverID: string; root: string }>
   spawning: Map<string, Promise<LSPClient.Info | undefined>>
 }
 
@@ -191,7 +191,7 @@ const layer = Layer.effect(
         const s: State = {
           clients: [],
           servers,
-          broken: new Set(),
+          broken: new Map(),
           spawning: new Map(),
         }
 
@@ -214,15 +214,21 @@ const layer = Layer.effect(
         const result: LSPClient.Info[] = []
         let updated = 0
 
+        function markBroken(key: string, serverID: string, root: string) {
+          if (s.broken.has(key)) return
+          s.broken.set(key, { serverID, root })
+          updated++
+        }
+
         async function schedule(server: LSPServer.Info, root: string, key: string) {
           const handle = await server
             .spawn(root, ctx, flags)
             .then((value) => {
-              if (!value) s.broken.add(key)
+              if (!value) markBroken(key, server.id, root)
               return value
             })
             .catch(() => {
-              s.broken.add(key)
+              markBroken(key, server.id, root)
               return undefined
             })
 
@@ -234,7 +240,7 @@ const layer = Layer.effect(
             directory: ctx.directory,
             instance: ctx,
           }).catch(async () => {
-            s.broken.add(key)
+            markBroken(key, server.id, root)
             await Process.stop(handle.process)
             return undefined
           })
@@ -320,6 +326,14 @@ const layer = Layer.effect(
           name: s.servers[client.serverID].id,
           root: path.relative(ctx.directory, client.root),
           status: "connected",
+        })
+      }
+      for (const item of s.broken.values()) {
+        result.push({
+          id: item.serverID,
+          name: s.servers[item.serverID].id,
+          root: path.relative(ctx.directory, item.root),
+          status: "error",
         })
       }
       return result

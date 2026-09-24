@@ -48,10 +48,10 @@ OpenCode comes with several built-in LSP servers for popular languages:
 | yaml-ls            | .yaml, .yml                                                         | Auto-installs Red Hat yaml-language-server                   |
 | zls                | .zig, .zon                                                          | `zig` command available                                      |
 
-LSP is disabled by default. When enabled, servers start when one of the above file extensions is detected and the requirements are met.
+HyperCode enables LSP analysis by default. A server starts lazily only when a matching file is opened or processed and its requirements are met.
 
 :::note
-You can disable automatic LSP server downloads by setting the `OPENCODE_DISABLE_LSP_DOWNLOAD` environment variable to `true`.
+You can disable automatic LSP server downloads by setting the `OPENCODE_DISABLE_LSP_DOWNLOAD` environment variable to `true`. This does not disable LSP analysis; language servers already available locally can still start when needed. HyperCode offline distributions set this variable by default.
 :::
 
 ---
@@ -160,7 +160,7 @@ Initialization options vary by LSP server. Check your LSP server's documentation
 
 ### Disabling LSP servers
 
-If `lsp` is omitted, all LSP servers are disabled. To disable all LSP servers after another config enabled them, set `lsp` to `false`:
+If `lsp` is omitted, HyperCode enables the built-in LSP servers by default. Set `lsp` to `false` to explicitly disable all LSP servers:
 
 ```json title="opencode.json" {3}
 {

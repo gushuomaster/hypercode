@@ -100,7 +100,10 @@ export function DialogStatus() {
                   •
                 </text>
                 <text fg={theme.text} wrapMode="word">
-                  <b>{item.name}</b> <span style={{ fg: theme.textMuted }}>{item.root}</span>
+                  <b>{item.name}</b>{" "}
+                  <span style={{ fg: theme.textMuted }}>
+                    {item.diagnostic ? formatTuiProductError(item.diagnostic) : item.root}
+                  </span>
                 </text>
               </box>
             )}

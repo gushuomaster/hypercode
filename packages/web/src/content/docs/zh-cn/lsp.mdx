@@ -47,10 +47,10 @@ OpenCode 内置了多种适用于主流语言的 LSP 服务器：
 | yaml-ls            | .yaml, .yml                                                         | 自动安装 Red Hat yaml-language-server                 |
 | zls                | .zig, .zon                                                          | 需要 `zig` 命令可用                                   |
 
-LSP 默认关闭。启用后，当检测到上述文件扩展名且满足相应要求时，服务器会启动。
+HyperCode 默认启用 LSP 分析，但只在打开或处理上述匹配文件且满足相应要求时，按需启动对应服务器。
 
 :::note
-你可以将 `OPENCODE_DISABLE_LSP_DOWNLOAD` 环境变量设置为 `true` 来禁用 LSP 服务器的自动下载。
+你可以将 `OPENCODE_DISABLE_LSP_DOWNLOAD` 环境变量设置为 `true` 来禁用 LSP 服务器的自动下载。该设置不会关闭 LSP 分析，本地已经可用的语言服务器仍可按需启动。HyperCode 离线交付默认设置该变量。
 :::
 
 ---
@@ -154,7 +154,7 @@ LSP 可以通过语言服务器诊断帮助 agent 发现并修复问题。这对
 
 ### 禁用 LSP 服务器
 
-如果省略 `lsp`，所有 LSP 服务器都会被禁用。如果另一个配置启用了 LSP，可将 `lsp` 设置为 `false` 来禁用所有 LSP 服务器：
+HyperCode 省略 `lsp` 时默认启用内置 LSP 服务器。可将 `lsp` 设置为 `false` 来显式禁用所有 LSP 服务器：
 
 ```json title="opencode.json" {3}
 {
