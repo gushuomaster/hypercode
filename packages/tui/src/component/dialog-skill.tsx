@@ -6,6 +6,9 @@ import { useSDK } from "../context/sdk"
 import { useTheme } from "../context/theme"
 import { errorMessage } from "../util/error"
 import { translate as t } from "../context/language"
+import { useTuiPaths } from "../context/runtime"
+import { toTuiSkillCatalog } from "../product/skill-adapter"
+import { toTuiTextKey } from "../product/text-adapter"
 
 export type DialogSkillProps = {
   onSelect: (skill: string) => void
@@ -15,6 +18,7 @@ export function DialogSkill(props: DialogSkillProps) {
   const dialog = useDialog()
   const sdk = useSDK()
   const { theme } = useTheme()
+  const paths = useTuiPaths()
   dialog.setSize("large")
 
   const [loadError, setLoadError] = createSignal<unknown>()
@@ -35,13 +39,17 @@ export function DialogSkill(props: DialogSkillProps) {
 
   const options = createMemo<DialogSelectOption<string>[]>(() => {
     if (showError()) return []
-    const list = skills() ?? []
+    const list = toTuiSkillCatalog({
+      skills: skills() ?? [],
+      workspaceRoots: [paths.worktree, paths.cwd],
+      home: paths.home,
+    }).items
     const maxWidth = Math.max(0, ...list.map((s) => s.name.length))
     return list.map((skill) => ({
       title: skill.name.padEnd(maxWidth),
       description: skill.description?.replace(/\s+/g, " ").trim(),
       value: skill.name,
-      category: t("command.source.skill"),
+      category: t(toTuiTextKey(skill.textKey)),
       onSelect: () => {
         props.onSelect(skill.name)
         dialog.clear()

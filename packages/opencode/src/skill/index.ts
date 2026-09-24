@@ -227,7 +227,12 @@ const discoverSkills = Effect.fnUntraced(function* (
   }
 
   return {
-    matches: Array.from(state.matches),
+    matches: Array.from(state.matches).toSorted((a, b) => {
+      const priority =
+        sourcePriority(a, directory, worktree, global.home) - sourcePriority(b, directory, worktree, global.home)
+      if (priority !== 0) return priority
+      return normalizeLocation(a).localeCompare(normalizeLocation(b), "en")
+    }),
     dirs: Array.from(state.dirs),
   }
 })
@@ -237,13 +242,27 @@ const loadSkills = Effect.fnUntraced(function* (
   discovered: DiscoveryState,
   events: EventV2Bridge.Service["Service"],
 ) {
-  yield* Effect.forEach(discovered.matches, (match) => add(state, match, events), {
-    concurrency: "unbounded",
-    discard: true,
-  })
+  yield* Effect.forEach(discovered.matches, (match) => add(state, match, events), { concurrency: 1, discard: true })
 
   yield* Effect.logInfo("init", { count: Object.keys(state.skills).length })
 })
+
+function sourcePriority(match: string, directory: string, worktree: string, home: string) {
+  if (containsPath(directory, match) || containsPath(worktree, match)) return 3
+  if (containsPath(home, match)) return 2
+  return 1
+}
+
+function containsPath(root: string, target: string) {
+  const relative = path.relative(root, target)
+  return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+}
+
+function normalizeLocation(location: string) {
+  const normalized = path.normalize(location)
+  if (process.platform === "win32") return normalized.toLowerCase()
+  return normalized
+}
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Skill") {}
 

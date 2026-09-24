@@ -294,6 +294,109 @@ description: A skill in the .claude/skills directory.
     }),
   )
 
+  it.live("project skill overrides a same-name global skill regardless of parse completion order", () =>
+    Effect.gen(function* () {
+      const project = yield* Effect.acquireRelease(
+        Effect.promise(() => tmpdir({ git: true })),
+        (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+      )
+      const globalDir = path.join(Global.Path.home, ".claude", "skills", "shared-skill-precedence-test")
+      const globalLocation = path.join(globalDir, "SKILL.md")
+      const projectLocation = path.join(project.path, ".claude", "skills", "shared-skill", "SKILL.md")
+
+      yield* Effect.acquireUseRelease(
+        Effect.promise(async () => {
+          await fs.mkdir(globalDir, { recursive: true })
+          await fs.mkdir(path.dirname(projectLocation), { recursive: true })
+          await Promise.all([
+            Bun.write(
+              globalLocation,
+              `---
+name: shared-skill
+description: Global version.
+---
+
+# Global Skill
+
+${"global instructions\n".repeat(200_000)}`,
+            ),
+            Bun.write(
+              projectLocation,
+              `---
+name: shared-skill
+description: Project version.
+---
+
+# Project Skill
+`,
+            ),
+          ])
+        }),
+        () =>
+          Effect.gen(function* () {
+            const skill = yield* Skill.Service
+            const selected = yield* skill.get("shared-skill")
+            const listed = (yield* skill.all()).find((item) => item.name === "shared-skill")
+
+            expect(selected?.location).toBe(projectLocation)
+            expect(selected?.description).toBe("Project version.")
+            expect(listed?.location).toBe(projectLocation)
+          }).pipe(provideInstance(project.path)),
+        () => Effect.promise(() => fs.rm(globalDir, { recursive: true, force: true })),
+      )
+    }),
+  )
+
+  it.live("same-scope duplicate skills use deterministic normalized location order", () =>
+    provideTmpdirInstance(
+      (dir) =>
+        Effect.gen(function* () {
+          const firstLocation = path.join(dir, "z-source", "shared-source", "SKILL.md")
+          const secondLocation = path.join(dir, "a-source", "shared-source", "SKILL.md")
+          yield* Effect.promise(async () => {
+            await Promise.all([
+              fs.mkdir(path.dirname(firstLocation), { recursive: true }),
+              fs.mkdir(path.dirname(secondLocation), { recursive: true }),
+            ])
+            await Promise.all([
+              Bun.write(
+                path.join(dir, "opencode.json"),
+                JSON.stringify({ skills: { paths: ["z-source", "a-source"] } }),
+              ),
+              Bun.write(
+                firstLocation,
+                `---
+name: shared-source
+description: Z source version.
+---
+
+# Z Source Skill
+`,
+              ),
+              Bun.write(
+                secondLocation,
+                `---
+name: shared-source
+description: A source version.
+---
+
+# A Source Skill
+
+${"slower source\n".repeat(200_000)}
+`,
+              ),
+            ])
+          })
+          const skill = yield* Skill.Service
+          const selected = yield* skill.get("shared-source")
+
+          expect(selected?.location).toBe(firstLocation)
+          expect(selected?.description).toBe("Z source version.")
+        }),
+      { git: true },
+    ),
+  )
+
   it.live("returns empty array when no skills exist", () =>
     provideTmpdirInstance(
       () =>
