@@ -31,6 +31,9 @@ function session(id: string, parentID?: string): SessionInfo {
 
 const BRAINSTORMING_SKILL: SkillCatalogEntry = {
   name: "brainstorming",
+  scope: "external",
+  textKey: "skill.scope.external",
+  overrides: [],
   content: `# Brainstorming Ideas Into Designs
 
 Help turn ideas into fully formed designs and specs through natural collaborative dialogue.

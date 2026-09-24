@@ -1,5 +1,7 @@
 import type { SkillCatalogEntry } from "../bridge/types"
 import type { Client } from "./sdk"
+import os from "node:os"
+import { deriveProductSkillCatalog } from "@opencode-ai/product"
 
 type OfficialSkillEntry = {
   name?: string
@@ -12,13 +14,28 @@ export async function loadSkillCatalog(workspaceDir: string, sdk: Pick<Client, "
     const result = await sdk.app.skills({
       directory: workspaceDir,
     })
-    return dedupeCatalog((result.data ?? []).flatMap((entry) => normalizeOfficialSkillEntry(entry)))
+    const entries = (result.data ?? []).flatMap((entry) => normalizeOfficialSkillEntry(entry))
+    const catalog = deriveProductSkillCatalog({
+      skills: entries,
+      workspaceRoots: [workspaceDir],
+      home: os.homedir(),
+    })
+    return catalog.items.flatMap((item) => {
+      const entry = entries.find((candidate) => candidate.name === item.name && candidate.location === item.location)
+      if (!entry) return []
+      return [{
+        ...entry,
+        scope: item.scope,
+        textKey: item.textKey,
+        overrides: item.overrides,
+      }]
+    })
   } catch {
     return []
   }
 }
 
-function normalizeOfficialSkillEntry(entry: OfficialSkillEntry): SkillCatalogEntry[] {
+function normalizeOfficialSkillEntry(entry: OfficialSkillEntry) {
   const name = entry.name?.trim()
   const content = stripFrontmatter(entry.content ?? "").trim()
   const location = entry.location?.trim()
@@ -45,20 +62,4 @@ function stripFrontmatter(value: string) {
   }
 
   return normalized.slice(end + 5)
-}
-
-function dedupeCatalog(entries: SkillCatalogEntry[]) {
-  const seen = new Set<string>()
-  const result: SkillCatalogEntry[] = []
-
-  for (const entry of entries) {
-    const key = `${entry.name}\u0000${entry.content}`
-    if (seen.has(key)) {
-      continue
-    }
-    seen.add(key)
-    result.push(entry)
-  }
-
-  return result.sort((a, b) => b.content.length - a.content.length || a.name.localeCompare(b.name))
 }

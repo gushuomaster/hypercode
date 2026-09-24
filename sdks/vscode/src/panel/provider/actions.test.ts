@@ -17,6 +17,9 @@ Always check the skill list first.
 
 const ARTICLE_WRITING_SKILL: SkillCatalogEntry[] = [{
   name: "article-writing",
+  scope: "external",
+  textKey: "skill.scope.external",
+  overrides: [],
   content: `# Article Writing
 
 Write long-form content that sounds like a real person or brand, not generic AI output.
@@ -25,6 +28,9 @@ Write long-form content that sounds like a real person or brand, not generic AI 
 
 const BRAINSTORMING_SKILL: SkillCatalogEntry[] = [{
   name: "brainstorming",
+  scope: "external",
+  textKey: "skill.scope.external",
+  overrides: [],
   content: `# Brainstorming Ideas Into Designs
 
 Help turn ideas into fully formed designs and specs through natural collaborative dialogue.

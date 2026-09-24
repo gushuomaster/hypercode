@@ -1,5 +1,5 @@
 import type { AgentInfo, CommandInfo, FileDiff, FormatterStatus, LspStatus, McpResource, McpStatus, PermissionRequest, PromptFilePartInput, PromptSource, ProviderAuthMethod, ProviderInfo, QuestionRequest, SessionEvent, SessionInfo, SessionMessage, SessionStatus, Todo } from "../core/sdk"
-import type { ProductFormatterState, ProductLspState, ProductMcpState, ProductProviderState, ProductSnapshot } from "@opencode-ai/product"
+import type { ProductFormatterState, ProductLspState, ProductMcpState, ProductProviderState, ProductSkillItem, ProductSnapshot } from "@opencode-ai/product"
 import type { DisplaySettings, PanelColorScheme, PanelTheme } from "../core/settings"
 import type { VsCodeSessionMutationEvent } from "../product/session-mutation"
 
@@ -9,6 +9,9 @@ export type SkillCatalogEntry = {
   name: string
   content: string
   location?: string
+  scope: ProductSkillItem["scope"]
+  textKey: ProductSkillItem["textKey"]
+  overrides: ProductSkillItem["overrides"]
 }
 
 export type WorkspaceRef = {

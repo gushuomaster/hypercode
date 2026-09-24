@@ -56,6 +56,19 @@ export function deriveProductSkillCatalog(input: ProductSkillCatalogInput): Prod
       overrides: precedence.filter((scope) => scope !== winner.scope && matches.some((item) => item.scope === scope)),
     } satisfies ProductSkillItem
   })
+  return groupSkillItems(selected)
+}
+
+export function mergeProductSkillCatalog(catalog: Pick<ProductSkillCatalog, "items">, skills: ProductSkillInput[]): ProductSkillCatalog {
+  const names = new Set(catalog.items.map((item) => item.name))
+  const additions = deriveProductSkillCatalog({
+    skills: skills.filter((skill) => !names.has(skill.name)),
+    workspaceRoots: [],
+  }).items
+  return groupSkillItems([...catalog.items, ...additions])
+}
+
+function groupSkillItems(selected: ProductSkillItem[]): ProductSkillCatalog {
   const groups = scopes.flatMap((scope) => {
     const items = selected.filter((item) => item.scope === scope).sort((a, b) => compareName(a.name, b.name))
     if (items.length === 0) return []

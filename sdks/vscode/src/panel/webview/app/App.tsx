@@ -2468,7 +2468,14 @@ function ComposerAutocompletePopup({ state, fileSearch, onSelect }: { state: Com
         <span>{popupHeaderText(state, fileSearch)}</span>
       </div>
       <div className="oc-composerAutocompleteList">
-        {state.items.length > 0 ? state.items.map((item, index) => renderComposerAutocompleteItem(state, item, index, itemRefs, onSelect)) : (
+        {state.items.length > 0 ? state.items.map((item, index) => (
+          <React.Fragment key={item.id}>
+            {state.trigger === "skill" && item.category && item.category !== state.items[index - 1]?.category ? (
+              <div className="oc-composerAutocompleteGroup">{item.category}</div>
+            ) : null}
+            {renderComposerAutocompleteItem(state, item, index, itemRefs, onSelect)}
+          </React.Fragment>
+        )) : (
           <div className="oc-composerAutocompleteEmpty">{empty}</div>
         )}
       </div>

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { deriveProductSkillCatalog } from "../src"
+import { deriveProductSkillCatalog, mergeProductSkillCatalog } from "../src"
 
 test("classifies POSIX skill sources without treating path prefixes as directory boundaries", () => {
   expect(
@@ -72,4 +72,25 @@ test("deduplicates by canonical precedence and sorts groups and names determinis
     textKey: "skill.scope.project",
     overrides: ["global", "external", "builtin"],
   })
+})
+
+test("merges host-only skills as external without overriding canonical catalog items", () => {
+  const catalog = deriveProductSkillCatalog({
+    workspaceRoots: ["/work/app"],
+    skills: [
+      { name: "project", location: "/work/app/skills/project/SKILL.md" },
+      { name: "z-external", location: "https://example.com/z-external/SKILL.md" },
+    ],
+  })
+
+  expect(mergeProductSkillCatalog(catalog, [
+    { name: "project" },
+    { name: "m-external" },
+    { name: "a-external" },
+  ]).items.map((item) => ({ name: item.name, scope: item.scope }))).toEqual([
+    { name: "project", scope: "project" },
+    { name: "a-external", scope: "external" },
+    { name: "m-external", scope: "external" },
+    { name: "z-external", scope: "external" },
+  ])
 })

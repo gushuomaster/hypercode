@@ -26,6 +26,9 @@ Note: file list is sampled.
 
 const ARTICLE_WRITING_SKILL: SkillCatalogEntry[] = [{
   name: "article-writing",
+  scope: "external",
+  textKey: "skill.scope.external",
+  overrides: [],
   content: `# Article Writing
 
 Write long-form content that sounds like a real person or brand, not generic AI output.

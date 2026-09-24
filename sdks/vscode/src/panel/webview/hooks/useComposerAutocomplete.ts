@@ -8,6 +8,7 @@ export type ComposerAutocompleteItem = {
   id: string
   label: string
   detail: string
+  category?: string
   value?: string
   keywords?: string[]
   trigger: ComposerAutocompleteTrigger
@@ -210,6 +211,10 @@ export function filterItems(items: ComposerAutocompleteItem[], trigger: Composer
     : items.filter((item) => item.trigger === trigger)
   const normalized = query.trim().toLowerCase()
 
+  if (trigger === "skill" && !normalized) {
+    return source.map((item) => ({ ...item, match: undefined }))
+  }
+
   if (trigger === "slash" || trigger === "skill") {
     if (!normalized) {
       return source
@@ -238,7 +243,7 @@ function sameItems(next: ComposerAutocompleteItem[], current: ComposerAutocomple
     if (!a || !b) {
       return false
     }
-    if (a.id !== b.id || a.label !== b.label || a.detail !== b.detail || a.kind !== b.kind || a.trigger !== b.trigger) {
+    if (a.id !== b.id || a.label !== b.label || a.detail !== b.detail || a.category !== b.category || a.kind !== b.kind || a.trigger !== b.trigger) {
       return false
     }
   }

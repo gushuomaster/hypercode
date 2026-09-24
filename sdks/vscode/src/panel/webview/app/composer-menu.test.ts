@@ -104,6 +104,9 @@ describe("buildComposerMenuItems", () => {
       name: "test",
       content: "Confirm the global skill loader is working",
       location: "/skills/test/SKILL.md",
+      scope: "external",
+      textKey: "skill.scope.external",
+      overrides: [],
     }]
 
     const items = buildComposerMenuItems(state, [])
@@ -111,6 +114,47 @@ describe("buildComposerMenuItems", () => {
 
     assert.ok(skillCommand)
     assert.equal(skillCommand?.kind, "SKILL")
+  })
+
+  test("keeps Product skill order and localized source groups in the skill picker", () => {
+    const state = createInitialState({
+      workspaceId: "file:///workspace",
+      dir: "/workspace",
+      sessionId: "session-1",
+    })
+    state.snapshot.skillCatalog = [
+      {
+        name: "project-skill",
+        content: "Project instructions",
+        location: "/workspace/.hypercode/skills/project-skill/SKILL.md",
+        scope: "project",
+        textKey: "skill.scope.project",
+        overrides: [],
+      },
+      {
+        name: "global-skill",
+        content: "Global instructions",
+        location: "/home/alice/.hypercode/skills/global-skill/SKILL.md",
+        scope: "global",
+        textKey: "skill.scope.global",
+        overrides: [],
+      },
+    ]
+    state.snapshot.commands = [
+      { name: "global-skill", description: "Global command", hints: [], source: "skill" },
+      { name: "command-only", description: "External command", hints: [], source: "skill" },
+      { name: "project-skill", description: "Project command", hints: [], source: "skill" },
+    ]
+
+    setLocale("zh")
+    const items = buildComposerMenuItems(state, []).filter((item) => item.trigger === "skill")
+
+    assert.deepEqual(items.map((item) => ({ label: item.label, category: item.category })), [
+      { label: "project-skill", category: "项目 Skills" },
+      { label: "global-skill", category: "全局 Skills" },
+      { label: "command-only", category: "外部 Skills" },
+    ])
+    setLocale("en")
   })
 
   test("includes a local slash action for theme", () => {

@@ -4,6 +4,8 @@ import type { ComposerAutocompleteItem } from "../hooks/useComposerAutocomplete"
 import { formatComposerFileContent, formatComposerFileDisplay, parseComposerFileQuery } from "../lib/composer-file-selection"
 import { localizedCommandDescription, t } from "../../../i18n"
 import { toVsCodeProductCommands } from "../../../product/command-adapter"
+import { mergeProductSkillCatalog } from "@opencode-ai/product"
+import { toVsCodeTextKey } from "../lib/product-text-adapter"
 
 type ComposerMenuState = {
   composerAgentOverride?: AppState["composerAgentOverride"]
@@ -131,27 +133,37 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
   })
 
   const skillCommands = state.snapshot.commands.filter((cmd) => cmd.source === "skill")
-  const fallbackSkills = state.snapshot.skillCatalog.filter(
-    (skill) => !skillCommands.some((cmd) => cmd.name === skill.name),
+  const skillCommandsByName = new Map(skillCommands.map((command) => [command.name, command]))
+  const skillCatalogByName = new Map(state.snapshot.skillCatalog.map((skill) => [skill.name, skill]))
+  const productSkills = mergeProductSkillCatalog(
+    { items: state.snapshot.skillCatalog },
+    skillCommands.map((command) => ({ name: command.name, description: localizedCommandDescription(command) })),
   )
-  const skillItems: ComposerAutocompleteItem[] = [...skillCommands, ...fallbackSkills]
-    .map((item) => ("hints" in item
-      ? {
-          id: `skill:${item.name}`,
-          label: item.name,
-          detail: commandDescription(item, false),
-          keywords: [item.agent ?? "", ...item.hints].filter(Boolean),
-          trigger: "skill" as const,
-          kind: "SKILL" as const,
-        }
-      : {
-          id: `skill:${item.name}`,
-          label: item.name,
-          detail: item.content.trim().split(/\r?\n/)[0] ?? "",
-          keywords: [],
-          trigger: "skill" as const,
-          kind: "SKILL" as const,
-        }))
+  const skillItems: ComposerAutocompleteItem[] = productSkills.items.flatMap((item) => {
+    const command = skillCommandsByName.get(item.name)
+    const catalog = skillCatalogByName.get(item.name)
+    if (!command && !catalog) return []
+    const category = t(toVsCodeTextKey(item.textKey))
+    if (command) return [{
+      id: `skill:${command.name}`,
+      label: command.name,
+      detail: commandDescription(command, false),
+      category,
+      keywords: [command.agent ?? "", ...command.hints].filter(Boolean),
+      trigger: "skill" as const,
+      kind: "SKILL" as const,
+    }]
+    if (!catalog) return []
+    return [{
+      id: `skill:${catalog.name}`,
+      label: catalog.name,
+      detail: catalog.content.trim().split(/\r?\n/)[0] ?? "",
+      category,
+      keywords: [],
+      trigger: "skill" as const,
+      kind: "SKILL" as const,
+    }]
+  })
 
   const agentItems = state.snapshot.agents
     .filter((agent) => !agent.hidden && agent.mode !== "primary")

@@ -13,13 +13,14 @@ function slashItem(label: string, detail = label): ComposerAutocompleteItem {
   }
 }
 
-function skillItem(label: string, trigger: "skill" | "slash" = "skill"): ComposerAutocompleteItem {
+function skillItem(label: string, trigger: "skill" | "slash" = "skill", category?: string): ComposerAutocompleteItem {
   return {
     id: `skill:${label}`,
     label,
     detail: `${label} detail`,
     trigger,
     kind: "SKILL",
+    category,
   }
 }
 
@@ -37,13 +38,16 @@ describe("filterItems", () => {
     assert.ok(result.every((item) => Array.isArray(item.match?.label)))
   })
 
-  test("includes skills in the dedicated skill picker even when they are also exposed in slash autocomplete", () => {
+  test("keeps Product skill group order even when skills are also exposed in slash autocomplete", () => {
     const result = filterItems([
-      skillItem("test", "slash"),
-      skillItem("effect"),
+      skillItem("project-z", "slash", "Project Skills"),
+      skillItem("global-a", "skill", "Global Skills"),
       slashItem("skills"),
     ], "skill", "")
 
-    assert.deepEqual(result.map((item) => item.label), ["effect", "test"])
+    assert.deepEqual(result.map((item) => ({ label: item.label, category: item.category })), [
+      { label: "project-z", category: "Project Skills" },
+      { label: "global-a", category: "Global Skills" },
+    ])
   })
 })
