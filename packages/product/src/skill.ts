@@ -45,7 +45,7 @@ export function deriveProductSkillCatalog(input: ProductSkillCatalogInput): Prod
   const selected = names.map((name) => {
     const matches = candidates
       .filter((skill) => skill.name === name)
-      .sort((a, b) => precedence.indexOf(a.scope) - precedence.indexOf(b.scope) || compareLocation(a.location, b.location))
+      .sort((a, b) => precedence.indexOf(a.scope) - precedence.indexOf(b.scope) || compareLocation(b.location, a.location))
     const winner = matches[0]
     return {
       name: winner.name,

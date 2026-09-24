@@ -94,3 +94,21 @@ test("merges host-only skills as external without overriding canonical catalog i
     { name: "z-external", scope: "external" },
   ])
 })
+
+test("uses the same normalized-location winner as sequential Core loading within one scope", () => {
+  const catalog = deriveProductSkillCatalog({
+    workspaceRoots: ["/work/app"],
+    skills: [
+      { name: "shared", location: "/work/app/a-source/shared/SKILL.md" },
+      { name: "shared", location: "/work/app/z-source/shared/SKILL.md" },
+    ],
+  })
+
+  expect(catalog.items).toEqual([{
+    name: "shared",
+    location: "/work/app/z-source/shared/SKILL.md",
+    scope: "project",
+    textKey: "skill.scope.project",
+    overrides: [],
+  }])
+})
