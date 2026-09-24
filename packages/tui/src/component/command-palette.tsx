@@ -10,6 +10,7 @@ import {
 } from "../keymap"
 import { useTuiConfig } from "../config"
 import { useLanguage } from "../context/language"
+import { toTuiProductCommands } from "../product/command-adapter"
 
 type PaletteCommandEntry = ReturnType<OpenTuiKeymap["getCommandEntries"]>[number]
 
@@ -47,8 +48,8 @@ export function CommandPaletteDialog() {
       bindings: registeredBindings.get(entry.command.name) ?? entry.bindings,
     }))
   })
-  const options = createMemo(() =>
-    entries().map((entry) => ({
+  const options = createMemo(() => {
+    const candidates = entries().map((entry) => ({
       title: typeof entry.command.title === "string" ? entry.command.title : entry.command.name,
       description: typeof entry.command.desc === "string" ? entry.command.desc : undefined,
       category: typeof entry.command.category === "string" ? entry.command.category : undefined,
@@ -59,8 +60,19 @@ export function CommandPaletteDialog() {
         dialog.clear()
         keymap.dispatchCommand(entry.command.name)
       },
-    })),
-  )
+    }))
+    const byName = new Map(candidates.map((candidate) => [candidate.value, candidate]))
+    return toTuiProductCommands(candidates.map((candidate) => ({
+      id: candidate.value,
+      name: candidate.value,
+      title: candidate.title,
+      description: candidate.description,
+      category: candidate.category,
+    }))).flatMap((entry) => {
+      const candidate = byName.get(entry.name)
+      return candidate ? [candidate] : []
+    })
+  })
 
   let ref: DialogSelectRef<string>
   const list = () => {

@@ -3,6 +3,7 @@ import type { AppState } from "./state"
 import type { ComposerAutocompleteItem } from "../hooks/useComposerAutocomplete"
 import { formatComposerFileContent, formatComposerFileDisplay, parseComposerFileQuery } from "../lib/composer-file-selection"
 import { localizedCommandDescription, t } from "../../../i18n"
+import { toVsCodeProductCommands } from "../../../product/command-adapter"
 
 type ComposerMenuState = {
   composerAgentOverride?: AppState["composerAgentOverride"]
@@ -108,16 +109,26 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
     })
   }
 
-  const commandItems: ComposerAutocompleteItem[] = state.snapshot.commands
-    .filter((cmd) => cmd.source !== "skill")
-    .map((cmd) => ({
+  const commands = state.snapshot.commands.filter((cmd) => cmd.source !== "skill")
+  const commandsByName = new Map(commands.map((command) => [command.name, command]))
+  const commandItems: ComposerAutocompleteItem[] = toVsCodeProductCommands(commands.map((cmd) => ({
+    id: `command:${cmd.name}`,
+    name: cmd.name,
+    title: cmd.name,
+    description: localizedCommandDescription(cmd),
+    source: cmd.source,
+  }))).flatMap((entry) => {
+    const cmd = commandsByName.get(entry.name)
+    if (!cmd) return []
+    return [{
       id: `command:${cmd.name}`,
       label: cmd.name,
       detail: commandDescription(cmd, cmd.source === "mcp"),
       keywords: [cmd.source ?? "", cmd.agent ?? "", localizedCommandDescription(cmd) ?? ""].filter(Boolean),
       trigger: "slash" as const,
       kind: "command" as const,
-    }))
+    }]
+  })
 
   const skillCommands = state.snapshot.commands.filter((cmd) => cmd.source === "skill")
   const fallbackSkills = state.snapshot.skillCatalog.filter(
