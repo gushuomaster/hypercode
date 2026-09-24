@@ -9,6 +9,10 @@
 - 不暴露模型内部 reasoning，面向用户的 reasoning summary 使用中文；关键用户可见流程需要有中文文案的 regression 覆盖。
 - 中文优先只约束产品用户体验，不代表源码标识符、协议字段或 upstream 工程正文需要中文化。
 
+**Product 行为边界。** 任何同时影响 TUI 与 VSCode 的产品行为，必须优先由 `packages/product` 定义并测试。Host 不得分别实现 fallback、排序、availability、状态优先级、错误语义、navigation 或 mutation semantics。
+
+TUI 与 VSCode Host 只负责 render、host API、input、focus、scroll、keyboard/mouse，以及 editor/terminal capability。`messages`、`parts` 和 raw protocol payload 继续归 Core/Host；宿主不具备的能力必须返回 `unsupported`，不得伪造。详细维护基线见 `docs/superpowers/specs/2026-09-24-product-alignment-maintenance-baseline.md`。
+
 **工程规范。** 涉及 upstream 同步、同步验证（含验证结论归因）与正式合入流程时，遵循 `docs/规范/上游同步工作流总纲.md`；涉及 HyperCode 品牌化差异、fork tax 与 upstream 差异维护时，遵循 `docs/规范/上游同步与品牌化规范.md`。更具体目录中的 `AGENTS.md` 可补充对应子系统约束，但不得与仓库级约定冲突。
 
 **仓库维护。** 避免因无关的 line-ending normalization 产生大范围 diff。
