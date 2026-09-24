@@ -13,7 +13,7 @@ export function DialogStatus() {
   const { theme } = useTheme()
   const dialog = useDialog()
 
-  const enabledFormatters = createMemo(() => sync.data.formatter.filter((f) => f.enabled))
+  const enabledFormatters = createMemo(() => sync.data.formatter_product.filter((formatter) => formatter.enabled))
 
   const plugins = createMemo(() => {
     const list = sync.data.config.plugin ?? []
@@ -94,10 +94,10 @@ export function DialogStatus() {
           </For>
         </box>
       </Show>
-      {sync.data.lsp.length > 0 && (
+      {sync.data.lsp_product.length > 0 && (
         <box>
-          <text fg={theme.text}>{t("dialog.status.lspCount", { count: sync.data.lsp.length })}</text>
-          <For each={sync.data.lsp}>
+          <text fg={theme.text}>{t("dialog.status.lspCount", { count: sync.data.lsp_product.length })}</text>
+          <For each={sync.data.lsp_product}>
             {(item) => (
               <box flexDirection="row" gap={1}>
                 <text
@@ -106,13 +106,13 @@ export function DialogStatus() {
                     fg: {
                       connected: theme.success,
                       error: theme.error,
-                    }[item.status],
+                    }[item.availability],
                   }}
                 >
                   •
                 </text>
                 <text fg={theme.text} wrapMode="word">
-                  <b>{item.id}</b> <span style={{ fg: theme.textMuted }}>{item.root}</span>
+                  <b>{item.name}</b> <span style={{ fg: theme.textMuted }}>{item.root}</span>
                 </text>
               </box>
             )}

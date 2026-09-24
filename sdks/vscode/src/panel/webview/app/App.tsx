@@ -12,7 +12,7 @@ import { useHostMessages } from "../hooks/useHostMessages"
 import { useModifierState } from "../hooks/useModifierState"
 import { useTimelineScroll } from "../hooks/useTimelineScroll"
 import { formatComposerFileContent, parseComposerFileQuery } from "../lib/composer-file-selection"
-import { agentColorClass, composerIdentity, composerMetrics, composerSelection, cycleComposerModelVariantState, formatUsd, lastUserSelection, modelKey, modelVariants, overallLspStatus, overallProductMcpStatus, pushRecentModel, sameModelRef, sessionTitle, toggleFavoriteModel } from "../lib/session-meta"
+import { agentColorClass, composerIdentity, composerMetrics, composerSelection, cycleComposerModelVariantState, formatUsd, lastUserSelection, modelKey, modelVariants, overallProductFormatterStatus, overallProductLspStatus, overallProductMcpStatus, pushRecentModel, sameModelRef, sessionTitle, toggleFavoriteModel } from "../lib/session-meta"
 import { buildComposerSubmitParts, composerMentionAgentOverride } from "./composer-mentions"
 import { ComposerFooter } from "./composer-footer"
 import { absorbFileSelectionSuffix, composerMentions as mentionsFromParts, composerPartsEqual, composerText, deleteStructuredRange, emptyComposerParts, ensureTextPart, replaceRangeWithMention, replaceRangeWithText } from "./composer-editor"
@@ -1424,7 +1424,7 @@ export function App() {
 
   const composerFooterBadges = React.useMemo(() => {
     const mcp = overallProductMcpStatus(state.snapshot.mcpStates)
-    const lsp = overallLspStatus(state.snapshot.lsp)
+    const lsp = overallProductLspStatus(state.snapshot.lspStates)
     return [
       { label: "MCP", tone: mcp.tone, items: mcp.items },
       { label: "LSP", tone: lsp.tone, items: lsp.items },

@@ -13,6 +13,8 @@ import { sortMessages } from "./mutations"
 import { idle, text } from "./utils"
 import { toProductProviderStates } from "../../product/provider-adapter"
 import { toProductMcpStates } from "../../product/mcp-adapter"
+import { toProductLspStates } from "../../product/lsp-adapter"
+import { toProductFormatterStates } from "../../product/formatter-adapter"
 
 type SnapshotContext = {
   ref: SessionPanelRef
@@ -22,7 +24,7 @@ type SnapshotContext = {
   messageLimit?: number
 }
 
-type DeferredSnapshotData = Pick<SessionSnapshot, "sessionStatus" | "permissions" | "questions" | "providerAuth" | "providerStates" | "mcp" | "mcpStates" | "mcpResources" | "lsp" | "formatter" | "commands">
+type DeferredSnapshotData = Pick<SessionSnapshot, "sessionStatus" | "permissions" | "questions" | "providerAuth" | "providerStates" | "mcp" | "mcpStates" | "mcpResources" | "lsp" | "lspStates" | "formatter" | "formatterStates" | "commands">
 
 export type SessionSnapshotBuild = {
   snapshot: SessionSnapshot
@@ -163,7 +165,9 @@ export async function buildSessionSnapshot({ ref, mgr, log, isSubmitting, messag
       mcpStates: [],
       mcpResources: {},
       lsp: [],
+      lspStates: [],
       formatter: [],
+      formatterStates: [],
       commands: [],
       relatedSessionIds: tree.relatedSessionIds,
       agentMode: mode,
@@ -234,6 +238,8 @@ async function loadDeferredSnapshot({
   ])
 
   const mcp = mcpStatusMap(mcpRes.data)
+  const lsp = lspStatuses(lspRes.data ?? [], dir)
+  const formatter = formatterStatuses(formatterRes.data)
   return {
     sessionStatus: statusRes.data?.[sessionId] ?? idle(),
     permissions: filterPermission(permissionRes.data ?? [], requestSessionIds),
@@ -248,8 +254,10 @@ async function loadDeferredSnapshot({
     mcp,
     mcpStates: toProductMcpStates(mcp),
     mcpResources: mcpResourceMap(resourceRes.data),
-    lsp: lspStatuses(lspRes.data ?? [], dir),
-    formatter: formatterStatuses(formatterRes.data),
+    lsp,
+    lspStates: toProductLspStates(lsp),
+    formatter,
+    formatterStates: toProductFormatterStates(formatter),
     commands: commandArr(commandRes.data),
   }
 }
@@ -410,7 +418,9 @@ function fallbackSnapshot(
     mcpStates: [],
     mcpResources: {},
     lsp: [],
+    lspStates: [],
     formatter: [],
+    formatterStates: [],
     commands: [],
     relatedSessionIds: [ref.sessionId],
     agentMode: "build",

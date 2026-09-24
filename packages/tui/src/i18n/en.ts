@@ -89,6 +89,7 @@ export const dict = {
   "product.error.mcp.clientRegistrationRequired": "This MCP server requires client registration.",
   "product.error.mcp.connectionFailed": "The MCP server connection failed. See the original error for details.",
   "product.error.mcp.unsupported": "This host does not support this MCP server.",
+  "product.error.lsp.connectionFailed": "The LSP server connection failed.",
   "product.error.session.notFound": "The session no longer exists or cannot be found.",
   "product.error.session.unsupported": "This host does not support that session action.",
   "product.error.session.permissionDenied": "You do not have permission to modify this session.",

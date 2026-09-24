@@ -32,13 +32,15 @@ import { batch, onMount } from "solid-js"
 import path from "path"
 import { useKV } from "./kv"
 import { usePermission } from "./permission"
-import type { ProductMcpState, ProductProviderState, ProductSessionMutationAction, ProductSessionMutationState, ProductSnapshot } from "@opencode-ai/product"
+import type { ProductFormatterState, ProductLspState, ProductMcpState, ProductProviderState, ProductSessionMutationAction, ProductSessionMutationState, ProductSnapshot } from "@opencode-ai/product"
 import { createProductSessionMutationState, deriveProductSessionMutationAvailability, hydrateProductMutableSessions, mergeProductSnapshot } from "@opencode-ai/product"
 import { reduceTuiProductEvent, toProductEvent, toProductSnapshot } from "../product/session-adapter"
 import { toTuiProductAction } from "../product/action-adapter"
 import { toTuiMutableSession, toTuiSessionMutationTarget } from "../product/session-mutation-adapter"
 import { toProductProviderStates } from "../product/provider-adapter"
 import { toProductMcpStates } from "../product/mcp-adapter"
+import { toProductLspStates } from "../product/lsp-adapter"
+import { toProductFormatterStates } from "../product/formatter-adapter"
 
 const emptyConsoleState: ConsoleState = {
   consoleManagedProviders: [],
@@ -115,6 +117,7 @@ export const {
         [messageID: string]: Part[]
       }
       lsp: LspStatus[]
+      lsp_product: ProductLspState[]
       mcp: {
         [key: string]: McpStatus
       }
@@ -123,6 +126,7 @@ export const {
         [key: string]: McpResource
       }
       formatter: FormatterStatus[]
+      formatter_product: ProductFormatterState[]
       vcs: VcsInfo | undefined
     }>({
       provider_next: {
@@ -153,10 +157,12 @@ export const {
       message: {},
       part: {},
       lsp: [],
+      lsp_product: [],
       mcp: {},
       mcp_product: [],
       mcp_resource: {},
       formatter: [],
+      formatter_product: [],
       vcs: undefined,
     })
 
@@ -558,7 +564,13 @@ export const {
             })]),
             consoleStatePromise.then((consoleState) => setStore("console_state", reconcile(consoleState))),
             sdk.client.command.list({ workspace }).then((x) => setStore("command", reconcile(x.data ?? []))),
-            sdk.client.lsp.status({ workspace }).then((x) => setStore("lsp", reconcile(x.data ?? []))),
+            sdk.client.lsp.status({ workspace }).then((x) => {
+              const statuses = x.data ?? []
+              batch(() => {
+                setStore("lsp", reconcile(statuses))
+                setStore("lsp_product", reconcile(toProductLspStates(statuses)))
+              })
+            }),
             sdk.client.mcp.status({ workspace }).then((x) => {
               const statuses = x.data ?? {}
               batch(() => {
@@ -569,7 +581,13 @@ export const {
             sdk.client.experimental.resource
               .list({ workspace })
               .then((x) => setStore("mcp_resource", reconcile(x.data ?? {}))),
-            sdk.client.formatter.status({ workspace }).then((x) => setStore("formatter", reconcile(x.data ?? []))),
+            sdk.client.formatter.status({ workspace }).then((x) => {
+              const statuses = x.data ?? []
+              batch(() => {
+                setStore("formatter", reconcile(statuses))
+                setStore("formatter_product", reconcile(toProductFormatterStates(statuses)))
+              })
+            }),
             sdk.client.session.status({ workspace }).then((x) => {
               setStore(
                 produce((draft) => {

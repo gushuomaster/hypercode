@@ -210,6 +210,7 @@ export const ZH = {
   "product.error.mcp.clientRegistrationRequired": "此 MCP 服务器需要客户端注册。",
   "product.error.mcp.connectionFailed": "MCP 服务器连接失败，请结合原始错误排查。",
   "product.error.mcp.unsupported": "当前宿主不支持此 MCP 服务器。",
+  "product.error.lsp.connectionFailed": "LSP 服务器连接失败。",
   "product.error.session.notFound": "会话不存在或已被移除。",
   "product.error.session.unsupported": "当前宿主不支持此会话操作。",
   "product.error.session.permissionDenied": "没有权限修改此会话。",

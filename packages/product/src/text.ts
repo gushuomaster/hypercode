@@ -17,6 +17,7 @@ export type ProductTextKey =
   | "error.mcp.connection_failed"
   | "error.mcp.client_registration_required"
   | "error.mcp.unsupported"
+  | "error.lsp.connection_failed"
   | "error.session.not_found"
   | "error.session.unsupported"
   | "error.session.permission_denied"

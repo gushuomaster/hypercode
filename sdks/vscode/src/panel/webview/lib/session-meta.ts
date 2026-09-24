@@ -1,5 +1,5 @@
 import type { SessionBootstrap } from "../../../bridge/types"
-import { cycleModelVariant, deriveComposerSelection, type ProductMcpState } from "@opencode-ai/product"
+import { cycleModelVariant, deriveComposerSelection, type ProductFormatterState, type ProductLspState, type ProductMcpState } from "@opencode-ai/product"
 import type { AgentInfo, FormatterStatus, LspStatus, McpStatus, MessageInfo, ProviderInfo, SessionMessage } from "../../../core/sdk"
 import { displaySessionTitle } from "../../../core/session-titles"
 import { t } from "../../../i18n"
@@ -271,6 +271,18 @@ export function statusItemForMcp(name: string, status: McpStatus): StatusItem {
   return { name, tone: "red", value: status.error || t("common.error"), action: "reconnect", actionLabel: t("status.reconnect", { name }) }
 }
 
+export function overallProductFormatterStatus(states: ProductFormatterState[]) {
+  const items = states.map((state): StatusItem => ({
+    name: state.name,
+    tone: state.severity === "warning" ? "orange" : "green",
+    value: state.enabled ? state.extensions.join(", ") || t("common.enabled") : t("common.disabled"),
+  }))
+  if (items.length === 0) return { tone: "gray" as const, items }
+  if (items.every((item) => item.tone === "green")) return { tone: "green" as const, items }
+  if (items.every((item) => item.tone === "orange")) return { tone: "orange" as const, items }
+  return { tone: "orange" as const, items }
+}
+
 export function overallProductMcpStatus(states: ProductMcpState[]) {
   const items = states.map(statusItemForProductMcp)
   if (items.length === 0) return { tone: "gray" as const, items }
@@ -289,6 +301,18 @@ export function statusItemForProductMcp(state: ProductMcpState): StatusItem {
     value: state.diagnostic?.message ?? state.availability,
     ...(state.action ? { action: state.action, actionLabel: state.action } : {}),
   }
+}
+
+export function overallProductLspStatus(states: ProductLspState[]) {
+  const items = states.map((state): StatusItem => ({
+    name: state.name,
+    tone: state.severity === "error" ? "red" : "green",
+    value: state.diagnostic?.message ?? state.root,
+  }))
+  if (items.length === 0) return { tone: "gray" as const, items }
+  if (items.every((item) => item.tone === "green")) return { tone: "green" as const, items }
+  if (items.every((item) => item.tone === "red")) return { tone: "red" as const, items }
+  return { tone: "orange" as const, items }
 }
 
 export function statusItemForLsp(status: LspStatus): StatusItem {
