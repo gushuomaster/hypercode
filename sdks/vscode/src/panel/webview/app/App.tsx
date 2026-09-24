@@ -12,7 +12,8 @@ import { useHostMessages } from "../hooks/useHostMessages"
 import { useModifierState } from "../hooks/useModifierState"
 import { useTimelineScroll } from "../hooks/useTimelineScroll"
 import { formatComposerFileContent, parseComposerFileQuery } from "../lib/composer-file-selection"
-import { agentColorClass, composerIdentity, composerMetrics, composerSelection, cycleComposerModelVariantState, formatUsd, lastUserSelection, modelKey, modelVariants, overallProductFormatterStatus, overallProductLspStatus, overallProductMcpStatus, pushRecentModel, sameModelRef, sessionTitle, toggleFavoriteModel } from "../lib/session-meta"
+import { agentColorClass, composerIdentity, composerMetrics, composerSelection, formatUsd, lastUserSelection, overallProductFormatterStatus, overallProductLspStatus, overallProductMcpStatus, sessionTitle } from "../lib/session-meta"
+import { toProductAgents, toProductProviders } from "../lib/product-adapter"
 import { buildComposerSubmitParts, composerMentionAgentOverride } from "./composer-mentions"
 import { ComposerFooter } from "./composer-footer"
 import { absorbFileSelectionSuffix, composerMentions as mentionsFromParts, composerPartsEqual, composerText, deleteStructuredRange, emptyComposerParts, ensureTextPart, replaceRangeWithMention, replaceRangeWithText } from "./composer-editor"
@@ -21,7 +22,7 @@ import { isCompletedSlashCommand, resolveComposerAutocompleteAction, resolveComp
 import { collectDroppedFilePaths, shouldHandleComposerFileDrop } from "./composer-drop"
 import { autocompleteItemView, buildComposerMenuItems, mentionForQuery } from "./composer-menu"
 import { composerPrimaryAction } from "./composer-primary-action"
-import { composerEnterIntent, composerTabIntent, cycleAgentName, isShortcutTarget, leaderAction, shouldEnterShellMode, shouldExitShellModeOnBackspace, type ComposerMode } from "./keyboard-shortcuts"
+import { composerEnterIntent, composerTabIntent, isShortcutTarget, leaderAction, shouldEnterShellMode, shouldExitShellModeOnBackspace, type ComposerMode } from "./keyboard-shortcuts"
 import { HIDDEN_CODEX_TODO_DOCK_STATE, nextCodexTodoDockState, sameCodexTodoDockState, type CodexTodoDockState } from "./codex-todo-dock-state"
 import { buildModelPickerCatalog, buildModelPickerRecoveryActions, ModelPicker } from "./model-picker"
 import { buildComposerHostMessage } from "./composer-submit"
@@ -38,7 +39,7 @@ import { t } from "../../../i18n"
 import { buildThemePickerItems, ThemePicker, type ThemePickerItem } from "./theme-picker"
 import { resolveTranscriptHistoryMode, shouldAutoLoadEarlierMessages, transcriptHistoryScrollThreshold } from "./transcript-history"
 import { AgentPicker, buildAgentPickerItems, type AgentPickerItem } from "./agent-picker"
-import { derivePendingInteraction, isProductSessionRunning, type ProductAction } from "@opencode-ai/product"
+import { cycleProductAgentName, cycleProductModelVariantState, derivePendingInteraction, isProductSessionRunning, modelKey, modelVariants, sameModelRef, toggleProductFavoriteModel, updateProductRecentModels, type ProductAction } from "@opencode-ai/product"
 import { toVsCodeProductAction, toVsCodeProductSelection, type VsCodeProductActionOptions } from "../lib/product-action-adapter"
 import { formatVsCodeProductError } from "../lib/product-text-adapter"
 
@@ -706,7 +707,7 @@ export function App() {
       }
 
       const nextVariants = { ...current.composerModelVariants }
-      const nextModelKey = modelKey(latestUserSelection.model)
+      const nextModelKey = latestUserSelection.model ? modelKey(latestUserSelection.model) : ""
       if (nextModelKey) {
         if (latestUserSelection.variant) {
           nextVariants[nextModelKey] = latestUserSelection.variant
@@ -719,7 +720,7 @@ export function App() {
         ...current,
         composerAgentOverride: latestUserSelection.agent || current.composerAgentOverride,
         composerModelOverrides: nextOverrides,
-        composerRecentModels: pushRecentModel(current.composerRecentModels, latestUserSelection.model),
+        composerRecentModels: updateProductRecentModels(current.composerRecentModels, latestUserSelection.model),
         composerModelVariants: nextVariants,
         composerHydratedMessageID: latestUserSelection.messageID,
       }
@@ -1266,7 +1267,7 @@ export function App() {
           ...current.composerModelOverrides,
           [agent]: action.model,
         },
-        composerRecentModels: pushRecentModel(current.composerRecentModels, action.model),
+        composerRecentModels: updateProductRecentModels(current.composerRecentModels, action.model),
         error: "",
       }
     })
@@ -1276,7 +1277,7 @@ export function App() {
   const toggleComposerFavorite = React.useCallback((model: { providerID: string; modelID: string }) => {
     setState((current) => ({
       ...current,
-      composerFavoriteModels: toggleFavoriteModel(current.composerFavoriteModels, model),
+      composerFavoriteModels: toggleProductFavoriteModel(current.composerFavoriteModels, model),
     }))
   }, [])
 
@@ -1299,8 +1300,8 @@ export function App() {
       const activeVariant = sameModelRef(target, selection.model)
         ? selection.variant
         : storedVariant === "default" ? undefined : storedVariant
-      const variants = cycleComposerModelVariantState(
-        current.snapshot.providers,
+      const variants = cycleProductModelVariantState(
+        toProductProviders(current.snapshot.providers),
         target,
         activeVariant,
         current.composerModelVariants,
@@ -1425,14 +1426,16 @@ export function App() {
   const composerFooterBadges = React.useMemo(() => {
     const mcp = overallProductMcpStatus(state.snapshot.mcpStates)
     const lsp = overallProductLspStatus(state.snapshot.lspStates)
+    const formatter = overallProductFormatterStatus(state.snapshot.formatterStates)
     return [
       { label: "MCP", tone: mcp.tone, items: mcp.items },
       { label: "LSP", tone: lsp.tone, items: lsp.items },
+      { label: "Formatter", tone: formatter.tone, items: formatter.items },
     ]
-  }, [state.snapshot.lsp, state.snapshot.mcp])
+  }, [state.snapshot.formatterStates, state.snapshot.lspStates, state.snapshot.mcpStates])
 
   const cycleComposerAgent = React.useCallback(() => {
-    const next = cycleAgentName(state.snapshot.agents, currentSelection.agent)
+    const next = cycleProductAgentName(toProductAgents(state.snapshot.agents), currentSelection.agent)
     if (!next) {
       return false
     }
@@ -2232,7 +2235,7 @@ export function App() {
                             }
 
                             if (event.key === "Tab") {
-                              const nextAgent = cycleAgentName(state.snapshot.agents, currentSelection.agent)
+                              const nextAgent = cycleProductAgentName(toProductAgents(state.snapshot.agents), currentSelection.agent)
                               const tabIntent = composerTabIntent({
                                 mode: composerMode,
                                 hasAutocomplete: !!activeAutocomplete,
@@ -2255,7 +2258,7 @@ export function App() {
                             }
 
                             if (!event.shiftKey && !event.altKey && !event.metaKey && event.ctrlKey && event.key.toLowerCase() === "t") {
-                              if (modelVariants(state.snapshot.providers, currentSelection.model).length > 0) {
+                              if (modelVariants(toProductProviders(state.snapshot.providers), currentSelection.model).length > 0) {
                                 event.preventDefault()
                                 cycleComposerVariant()
                                 return
@@ -2571,7 +2574,7 @@ function ComposerInfo({
     composerModelOverrides: state.composerModelOverrides,
     composerModelVariants: state.composerModelVariants,
   })
-  const variantOptions = modelVariants(state.snapshot.providers, info.modelRef)
+  const variantOptions = modelVariants(toProductProviders(state.snapshot.providers), info.modelRef)
   const colorClass = agentColorClass(info.agent)
   return (
     <div className="oc-composerInfo">

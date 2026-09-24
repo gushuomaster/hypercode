@@ -13,7 +13,7 @@ import { useTheme } from "./theme"
 import { useToast } from "../ui/toast"
 import { useRoute } from "./route"
 import { usePermission } from "./permission"
-import { cycleModelVariant, deriveComposerSelection, deriveProductSessionList, isValidModelRef } from "@opencode-ai/product"
+import { cycleProductAgentName, cycleProductModelVariantState, deriveComposerSelection, deriveProductSessionList, isValidModelRef, toggleProductFavoriteModel, updateProductRecentModels } from "@opencode-ai/product"
 import { toProductAgents, toProductProviders } from "../product/model-adapter"
 import { toTuiProductAction, toTuiProductSelection } from "../product/action-adapter"
 import { toTuiProductSessionInput } from "../product/session-list-adapter"
@@ -34,22 +34,6 @@ export function parseModel(model: string) {
     providerID: providerID,
     modelID: rest.join("/"),
   }
-}
-
-export function recentModels(
-  model: { providerID: string; modelID: string },
-  recent: { providerID: string; modelID: string }[],
-) {
-  const seen = new Set<string>()
-  return [model, ...recent]
-    .filter((item) => {
-      const key = `${item.providerID}/${item.modelID}`
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
-    .slice(0, 10)
-    .map((item) => ({ providerID: item.providerID, modelID: item.modelID }))
 }
 
 export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
@@ -107,15 +91,8 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           setAgentStore("current", action.agent)
         },
         move(direction: 1 | -1) {
-          batch(() => {
-            const current = this.current()
-            if (!current) return
-            let next = agents().findIndex((x) => x.name === current.name) + direction
-            if (next < 0) next = agents().length - 1
-            if (next >= agents().length) next = 0
-            const value = agents()[next]
-            this.set(value.name)
-          })
+          const next = cycleProductAgentName(toProductAgents(sync.data.agent), this.current()?.name, direction)
+          if (next) this.set(next)
         },
         color(name: string) {
           const index = visibleAgents().findIndex((x) => x.name === name)
@@ -153,7 +130,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           providerID: string
           modelID: string
         }[]
-        variant: Record<string, string | undefined>
+        variant: Record<string, string>
       }>({
         ready: false,
         model: {},
@@ -187,7 +164,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           if (Array.isArray(value.recent)) setModelStore("recent", value.recent)
           if (Array.isArray(value.favorite)) setModelStore("favorite", value.favorite)
           if (typeof value.variant === "object" && value.variant !== null)
-            setModelStore("variant", value.variant as Record<string, string | undefined>)
+            setModelStore("variant", value.variant as Record<string, string>)
         })
         .catch(() => {})
         .finally(() => {
@@ -297,7 +274,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             if (!a) return
             setModelStore("model", a.name, action.model)
             if (options?.recent) {
-              setModelStore("recent", recentModels(action.model, modelStore.recent))
+              setModelStore("recent", updateProductRecentModels(modelStore.recent, action.model))
               save()
             }
           })
@@ -312,16 +289,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
               })
               return
             }
-            const exists = modelStore.favorite.some(
-              (x) => x.providerID === model.providerID && x.modelID === model.modelID,
-            )
-            const next = exists
-              ? modelStore.favorite.filter((x) => x.providerID !== model.providerID || x.modelID !== model.modelID)
-              : [model, ...modelStore.favorite]
-            setModelStore(
-              "favorite",
-              next.map((x) => ({ providerID: x.providerID, modelID: x.modelID })),
-            )
+            setModelStore("favorite", toggleProductFavoriteModel(modelStore.favorite, model))
             save()
           })
         },
@@ -357,8 +325,12 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             save()
           },
           cycle() {
-            if (this.list().length === 0) return
-            this.set(cycleModelVariant(productProviders(), currentModel(), this.current()))
+            const current = currentModel()
+            if (!current) return
+            const next = cycleProductModelVariantState(productProviders(), current, this.current(), modelStore.variant)
+            if (next === modelStore.variant) return
+            setModelStore("variant", next)
+            save()
           },
         },
       }
@@ -472,8 +444,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
 
     const mcp = {
       isEnabled(name: string) {
-        const status = sync.data.mcp[name]
-        return status?.status === "connected"
+        return sync.data.mcp_product.some((state) => state.name === name && state.availability === "connected")
       },
       async run(action: Extract<import("@opencode-ai/product").ProductAction, { type: `mcp.${string}` }>) {
         const target = toTuiProductAction(action, { sessionID: "" })

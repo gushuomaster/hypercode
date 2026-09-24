@@ -1,7 +1,7 @@
 import type { SessionSnapshot } from "../../bridge/types"
 import type { FileDiff, MessagePart, PermissionRequest, QuestionRequest, SessionEvent, SessionMessage, SessionStatus, Todo } from "../../core/sdk"
 import { displaySessionTitle } from "../../core/session-titles"
-import { reduceProductEvent } from "@opencode-ai/product"
+import { deriveProductSessionNavigation, reduceProductEvent, resolveProductSessionNavigation } from "@opencode-ai/product"
 import { toProductEvent, toProductSnapshot } from "../../product/session"
 
 export function reduceSessionSnapshot(payload: SessionSnapshot, event: SessionEvent) {
@@ -60,7 +60,7 @@ function reduceHostSessionSnapshot(payload: SessionSnapshot, event: SessionEvent
       return {
         ...payload,
         session: props.info,
-        navigation: payload.session?.parentID ? payload.navigation : nextNavigation(props.info, payload.childSessions),
+        navigation: payload.session?.parentID ? payload.navigation : productNavigation(props.info, payload.childSessions),
       }
     }
 
@@ -82,7 +82,7 @@ function reduceHostSessionSnapshot(payload: SessionSnapshot, event: SessionEvent
       relatedSessionIds: nextIds,
       permissions: payload.permissions.filter((item) => nextIds.includes(item.sessionID)),
       questions: payload.questions.filter((item) => nextIds.includes(item.sessionID)),
-      navigation: nextNavigation(payload.session, nextChildren),
+      navigation: productNavigation(payload.session, nextChildren),
     }
   }
 
@@ -114,7 +114,7 @@ function reduceHostSessionSnapshot(payload: SessionSnapshot, event: SessionEvent
       relatedSessionIds: nextIds,
       permissions: payload.permissions.filter((item) => nextIds.includes(item.sessionID)),
       questions: payload.questions.filter((item) => nextIds.includes(item.sessionID)),
-      navigation: nextNavigation(payload.session, nextChildren),
+      navigation: productNavigation(payload.session, nextChildren),
     }
   }
 
@@ -531,33 +531,29 @@ function subtreeIds(rootID: string, root: SessionSnapshot["session"], children: 
   return ids
 }
 
-function nextNavigation(session: SessionSnapshot["session"], children: Record<string, NonNullable<SessionSnapshot["session"]>>) {
-  if (!session) {
-    return {}
-  }
-
+function productNavigation(session: SessionSnapshot["session"], children: Record<string, NonNullable<SessionSnapshot["session"]>>) {
+  if (!session) return {}
   const sessions = [session, ...Object.values(children)]
-  const rootID = session.parentID || session.id
-  const visible = sessions
-    .filter((item) => item.parentID === rootID && !item.time.archived)
-    .sort((a, b) => cmp(a.id, b.id))
-  const firstChild = visible[0]
-
-  if (!session.parentID) {
-    return {
-      firstChild: firstChild ? sessionRef(firstChild) : undefined,
-    }
+  const projection = deriveProductSessionNavigation({
+    currentSessionID: session.id,
+    nodes: sessions.map((item) => ({
+      id: item.id,
+      parentID: item.parentID,
+      title: item.title,
+      archivedAt: item.time.archived,
+    })),
+  })
+  const target = (action: Parameters<typeof resolveProductSessionNavigation>[1]) => {
+    const result = resolveProductSessionNavigation(projection, action)
+    if (!result.available) return undefined
+    const item = sessions.find((candidate) => candidate.id === result.sessionID)
+    return item ? sessionRef(item) : undefined
   }
-
-  const parent = children[session.parentID]
-  const index = visible.findIndex((item) => item.id === session.id)
-  const prev = index >= 0 && visible.length > 1 ? visible[(index - 1 + visible.length) % visible.length] : undefined
-  const next = index >= 0 && visible.length > 1 ? visible[(index + 1) % visible.length] : undefined
   return {
-    firstChild: firstChild ? sessionRef(firstChild) : undefined,
-    parent: parent ? sessionRef(parent) : undefined,
-    prev: prev && prev.id !== session.id ? sessionRef(prev) : undefined,
-    next: next && next.id !== session.id ? sessionRef(next) : undefined,
+    firstChild: target({ type: "subagent.open", sessionID: session.id }),
+    parent: target({ type: "subagent.back", sessionID: session.id }),
+    prev: target({ type: "subagent.sibling", sessionID: session.id, direction: "previous" }),
+    next: target({ type: "subagent.sibling", sessionID: session.id, direction: "next" }),
   }
 }
 

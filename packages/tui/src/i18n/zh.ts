@@ -62,6 +62,8 @@ export const dict: Record<Keys, string> = {
   "dialog.status.formatterCount": "{{count}} 个格式化工具",
   "dialog.status.noPlugins": "没有插件",
   "dialog.status.pluginCount": "{{count}} 个插件",
+  "sidebar.mcp.active": "{{count}} 个已连接",
+  "sidebar.mcp.activeWithErrors": "{{active}} 个已连接，{{errors}} 个异常",
 
   // 会话、技能、暂存、主题、变体
   "dialog.session.rename": "重命名会话",

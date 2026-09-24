@@ -1,28 +1,29 @@
 import type { TuiPlugin, TuiPluginApi } from "@opencode-ai/plugin/tui"
 import type { BuiltinTuiPlugin } from "../builtins"
 import { createMemo, For, Match, Show, Switch, createSignal } from "solid-js"
+import { deriveProductMcpStates } from "@opencode-ai/product"
+import { translate } from "../../context/language"
+import { toTuiTextKey } from "../../product/text-adapter"
 
 const id = "internal:sidebar-mcp"
 
 function View(props: { api: TuiPluginApi }) {
   const [open, setOpen] = createSignal(true)
   const theme = () => props.api.theme.current
-  const list = createMemo(() => props.api.state.mcp())
-  const on = createMemo(() => list().filter((item) => item.status === "connected").length)
-  const bad = createMemo(
-    () =>
-      list().filter(
-        (item) =>
-          item.status === "failed" || item.status === "needs_auth" || item.status === "needs_client_registration",
-      ).length,
-  )
+  const list = createMemo(() => deriveProductMcpStates(props.api.state.mcp().map((item) => ({
+    name: item.name,
+    status: {
+      status: item.status,
+      ...(item.error ? { error: item.error, raw: item.error } : {}),
+    },
+  }))))
+  const on = createMemo(() => list().filter((item) => item.availability === "connected").length)
+  const bad = createMemo(() => list().filter((item) => item.severity !== "none").length)
 
   const dot = (status: string) => {
-    if (status === "connected") return theme().success
-    if (status === "failed") return theme().error
-    if (status === "disabled") return theme().textMuted
-    if (status === "needs_auth") return theme().warning
-    if (status === "needs_client_registration") return theme().error
+    if (status === "none") return theme().success
+    if (status === "warning") return theme().warning
+    if (status === "error") return theme().error
     return theme().textMuted
   }
 
@@ -38,7 +39,9 @@ function View(props: { api: TuiPluginApi }) {
             <Show when={!open()}>
               <span style={{ fg: theme().textMuted }}>
                 {" "}
-                ({on()} active{bad() > 0 ? `, ${bad()} error${bad() > 1 ? "s" : ""}` : ""})
+                ({bad() > 0
+                  ? translate("sidebar.mcp.activeWithErrors", { active: on(), errors: bad() })
+                  : translate("sidebar.mcp.active", { count: on() })})
               </span>
             </Show>
           </text>
@@ -50,7 +53,7 @@ function View(props: { api: TuiPluginApi }) {
                 <text
                   flexShrink={0}
                   style={{
-                    fg: dot(item.status),
+                    fg: dot(item.severity),
                   }}
                 >
                   •
@@ -58,14 +61,14 @@ function View(props: { api: TuiPluginApi }) {
                 <text fg={theme().text} wrapMode="word">
                   {item.name}{" "}
                   <span style={{ fg: theme().textMuted }}>
-                    <Switch fallback={item.status}>
-                      <Match when={item.status === "connected"}>Connected</Match>
-                      <Match when={item.status === "failed"}>
-                        <i>{item.error}</i>
+                    <Switch fallback={item.diagnostic?.message ?? item.availability}>
+                      <Match when={item.availability === "connected"}>{translate("dialog.status.connected")}</Match>
+                      <Match when={item.availability === "failed" && item.diagnostic}>
+                        {(diagnostic) => <i>{translate(toTuiTextKey(diagnostic().textKey))}: {diagnostic().raw ?? diagnostic().message}</i>}
                       </Match>
-                      <Match when={item.status === "disabled"}>Disabled</Match>
-                      <Match when={item.status === "needs_auth"}>Needs auth</Match>
-                      <Match when={item.status === "needs_client_registration"}>Needs client ID</Match>
+                      <Match when={item.availability === "disabled"}>{translate("dialog.status.disabled")}</Match>
+                      <Match when={item.availability === "needs_auth"}>{translate("product.error.mcp.authenticationRequired")}</Match>
+                      <Match when={item.availability === "needs_client_registration"}>{translate("product.error.mcp.clientRegistrationRequired")}</Match>
                     </Switch>
                   </span>
                 </text>

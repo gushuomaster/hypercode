@@ -1,5 +1,3 @@
-import type { AgentInfo } from "../../../core/sdk"
-
 export type LeaderAction = "childFirst" | "newSession" | "redoSession" | "undoSession"
 export type ComposerMode = "normal" | "shell"
 
@@ -32,20 +30,6 @@ type ComposerEnterIntentOptions = {
   shiftKey: boolean
   hasAutocomplete: boolean
   isImeComposing: boolean
-}
-
-export function cycleAgentName(agents: AgentInfo[], current?: string) {
-  const visible = agents.filter((agent) => agent.mode !== "subagent" && !agent.hidden)
-  if (visible.length === 0) {
-    return undefined
-  }
-
-  const index = visible.findIndex((agent) => agent.name === current)
-  if (index < 0) {
-    return visible[0]?.name
-  }
-
-  return visible[(index + 1) % visible.length]?.name
 }
 
 export function leaderAction(key: string): LeaderAction | undefined {

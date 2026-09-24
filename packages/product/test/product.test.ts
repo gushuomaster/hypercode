@@ -1,12 +1,16 @@
 import { describe, expect, test } from "bun:test"
 import {
   cycleModelVariant,
+  cycleProductAgentName,
+  cycleProductModelVariantState,
   createProductSnapshot,
   deriveComposerSelection,
   deriveModelCatalog,
   derivePendingInteraction,
   isProductSessionRunning,
   reduceProductEvent,
+  toggleProductFavoriteModel,
+  updateProductRecentModels,
   type ProductSnapshot,
   type ProductProvider,
 } from "../src"
@@ -38,6 +42,46 @@ describe("cycleModelVariant", () => {
     expect(cycleModelVariant(providers, { providerID: "opencode", modelID: "paid" }, undefined)).toBe("fast")
     expect(cycleModelVariant(providers, { providerID: "opencode", modelID: "paid" }, "fast")).toBe("deep")
     expect(cycleModelVariant(providers, { providerID: "opencode", modelID: "paid" }, "deep")).toBeUndefined()
+  })
+})
+
+describe("model preference state", () => {
+  test("updates recents with canonical dedupe and limit semantics", () => {
+    const recents = Array.from({ length: 12 }, (_, index) => ({ providerID: "opencode", modelID: `model-${index}` }))
+
+    expect(updateProductRecentModels(recents, { providerID: "opencode", modelID: "model-5" })).toEqual([
+      { providerID: "opencode", modelID: "model-5" },
+      ...recents.slice(0, 5),
+      ...recents.slice(6, 10),
+    ])
+  })
+
+  test("toggles favorites without duplicating a model", () => {
+    const model = { providerID: "opencode", modelID: "paid" }
+    expect(toggleProductFavoriteModel([], model)).toEqual([model])
+    expect(toggleProductFavoriteModel([model], model)).toEqual([])
+  })
+
+  test("cycles and persists an explicit default variant reset", () => {
+    const model = { providerID: "opencode", modelID: "paid" }
+    expect(cycleProductModelVariantState(providers, model, "deep", {})).toEqual({ "opencode/paid": "default" })
+
+    const unchanged = { "opencode/paid": "fast" }
+    expect(cycleProductModelVariantState(providers, { providerID: "opencode", modelID: "paid-2" }, undefined, unchanged)).toBe(unchanged)
+  })
+})
+
+describe("agent selection state", () => {
+  test("cycles visible primary agents and skips hidden and subagent entries", () => {
+    const agents = [
+      { name: "build", mode: "primary" as const },
+      { name: "hidden", mode: "primary" as const, hidden: true },
+      { name: "helper", mode: "subagent" as const },
+      { name: "plan", mode: "all" as const },
+    ]
+    expect(cycleProductAgentName(agents, "build", 1)).toBe("plan")
+    expect(cycleProductAgentName(agents, "build", -1)).toBe("plan")
+    expect(cycleProductAgentName(agents, "missing", 1)).toBe("build")
   })
 })
 

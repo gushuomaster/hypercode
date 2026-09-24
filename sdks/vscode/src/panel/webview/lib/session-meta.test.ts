@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import type { AgentInfo, FormatterStatus, ProviderInfo, SessionMessage } from "../../../core/sdk"
+import type { AgentInfo, ProviderInfo, SessionMessage } from "../../../core/sdk"
 import { setLocale } from "../../../i18n"
-import { composerIdentity, composerMetrics, composerSelection, cycleComposerModelVariant, cycleComposerModelVariantState, lastUserSelection, overallFormatterStatus, providerModelById, pushRecentModel, statusItemForMcp, toggleFavoriteModel } from "./session-meta"
+import { composerIdentity, composerMetrics, composerSelection, lastUserSelection, overallProductFormatterStatus, overallProductMcpStatus, providerModelById } from "./session-meta"
 
 const providers: ProviderInfo[] = [{
   id: "p1",
@@ -269,86 +269,41 @@ describe("session meta composer state", () => {
     })
   })
 
-  test("pushRecentModel keeps a deduped MRU list capped at 10", () => {
-    const recents = Array.from({ length: 10 }, (_item, index) => ({ providerID: "p1", modelID: `m${index}` }))
-    const next = pushRecentModel(recents, { providerID: "p1", modelID: "m5" })
-    assert.equal(next[0].modelID, "m5")
-    assert.equal(next.length, 10)
-  })
-
-  test("toggleFavoriteModel adds and removes a model", () => {
-    const added = toggleFavoriteModel([], { providerID: "p1", modelID: "m1" })
-    assert.deepEqual(added, [{ providerID: "p1", modelID: "m1" }])
-    const removed = toggleFavoriteModel(added, { providerID: "p1", modelID: "m1" })
-    assert.deepEqual(removed, [])
-  })
-
-  test("cycleModelVariant follows upstream undefined to next to undefined semantics", () => {
-    assert.equal(cycleComposerModelVariant(providers, { providerID: "p1", modelID: "m1" }, undefined), "fast")
-    assert.equal(cycleComposerModelVariant(providers, { providerID: "p1", modelID: "m1" }, "fast"), "deep")
-    assert.equal(cycleComposerModelVariant(providers, { providerID: "p1", modelID: "m1" }, "deep"), undefined)
-  })
-
-  test("cycleComposerModelVariantState preserves an explicit provider default override", () => {
-    const model = { providerID: "p1", modelID: "m1" }
-    const variants = cycleComposerModelVariantState(providers, model, "deep", {})
-
-    assert.deepEqual(variants, { "p1/m1": "default" })
-    assert.equal(composerSelection({
-      messages: [],
-      agents: [{ name: "build", mode: "primary", model, variant: "deep" }],
-      defaultAgent: "build",
-      providers,
-      composerModelVariants: variants,
-    }).variant, undefined)
-  })
-
-  test("cycleComposerModelVariantState ignores models without variants", () => {
-    const variants = { "p1/m1": "fast" }
-
-    assert.strictEqual(cycleComposerModelVariantState(providers, { providerID: "p1", modelID: "m2" }, undefined, variants), variants)
-  })
-
-  test("statusItemForMcp maps needs_auth to an explicit authenticate action", () => {
+  test("renders Product formatter and MCP projections without a legacy host reducer", () => {
     setLocale("en")
-    assert.deepEqual(statusItemForMcp("docs", { status: "needs_auth" }), {
-      name: "docs",
-      tone: "orange",
-      value: "Needs authentication",
-      action: "authenticate",
-      actionLabel: "Authenticate docs",
-    })
-  })
-
-  test("overallFormatterStatus collapses formatter results into a single badge tone and item list", () => {
-    setLocale("en")
-    const formatters: FormatterStatus[] = [
-      { name: "prettier", extensions: [".ts", ".tsx"], enabled: true },
-      { name: "rustfmt", extensions: [".rs"], enabled: false },
-    ]
-
-    assert.deepEqual(overallFormatterStatus(formatters), {
+    assert.deepEqual(overallProductFormatterStatus([
+      { name: "prettier", enabled: true, extensions: [".ts"], severity: "ok" },
+      { name: "rustfmt", enabled: false, extensions: [".rs"], severity: "warning" },
+    ]), {
       tone: "orange",
       items: [
-        { name: "prettier", tone: "green", value: ".ts, .tsx" },
-        { name: "rustfmt", tone: "gray", value: "Disabled" },
+        { name: "prettier", tone: "green", value: ".ts" },
+        { name: "rustfmt", tone: "orange", value: "Disabled" },
       ],
+    })
+    assert.deepEqual(overallProductMcpStatus([
+      { name: "docs", availability: "needs_auth", severity: "warning", action: "authenticate", diagnostic: undefined },
+    ]), {
+      tone: "orange",
+      items: [{ name: "docs", tone: "orange", value: "Needs authentication", action: "authenticate", actionLabel: "authenticate" }],
     })
   })
 
-  test("localizes MCP and formatter status labels while preserving external names", () => {
+  test("localizes Product status semantics while preserving raw diagnostics", () => {
     setLocale("zh")
-    assert.deepEqual(statusItemForMcp("docs", { status: "needs_auth" }), {
-      name: "docs",
-      tone: "orange",
-      value: "需要身份验证",
-      action: "authenticate",
-      actionLabel: "验证 docs",
-    })
-    assert.deepEqual(overallFormatterStatus([{ name: "rustfmt", extensions: [".rs"], enabled: false }]), {
-      tone: "gray",
-      items: [{ name: "rustfmt", tone: "gray", value: "已禁用" }],
-    })
+    assert.equal(overallProductMcpStatus([
+      {
+        name: "docs",
+        availability: "failed",
+        severity: "error",
+        availableActions: ["reconnect"],
+        diagnostic: {
+          message: "Connection refused",
+          raw: "Connection refused",
+          textKey: "error.mcp.connection_failed",
+        },
+      },
+    ]).items[0]?.value, "MCP 服务器连接失败，请结合原始错误排查。\nConnection refused")
   })
 
   test("providerModelById falls back to model.id when the record key differs", () => {

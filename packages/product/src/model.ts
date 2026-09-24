@@ -202,6 +202,34 @@ export function cycleModelVariant(providers: ProductProvider[], model: ProductMo
   return index === variants.length - 1 ? undefined : variants[index + 1]
 }
 
+export function updateProductRecentModels(recents: ProductModelRef[], model: ProductModelRef | undefined, limit = 10) {
+  if (!model) return recents
+  return [model, ...recents.filter((item) => !sameModelRef(item, model))]
+    .slice(0, limit)
+    .map((item) => ({ providerID: item.providerID, modelID: item.modelID }))
+}
+
+export function toggleProductFavoriteModel(favorites: ProductModelRef[], model: ProductModelRef) {
+  if (favorites.some((item) => sameModelRef(item, model))) {
+    return favorites.filter((item) => !sameModelRef(item, model))
+  }
+  return [{ providerID: model.providerID, modelID: model.modelID }, ...favorites]
+}
+
+export function cycleProductModelVariantState(
+  providers: ProductProvider[],
+  model: ProductModelRef | undefined,
+  current: string | undefined,
+  variants: Record<string, string>,
+) {
+  if (!model) return variants
+  if (modelVariants(providers, model).length === 0) return variants
+  return {
+    ...variants,
+    [modelKey(model)]: cycleModelVariant(providers, model, current) ?? "default",
+  }
+}
+
 export function modelVariants(providers: ProductProvider[], model: ProductModelRef | undefined) {
   if (!model) return []
   const provider = providers.find((item) => item.id === model.providerID)

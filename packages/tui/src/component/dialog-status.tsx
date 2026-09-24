@@ -3,8 +3,10 @@ import { fileURLToPath } from "bun"
 import { useTheme } from "../context/theme"
 import { useDialog } from "../ui/dialog"
 import { useSync } from "../context/sync"
-import { For, Match, Switch, Show, createMemo } from "solid-js"
+import { For, Show, createMemo } from "solid-js"
 import { translate as t } from "../context/language"
+import { formatTuiProductError } from "../product/text-adapter"
+import type { ProductMcpState } from "@opencode-ai/product"
 
 export type DialogStatusProps = {}
 
@@ -51,43 +53,29 @@ export function DialogStatus() {
           esc
         </text>
       </box>
-      <Show when={Object.keys(sync.data.mcp).length > 0} fallback={<text fg={theme.text}>{t("dialog.status.noMcp")}</text>}>
+      <Show when={sync.data.mcp_product.length > 0} fallback={<text fg={theme.text}>{t("dialog.status.noMcp")}</text>}>
         <box>
-          <text fg={theme.text}>{t("dialog.status.mcpCount", { count: Object.keys(sync.data.mcp).length })}</text>
-          <For each={Object.entries(sync.data.mcp)}>
-            {([key, item]) => (
+          <text fg={theme.text}>{t("dialog.status.mcpCount", { count: sync.data.mcp_product.length })}</text>
+          <For each={sync.data.mcp_product}>
+            {(item) => (
               <box flexDirection="row" gap={1}>
                 <text
                   flexShrink={0}
                   style={{
                     fg: (
                       {
-                        connected: theme.success,
-                        failed: theme.error,
-                        disabled: theme.textMuted,
-                        needs_auth: theme.warning,
-                        needs_client_registration: theme.error,
+                        none: item.availability === "connected" ? theme.success : theme.textMuted,
+                        warning: theme.warning,
+                        error: theme.error,
                       } as Record<string, typeof theme.success>
-                    )[item.status],
+                    )[item.severity],
                   }}
                 >
                   •
                 </text>
                 <text fg={theme.text} wrapMode="word">
-                  <b>{key}</b>{" "}
-                  <span style={{ fg: theme.textMuted }}>
-                    <Switch fallback={item.status}>
-                      <Match when={item.status === "connected"}>{t("dialog.status.connected")}</Match>
-                      <Match when={item.status === "failed" && item}>{(val) => val().error}</Match>
-                      <Match when={item.status === "disabled"}>{t("dialog.status.disabled")}</Match>
-                      <Match when={(item.status as string) === "needs_auth"}>
-                        {t("dialog.status.needsAuth", { name: key })}
-                      </Match>
-                      <Match when={(item.status as string) === "needs_client_registration" && item}>
-                        {(val) => (val() as { error: string }).error}
-                      </Match>
-                    </Switch>
-                  </span>
+                  <b>{item.name}</b>{" "}
+                  <span style={{ fg: theme.textMuted }}>{mcpStatusText(item)}</span>
                 </text>
               </box>
             )}
@@ -166,4 +154,12 @@ export function DialogStatus() {
       </Show>
     </box>
   )
+}
+
+function mcpStatusText(item: ProductMcpState) {
+  if (item.diagnostic) return formatTuiProductError(item.diagnostic)
+  if (item.availability === "connected") return t("dialog.status.connected")
+  if (item.availability === "disabled") return t("dialog.status.disabled")
+  if (item.availability === "needs_auth") return t("dialog.status.needsAuth", { name: item.name })
+  return item.availability
 }

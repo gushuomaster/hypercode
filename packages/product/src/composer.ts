@@ -23,6 +23,14 @@ export function deriveComposerSelection(input: ComposerInput): ComposerSelection
   }
 }
 
+export function cycleProductAgentName(agents: ProductAgent[], current?: string, direction: 1 | -1 = 1) {
+  const visible = agents.filter((agent) => agent.mode !== "subagent" && !agent.hidden)
+  if (visible.length === 0) return undefined
+  const index = visible.findIndex((agent) => agent.name === current)
+  if (index < 0) return direction === 1 ? visible[0]?.name : visible.at(-1)?.name
+  return visible[(index + direction + visible.length) % visible.length]?.name
+}
+
 function primaryAgent(agents: ProductAgent[], preferred?: string) {
   if (preferred) {
     const selected = agents.find((agent) => agent.name === preferred && !agent.hidden)

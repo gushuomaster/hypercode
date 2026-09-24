@@ -1,9 +1,10 @@
 import type { SessionBootstrap } from "../../../bridge/types"
-import { cycleModelVariant, deriveComposerSelection, type ProductFormatterState, type ProductLspState, type ProductMcpState } from "@opencode-ai/product"
-import type { AgentInfo, FormatterStatus, LspStatus, McpStatus, MessageInfo, ProviderInfo, SessionMessage } from "../../../core/sdk"
+import { deriveComposerSelection, type ProductFormatterState, type ProductLspState, type ProductMcpState } from "@opencode-ai/product"
+import type { AgentInfo, MessageInfo, ProviderInfo, SessionMessage } from "../../../core/sdk"
 import { displaySessionTitle } from "../../../core/session-titles"
 import { t } from "../../../i18n"
 import { toProductAgents, toProductProviders } from "./product-adapter"
+import { formatVsCodeProductError } from "./product-text-adapter"
 
 export type ModelRef = NonNullable<MessageInfo["model"]>
 
@@ -97,60 +98,6 @@ export function isValidModelRef(providers: ProviderInfo[], model: MessageInfo["m
   return !!providerModelById(providerById(providers, normalized.providerID), normalized.modelID)
 }
 
-export function pushRecentModel(recents: ModelRef[], model: MessageInfo["model"] | undefined, limit = 10) {
-  const normalized = normalizeModelRef(model)
-  if (!normalized) {
-    return recents
-  }
-
-  const key = modelKey(normalized)
-  const next = [normalized, ...recents.filter((item) => modelKey(item) !== key)]
-  return next.slice(0, limit)
-}
-
-export function toggleFavoriteModel(favorites: ModelRef[], model: MessageInfo["model"] | undefined) {
-  const normalized = normalizeModelRef(model)
-  if (!normalized) {
-    return favorites
-  }
-
-  const key = modelKey(normalized)
-  const exists = favorites.some((item) => modelKey(item) === key)
-  if (exists) {
-    return favorites.filter((item) => modelKey(item) !== key)
-  }
-
-  return [normalized, ...favorites]
-}
-
-export function modelVariants(providers: ProviderInfo[], model: MessageInfo["model"] | undefined) {
-  const normalized = normalizeModelRef(model)
-  if (!normalized) {
-    return []
-  }
-
-  const info = providerModelById(providerById(providers, normalized.providerID), normalized.modelID)
-  return Object.keys(info?.variants ?? {})
-}
-
-export function cycleComposerModelVariant(providers: ProviderInfo[], model: MessageInfo["model"] | undefined, current?: string) {
-  return cycleModelVariant(toProductProviders(providers), normalizeModelRef(model), current)
-}
-
-export function cycleComposerModelVariantState(
-  providers: ProviderInfo[],
-  model: MessageInfo["model"] | undefined,
-  current: string | undefined,
-  variants: Record<string, string>,
-) {
-  const key = modelKey(model)
-  if (!key || modelVariants(providers, model).length === 0) return variants
-  return {
-    ...variants,
-    [key]: cycleComposerModelVariant(providers, model, current) ?? "default",
-  }
-}
-
 export function displayModelRef(model: MessageInfo["model"] | undefined, providers: ProviderInfo[]) {
   const providerID = model?.providerID?.trim()
   const modelID = model?.modelID?.trim()
@@ -198,79 +145,6 @@ export function formatUsd(value: number) {
   return `$${value.toFixed(4)}`
 }
 
-export function overallMcpStatus(statuses: Record<string, McpStatus>) {
-  const items = Object.entries(statuses)
-    .map(([name, status]) => statusItemForMcp(name, status))
-
-  if (items.length === 0) {
-    return { tone: "gray" as const, items: [] }
-  }
-
-  const ok = items.filter((item) => item.tone === "green").length
-  const warn = items.filter((item) => item.tone === "orange").length
-  const err = items.filter((item) => item.tone === "red").length
-  if (ok === items.length) {
-    return { tone: "green" as const, items }
-  }
-  if (err > 0 && ok === 0 && warn === 0) {
-    return { tone: "red" as const, items }
-  }
-  return { tone: "orange" as const, items }
-}
-
-export function overallLspStatus(statuses: LspStatus[]) {
-  const items = statuses.map(statusItemForLsp)
-  if (items.length === 0) {
-    return { tone: "gray" as const, items: [] }
-  }
-
-  const ok = items.filter((item) => item.tone === "green").length
-  if (ok === items.length) {
-    return { tone: "green" as const, items }
-  }
-  if (ok === 0) {
-    return { tone: "red" as const, items }
-  }
-  return { tone: "orange" as const, items }
-}
-
-export function overallFormatterStatus(statuses: FormatterStatus[]) {
-  const items = statuses.map((status) => ({
-    name: status.name,
-    tone: status.enabled ? "green" as const : "gray" as const,
-    value: status.enabled ? status.extensions.join(", ") || t("common.enabled") : t("common.disabled"),
-  }))
-
-  if (items.length === 0) {
-    return { tone: "gray" as const, items: [] }
-  }
-
-  const enabled = items.filter((item) => item.tone === "green").length
-  if (enabled === items.length) {
-    return { tone: "green" as const, items }
-  }
-  if (enabled === 0) {
-    return { tone: "gray" as const, items }
-  }
-  return { tone: "orange" as const, items }
-}
-
-export function statusItemForMcp(name: string, status: McpStatus): StatusItem {
-  if (status.status === "connected") {
-    return { name, tone: "green", value: t("status.connected"), action: "disconnect", actionLabel: t("status.disconnect", { name }) }
-  }
-  if (status.status === "disabled") {
-    return { name, tone: "gray", value: t("common.disabled"), action: "connect", actionLabel: t("status.connect", { name }) }
-  }
-  if (status.status === "needs_auth") {
-    return { name, tone: "orange", value: t("status.needsAuthentication"), action: "authenticate", actionLabel: t("status.authenticate", { name }) }
-  }
-  if (status.status === "needs_client_registration") {
-    return { name, tone: "red", value: status.error || t("status.clientRegistrationRequired"), action: "reconnect", actionLabel: t("status.reconnect", { name }) }
-  }
-  return { name, tone: "red", value: status.error || t("common.error"), action: "reconnect", actionLabel: t("status.reconnect", { name }) }
-}
-
 export function overallProductFormatterStatus(states: ProductFormatterState[]) {
   const items = states.map((state): StatusItem => ({
     name: state.name,
@@ -295,10 +169,21 @@ export function overallProductMcpStatus(states: ProductMcpState[]) {
 
 export function statusItemForProductMcp(state: ProductMcpState): StatusItem {
   const tone = state.severity === "error" ? "red" : state.severity === "warning" ? "orange" : state.availability === "connected" ? "green" : "gray"
+  const value = state.diagnostic
+    ? formatVsCodeProductError(state.diagnostic)
+    : state.availability === "connected"
+      ? t("status.connected")
+      : state.availability === "disabled"
+        ? t("common.disabled")
+        : state.availability === "needs_auth"
+          ? t("status.needsAuthentication")
+          : state.availability === "needs_client_registration"
+            ? t("status.clientRegistrationRequired")
+            : t("common.error")
   return {
     name: state.name,
     tone,
-    value: state.diagnostic?.message ?? state.availability,
+    value,
     ...(state.action ? { action: state.action, actionLabel: state.action } : {}),
   }
 }
@@ -307,20 +192,12 @@ export function overallProductLspStatus(states: ProductLspState[]) {
   const items = states.map((state): StatusItem => ({
     name: state.name,
     tone: state.severity === "error" ? "red" : "green",
-    value: state.diagnostic?.message ?? state.root,
+    value: state.diagnostic ? formatVsCodeProductError(state.diagnostic) : state.root,
   }))
   if (items.length === 0) return { tone: "gray" as const, items }
   if (items.every((item) => item.tone === "green")) return { tone: "green" as const, items }
   if (items.every((item) => item.tone === "red")) return { tone: "red" as const, items }
   return { tone: "orange" as const, items }
-}
-
-export function statusItemForLsp(status: LspStatus): StatusItem {
-  return {
-    name: status.name,
-    tone: status.status === "connected" ? "green" : "red",
-    value: status.root || ".",
-  }
 }
 
 export function agentColor(name: string) {

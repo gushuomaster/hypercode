@@ -12,6 +12,8 @@ import { needsRefresh, reduce } from "../panel/provider/reducer"
 import { providerAuthAction, rejectQuestion, replyPermission, replyQuestion, runComposerAction, runMcpAction, runShellCommand, runSlashCommand, submit, type PanelActionState } from "../panel/provider/actions"
 import { openFile, resolveFileRefs, searchFiles } from "../panel/provider/files"
 import { boot } from "../panel/provider/utils"
+import { deriveProductSessionList } from "@opencode-ai/product"
+import { toProductSessionInput } from "../product/session"
 
 export class SessionViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
   private readonly bag: vscode.Disposable[] = []
@@ -128,11 +130,14 @@ export class SessionViewProvider implements vscode.WebviewViewProvider, vscode.D
         return
       }
 
-      const sessions = (res.data ?? []).sort((a, b) => b.time.updated - a.time.updated)
+      const sessions = res.data ?? []
+      const selection = deriveProductSessionList({
+        sessions: sessions.map((session) => toProductSessionInput(session)),
+      })
       let sessionId: string
 
-      if (sessions.length > 0) {
-        sessionId = sessions[0].id
+      if (selection.selectedSessionID) {
+        sessionId = selection.selectedSessionID
       } else {
         const created = await rt.sdk.session.create({ directory: rt.dir })
         if (this.currentRef || this.state.disposed || !created.data) {

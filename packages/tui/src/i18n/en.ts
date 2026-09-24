@@ -58,6 +58,8 @@ export const dict = {
   "dialog.status.formatterCount": "{{count}} formatters",
   "dialog.status.noPlugins": "No plugins",
   "dialog.status.pluginCount": "{{count}} plugins",
+  "sidebar.mcp.active": "{{count}} active",
+  "sidebar.mcp.activeWithErrors": "{{active}} active, {{errors}} errors",
 
   // Session, skills, stash, themes, variants
   "dialog.session.rename": "Rename session",
