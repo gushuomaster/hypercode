@@ -281,7 +281,7 @@ function npmSpy(installs: string[]) {
         Effect.sync(() => {
           installs.push(dir)
         }),
-      which: () => Effect.succeed(Option.none()),
+      which: () => Effect.succeed(undefined),
     }),
   )
 }

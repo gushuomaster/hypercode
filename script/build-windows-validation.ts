@@ -4,7 +4,7 @@ import path from "node:path"
 
 type Environment = Record<string, string | undefined>
 
-export function validationBuildEnvironment(version: string, environment: Environment) {
+export function validationBuildEnvironment(version: string, environment: Environment): Environment {
   return {
     ...environment,
     OPENCODE_VERSION: version,
