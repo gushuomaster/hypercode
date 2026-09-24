@@ -13,6 +13,8 @@
 
 TUI 与 VSCode Host 只负责 render、host API、input、focus、scroll、keyboard/mouse，以及 editor/terminal capability。`messages`、`parts` 和 raw protocol payload 继续归 Core/Host；宿主不具备的能力必须返回 `unsupported`，不得伪造。详细维护基线见 `docs/superpowers/specs/2026-09-24-product-alignment-maintenance-baseline.md`。
 
+**产品默认值。** 用户可感知能力的省略值必须经过 HyperCode Product Default Policy 判断，不能自动继承 upstream 语义。默认值按 `default_on_lazy`、`default_on_passive`、`environment_managed`、`explicit_opt_in`、`explicit_unsupported` 分类；能力启用与联网下载、外部披露、付费和破坏性授权必须分开审查。upstream 若改变 omission、默认开关、lazy activation、自动安装、联网、权限、分享、遥测、收费或跨宿主结果，必须执行产品默认值审查并记录结论。
+
 **工程规范。** 涉及 upstream 同步、同步验证（含验证结论归因）与正式合入流程时，遵循 `docs/规范/上游同步工作流总纲.md`；涉及 HyperCode 品牌化差异、fork tax 与 upstream 差异维护时，遵循 `docs/规范/上游同步与品牌化规范.md`。更具体目录中的 `AGENTS.md` 可补充对应子系统约束，但不得与仓库级约定冲突。
 
 **仓库维护。** 避免因无关的 line-ending normalization 产生大范围 diff。
