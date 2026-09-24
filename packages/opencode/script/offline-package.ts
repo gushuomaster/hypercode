@@ -260,6 +260,7 @@ const configTemplate = `{
 `
 
 const environmentTemplate = `export HYPERCODE_DISABLE_MODELS_FETCH=1
+export OPENCODE_DISABLE_LSP_DOWNLOAD=1
 export HYPERCODE_INTERNAL_API_KEY='REPLACE_WITH_INTERNAL_API_KEY'
 `
 
@@ -319,7 +320,7 @@ chmod 600 ~/.config/opencode/hypercode.env
 . ~/.config/opencode/hypercode.env
 \`\`\`
 
-把模板中的地址、\`MODEL_ID\` 和密钥占位值改成现场值。环境模板默认设置 \`HYPERCODE_DISABLE_MODELS_FETCH=1\`，防止运行时访问公共 \`models.dev\`；可将加载命令加入目标用户的 shell 配置。
+把模板中的地址、\`MODEL_ID\` 和密钥占位值改成现场值。环境模板默认设置 \`HYPERCODE_DISABLE_MODELS_FETCH=1\` 和 \`OPENCODE_DISABLE_LSP_DOWNLOAD=1\`，防止运行时访问公共 \`models.dev\` 或自动下载 LSP 依赖；LSP 分析仍默认启用，并可使用目标机已有的语言服务器。可将加载命令加入目标用户的 shell 配置。
 
 ## 验收
 
@@ -331,5 +332,5 @@ hypercode models internal
 hypercode run -m internal/MODEL_ID "回复ok"
 \`\`\`
 
-模型调用只访问配置的内网服务；依赖公网下载的插件、LSP 等可选功能不包含在本离线包内。
+模型调用只访问配置的内网服务；依赖公网下载的插件和 LSP 依赖不包含在本离线包内。
 `

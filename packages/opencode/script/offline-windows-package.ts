@@ -239,8 +239,10 @@ $env:Path = "$InstallDir;$env:Path"
 
 [Environment]::SetEnvironmentVariable("HYPERCODE_DISABLE_MODELS_FETCH", "1", "User")
 [Environment]::SetEnvironmentVariable("HYPERCODE_DISABLE_AUTOUPDATE", "1", "User")
+[Environment]::SetEnvironmentVariable("OPENCODE_DISABLE_LSP_DOWNLOAD", "1", "User")
 $env:HYPERCODE_DISABLE_MODELS_FETCH = "1"
 $env:HYPERCODE_DISABLE_AUTOUPDATE = "1"
+$env:OPENCODE_DISABLE_LSP_DOWNLOAD = "1"
 if ($MinimaxApiKey) {
   [Environment]::SetEnvironmentVariable("MINIMAX_API_KEY", $MinimaxApiKey, "User")
   $env:MINIMAX_API_KEY = $MinimaxApiKey
@@ -299,7 +301,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1
 - 安装包内 VS Code（仅在提供离线安装器且目标机未安装时）
 - 安装 \`hypercode.vsix\`
 - 安装默认 MiniMax 配置
-- 禁止公共模型目录刷新和自动更新
+- 禁止公共模型目录刷新、自动更新和 LSP 依赖下载
+- 保持 LSP 分析启用，可使用目标机已有的语言服务器
 - 输出 License 机器码
 
 ## License

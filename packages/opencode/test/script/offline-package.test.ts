@@ -57,6 +57,7 @@ describe("offline Linux package", () => {
     const listing = await Bun.$`tar -tvzf ${result.archive}`.text()
     const names = await Bun.$`tar -tzf ${result.archive}`.text()
     const readme = await Bun.$`tar -xOzf ${result.archive} ${result.root}/README.zh-CN.md`.text()
+    const environment = await Bun.$`tar -xOzf ${result.archive} ${result.root}/config/hypercode.env.example`.text()
 
     expect(names).toContain(`${result.root}/bin/hypercode`)
     expect(names).toContain(`${result.root}/bin/hypercode-baseline`)
@@ -73,6 +74,8 @@ describe("offline Linux package", () => {
     expect(readme).toContain(
       "[ -e ~/.config/opencode/hypercode.env ] || cp config/hypercode.env.example ~/.config/opencode/hypercode.env",
     )
+    expect(environment).toContain("export OPENCODE_DISABLE_LSP_DOWNLOAD=1")
+    expect(readme).toContain("OPENCODE_DISABLE_LSP_DOWNLOAD=1")
     expect(await fs.readFile(result.checksum, "utf8")).toMatch(/^[0-9a-f]{64}  hypercode-offline-/)
   })
 })
@@ -114,6 +117,10 @@ describe("offline Windows package", () => {
     expect(names).toContain(`${result.root}/config/internal-openai-compatible.json.example`)
     const installerText = await installer?.getData?.(new TextWriter())
     expect(installerText).toContain("HYPERCODE_DISABLE_MODELS_FETCH")
+    expect(installerText).toContain(
+      '[Environment]::SetEnvironmentVariable("OPENCODE_DISABLE_LSP_DOWNLOAD", "1", "User")',
+    )
+    expect(installerText).toContain('$env:OPENCODE_DISABLE_LSP_DOWNLOAD = "1"')
     expect(installerText).toContain("--install-extension")
     expect(installerText).toContain('"/CURRENTUSER"')
     expect(installerText).toContain("VS Code installation failed with exit code")
