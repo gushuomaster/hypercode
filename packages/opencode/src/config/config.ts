@@ -641,6 +641,8 @@ export const layer = Layer.effect(
           result.share = "auto"
         }
 
+        result.lsp ??= true
+
         if (Flag.OPENCODE_DISABLE_AUTOCOMPACT) {
           result.compaction = { ...result.compaction, auto: false }
         }

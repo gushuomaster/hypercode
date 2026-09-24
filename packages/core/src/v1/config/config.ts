@@ -119,7 +119,7 @@ export const Info = Schema.Struct({
   }),
   lsp: Schema.optional(ConfigLSPV1.Info).annotate({
     description:
-      "Enable or configure LSP servers. Omit or set to false to disable, true to enable built-ins, or an object to enable built-ins with overrides.",
+      "Enable or configure LSP servers. HyperCode enables built-ins lazily when omitted; set to false to disable, true to enable built-ins, or use an object for built-ins with overrides.",
   }),
   instructions: Schema.optional(Schema.mutable(Schema.Array(Schema.String))).annotate({
     description: "Additional instruction files or patterns to include",

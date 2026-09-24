@@ -786,6 +786,31 @@ it.instance(
   { config: { lsp: true } },
 )
 
+it.instance("enables LSP when all config layers omit the setting", () =>
+  Effect.gen(function* () {
+    const config = yield* Config.use.get()
+    expect(config.lsp).toBe(true)
+  }),
+)
+
+it.instance(
+  "preserves an explicit LSP disable",
+  Effect.gen(function* () {
+    const config = yield* Config.use.get()
+    expect(config.lsp).toBe(false)
+  }),
+  { config: { lsp: false } },
+)
+
+it.instance(
+  "preserves LSP server overrides",
+  Effect.gen(function* () {
+    const config = yield* Config.use.get()
+    expect(config.lsp).toEqual({ typescript: { disabled: true } })
+  }),
+  { config: { lsp: { typescript: { disabled: true } } } },
+)
+
 test("loads project config from Git Bash and MSYS2 paths on Windows", async () => {
   // Git Bash and MSYS2 both use /<drive>/... paths on Windows.
   await check((dir) => {
