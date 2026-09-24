@@ -5,13 +5,14 @@ import { useTuiConfig } from "../config"
 import {
   getLocale,
   LOCALES,
-  normalizeLocale,
   setLocale as setSharedLocale,
   t,
   type Locale,
 } from "../i18n"
+import { toProductLocale } from "../product/locale-adapter"
 
-export { LOCALES, normalizeLocale, type Locale }
+export { LOCALES, type Locale }
+export const normalizeLocale = (value?: string) => toProductLocale(value).locale
 
 // 模块级全局 locale,供非组件上下文(如内置插件注册命令时)使用。
 // LanguageProvider 初始化和 setLocale 时同步更新它。
@@ -29,7 +30,7 @@ export const { use: useLanguage, provider: LanguageProvider } = createSimpleCont
     const kv = useKV()
     const config = useTuiConfig()
 
-    const initial = normalizeLocale(config.language ?? kv.get("language"))
+    const initial = toProductLocale(config.language ?? kv.get("language")).locale
     setGlobalLocale(initial)
     setSharedLocale(initial)
 
@@ -40,7 +41,7 @@ export const { use: useLanguage, provider: LanguageProvider } = createSimpleCont
       locales: LOCALES,
       t: translate,
       setLocale(next: Locale) {
-        const value = normalizeLocale(next)
+        const value = toProductLocale(next).locale
         setGlobalLocale(value)
         setSharedLocale(value)
         kv.set("language", value)

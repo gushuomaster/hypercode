@@ -3,15 +3,14 @@ import { useTheme } from "../context/theme"
 import { useDialog } from "../ui/dialog"
 import { onCleanup } from "solid-js"
 import { translate as t } from "../context/language"
+import { toProductThemes } from "../product/theme-adapter"
 
 export function DialogThemeList() {
   const theme = useTheme()
-  const options = Object.keys(theme.all())
-    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
-    .map((value) => ({
-      title: value,
-      value: value,
-    }))
+  const options = toProductThemes(theme.all(), theme.selected).map((entry) => ({
+    title: entry.id,
+    value: entry.id,
+  }))
   const dialog = useDialog()
   let confirmed = false
   let ref: DialogSelectRef<string>

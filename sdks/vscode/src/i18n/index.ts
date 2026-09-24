@@ -1,5 +1,6 @@
 import { EN } from "./en"
 import { ZH } from "./zh"
+import { toVsCodeProductLocale } from "../product/locale-adapter"
 
 export { EN, ZH }
 
@@ -9,7 +10,7 @@ export type TranslationKey = keyof typeof EN
 let locale: Locale = "en"
 
 export function normalizeLocale(value?: string): Locale {
-  return value?.toLowerCase().startsWith("zh") ? "zh" : "en"
+  return toVsCodeProductLocale(value).locale
 }
 
 export function setLocale(value?: string) {

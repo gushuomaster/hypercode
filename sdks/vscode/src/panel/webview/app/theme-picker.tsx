@@ -1,6 +1,7 @@
 import React from "react"
 import type { PanelColorScheme, PanelTheme } from "../../../core/settings"
 import { t } from "../../../i18n"
+import { toVsCodeProductThemes } from "../../../product/theme-adapter"
 
 export type ThemePickerItem = ({
   id: PanelTheme
@@ -15,78 +16,13 @@ export type ThemePickerItem = ({
 }
 
 export function buildThemePickerItems(currentTheme: PanelTheme, currentColorScheme: PanelColorScheme): ThemePickerItem[] {
-  return [
-    {
-      id: "classic",
-      kind: "theme",
-      label: t("theme.classic.label"),
-      detail: t("theme.classic.detail"),
-      selected: currentTheme === "classic",
-    },
-    {
-      id: "codex",
-      kind: "theme",
-      label: t("theme.codex.label"),
-      detail: t("theme.codex.detail"),
-      selected: currentTheme === "codex",
-    },
-    {
-      id: "claude",
-      kind: "theme",
-      label: t("theme.claude.label"),
-      detail: t("theme.claude.detail"),
-      selected: currentTheme === "claude",
-    },
-    {
-      id: "default",
-      kind: "color",
-      label: t("theme.default.label"),
-      detail: t("theme.default.detail"),
-      selected: currentColorScheme === "default",
-    },
-    {
-      id: "nocturne",
-      kind: "color",
-      label: t("theme.nocturne.label"),
-      detail: t("theme.nocturne.detail"),
-      selected: currentColorScheme === "nocturne",
-    },
-    {
-      id: "orchid",
-      kind: "color",
-      label: t("theme.orchid.label"),
-      detail: t("theme.orchid.detail"),
-      selected: currentColorScheme === "orchid",
-    },
-    {
-      id: "verdant",
-      kind: "color",
-      label: t("theme.verdant.label"),
-      detail: t("theme.verdant.detail"),
-      selected: currentColorScheme === "verdant",
-    },
-    {
-      id: "solar",
-      kind: "color",
-      label: t("theme.solar.label"),
-      detail: t("theme.solar.detail"),
-      selected: currentColorScheme === "solar",
-    },
-    {
-      id: "graphite",
-      kind: "color",
-      label: t("theme.graphite.label"),
-      detail: t("theme.graphite.detail"),
-      selected: currentColorScheme === "graphite",
-    },
-    {
-      id: "ember",
-      kind: "color",
-      label: t("theme.ember.label"),
-      detail: t("theme.ember.detail"),
-      selected: currentColorScheme === "ember",
-    },
-  ]
+  return toVsCodeProductThemes(currentTheme, currentColorScheme).map((entry) => ({
+    id: entry.id as PanelTheme & PanelColorScheme,
+    kind: entry.kind,
+    label: t(`theme.${entry.id}.label` as Parameters<typeof t>[0]),
+    detail: t(`theme.${entry.id}.detail` as Parameters<typeof t>[0]),
+    selected: entry.selected,
+  })) as ThemePickerItem[]
 }
 
 export function ThemePicker({
