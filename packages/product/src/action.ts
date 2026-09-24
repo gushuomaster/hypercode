@@ -25,6 +25,10 @@ export type ProductAction =
   | { type: "provider.authenticate"; providerID: string }
   | { type: "provider.openDocs"; providerID: string }
   | { type: "provider.retry"; providerID: string }
+  | { type: "mcp.connect"; name: string }
+  | { type: "mcp.disconnect"; name: string }
+  | { type: "mcp.reconnect"; name: string }
+  | { type: "mcp.authenticate"; name: string }
 
 export type ProductSelectionAction = Extract<ProductAction, { type: "model.select" | "agent.select" | "variant.select" }>
 

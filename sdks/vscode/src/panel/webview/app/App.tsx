@@ -12,7 +12,7 @@ import { useHostMessages } from "../hooks/useHostMessages"
 import { useModifierState } from "../hooks/useModifierState"
 import { useTimelineScroll } from "../hooks/useTimelineScroll"
 import { formatComposerFileContent, parseComposerFileQuery } from "../lib/composer-file-selection"
-import { agentColorClass, composerIdentity, composerMetrics, composerSelection, cycleComposerModelVariantState, formatUsd, lastUserSelection, modelKey, modelVariants, overallLspStatus, overallMcpStatus, pushRecentModel, sameModelRef, sessionTitle, toggleFavoriteModel } from "../lib/session-meta"
+import { agentColorClass, composerIdentity, composerMetrics, composerSelection, cycleComposerModelVariantState, formatUsd, lastUserSelection, modelKey, modelVariants, overallLspStatus, overallProductMcpStatus, pushRecentModel, sameModelRef, sessionTitle, toggleFavoriteModel } from "../lib/session-meta"
 import { buildComposerSubmitParts, composerMentionAgentOverride } from "./composer-mentions"
 import { ComposerFooter } from "./composer-footer"
 import { absorbFileSelectionSuffix, composerMentions as mentionsFromParts, composerPartsEqual, composerText, deleteStructuredRange, emptyComposerParts, ensureTextPart, replaceRangeWithMention, replaceRangeWithText } from "./composer-editor"
@@ -1423,7 +1423,7 @@ export function App() {
   }, [currentSelection.model, state.snapshot])
 
   const composerFooterBadges = React.useMemo(() => {
-    const mcp = overallMcpStatus(state.snapshot.mcp)
+    const mcp = overallProductMcpStatus(state.snapshot.mcpStates)
     const lsp = overallLspStatus(state.snapshot.lsp)
     return [
       { label: "MCP", tone: mcp.tone, items: mcp.items },
@@ -1931,7 +1931,10 @@ export function App() {
                       if (!item.action) {
                         return
                       }
-                      vscode.postMessage({ type: "mcpAction", name: item.name, action: item.action })
+                      const mcpState = state.snapshot.mcpStates.find((entry) => entry.name === item.name)
+                      const action = mcpState?.action ? ({ type: `mcp.${mcpState.action}`, name: mcpState.name } as ProductAction) : undefined
+                      const target = action ? toVsCodeProductAction(action) : { kind: "none" as const }
+                      if (target.kind === "mcp") vscode.postMessage({ type: "mcpAction", name: target.action.name, action: target.action.type.replace("mcp.", "") as "connect" | "disconnect" | "reconnect" | "authenticate" })
                     }}
                   />
                 </SubagentFooter>
@@ -2327,7 +2330,10 @@ export function App() {
                       if (!item.action) {
                         return
                       }
-                      vscode.postMessage({ type: "mcpAction", name: item.name, action: item.action })
+                      const mcpState = state.snapshot.mcpStates.find((entry) => entry.name === item.name)
+                      const action = mcpState?.action ? ({ type: `mcp.${mcpState.action}`, name: mcpState.name } as ProductAction) : undefined
+                      const target = action ? toVsCodeProductAction(action) : { kind: "none" as const }
+                      if (target.kind === "mcp") vscode.postMessage({ type: "mcpAction", name: target.action.name, action: target.action.type.replace("mcp.", "") as "connect" | "disconnect" | "reconnect" | "authenticate" })
                     }}
                   />
                 </section>

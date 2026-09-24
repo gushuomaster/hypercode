@@ -7,13 +7,15 @@ import { useTheme } from "../context/theme"
 import { TextAttributes } from "@opentui/core"
 import { useSDK } from "../context/sdk"
 import { translate as t } from "../context/language"
+import { deriveProductMcpAction, type ProductMcpState } from "@opencode-ai/product"
+import { toProductMcpStates } from "../product/mcp-adapter"
 
-function Status(props: { enabled: boolean; loading: boolean }) {
+function Status(props: { state: ProductMcpState; loading: boolean }) {
   const { theme } = useTheme()
   if (props.loading) {
     return <span style={{ fg: theme.textMuted }}>⋯ {t("dialog.mcp.loading")}</span>
   }
-  if (props.enabled) {
+  if (props.state.availability === "connected") {
     return <span style={{ fg: theme.success, attributes: TextAttributes.BOLD }}>✓ {t("dialog.mcp.enabled")}</span>
   }
   return <span style={{ fg: theme.textMuted }}>○ {t("dialog.mcp.disabled")}</span>
@@ -28,18 +30,17 @@ export function DialogMcp() {
 
   const options = createMemo(() => {
     // Track sync data and loading state to trigger re-render when they change
-    const mcpData = sync.data.mcp
+    const mcpData = sync.data.mcp_product
     const loadingMcp = loading()
 
     return pipe(
-      mcpData ?? {},
-      entries(),
-      sortBy(([name]) => name),
-      map(([name, status]) => ({
-        value: name,
-        title: name,
-        description: status.status === "failed" ? t("dialog.mcp.failed") : status.status,
-        footer: <Status enabled={local.mcp.isEnabled(name)} loading={loadingMcp === name} />,
+      mcpData,
+      sortBy((state) => state.name),
+      map((state) => ({
+        value: state.name,
+        title: state.name,
+        description: state.diagnostic?.message ?? (state.availability === "failed" ? t("dialog.mcp.failed") : state.availability),
+        footer: <Status state={state} loading={loadingMcp === state.name} />,
         category: undefined,
       })),
     )
@@ -53,13 +54,17 @@ export function DialogMcp() {
         // Prevent toggling while an operation is already in progress
         if (loading() !== null) return
 
+        const state = sync.data.mcp_product.find((item) => item.name === option.value)
+        const action = state ? deriveProductMcpAction(state) : undefined
+        if (!action) return
         setLoading(option.value)
         try {
-          await local.mcp.toggle(option.value)
+          await local.mcp.run(action)
           // Refresh MCP status from server
           const status = await sdk.client.mcp.status()
           if (status.data) {
             sync.set("mcp", status.data)
+            sync.set("mcp_product", toProductMcpStates(status.data))
           } else {
             console.error("Failed to refresh MCP status: no data returned")
           }

@@ -1,5 +1,5 @@
 import type { SessionBootstrap } from "../../../bridge/types"
-import { cycleModelVariant, deriveComposerSelection } from "@opencode-ai/product"
+import { cycleModelVariant, deriveComposerSelection, type ProductMcpState } from "@opencode-ai/product"
 import type { AgentInfo, FormatterStatus, LspStatus, McpStatus, MessageInfo, ProviderInfo, SessionMessage } from "../../../core/sdk"
 import { displaySessionTitle } from "../../../core/session-titles"
 import { t } from "../../../i18n"
@@ -269,6 +269,26 @@ export function statusItemForMcp(name: string, status: McpStatus): StatusItem {
     return { name, tone: "red", value: status.error || t("status.clientRegistrationRequired"), action: "reconnect", actionLabel: t("status.reconnect", { name }) }
   }
   return { name, tone: "red", value: status.error || t("common.error"), action: "reconnect", actionLabel: t("status.reconnect", { name }) }
+}
+
+export function overallProductMcpStatus(states: ProductMcpState[]) {
+  const items = states.map(statusItemForProductMcp)
+  if (items.length === 0) return { tone: "gray" as const, items }
+  if (items.every((item) => item.tone === "green" || item.tone === "gray")) {
+    return { tone: items.some((item) => item.tone === "green") ? "green" as const : "gray" as const, items }
+  }
+  if (items.every((item) => item.tone === "red")) return { tone: "red" as const, items }
+  return { tone: "orange" as const, items }
+}
+
+export function statusItemForProductMcp(state: ProductMcpState): StatusItem {
+  const tone = state.severity === "error" ? "red" : state.severity === "warning" ? "orange" : state.availability === "connected" ? "green" : "gray"
+  return {
+    name: state.name,
+    tone,
+    value: state.diagnostic?.message ?? state.availability,
+    ...(state.action ? { action: state.action, actionLabel: state.action } : {}),
+  }
 }
 
 export function statusItemForLsp(status: LspStatus): StatusItem {

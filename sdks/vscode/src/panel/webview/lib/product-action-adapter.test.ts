@@ -10,6 +10,13 @@ test("keeps provider recovery intents as Product actions", () => {
   })
 })
 
+test("maps MCP actions to the existing host bridge", () => {
+  assert.deepEqual(toVsCodeProductAction({ type: "mcp.authenticate", name: "docs" }), {
+    kind: "mcp",
+    action: { type: "mcp.authenticate", name: "docs" },
+  })
+})
+
 test("maps shared product actions to existing VSCode host messages", () => {
   const options = {
     sessions: [

@@ -13,6 +13,10 @@ export type ProductTextKey =
   | "interaction.question.pending"
   | "error.provider.auth_failed"
   | "error.provider.request_failed"
+  | "error.mcp.authentication_required"
+  | "error.mcp.connection_failed"
+  | "error.mcp.client_registration_required"
+  | "error.mcp.unsupported"
   | "error.session.not_found"
   | "error.session.unsupported"
   | "error.session.permission_denied"
@@ -32,6 +36,10 @@ export function productTextKeyForModelSection(kind: ProductModelSection["kind"])
 }
 
 export function deriveProductErrorTextKey(code: string | undefined, message: string): ProductTextKey {
+  if (code === "MCPNeedsAuth" || /mcp.*auth|authentication required/i.test(message)) return "error.mcp.authentication_required"
+  if (code === "MCPClientRegistration" || /client registration/i.test(message)) return "error.mcp.client_registration_required"
+  if (code === "MCPUnsupported" || /mcp.*unsupported/i.test(message)) return "error.mcp.unsupported"
+  if (code === "MCPFailed" || /mcp.*failed|mcp.*connection/i.test(message)) return "error.mcp.connection_failed"
   if (code === "ProviderAuthError" || /unauthorized|authentication|api key/i.test(message)) return "error.provider.auth_failed"
   if (code === "APIError") return "error.provider.request_failed"
   return "error.unknown"

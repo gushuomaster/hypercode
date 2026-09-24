@@ -1,4 +1,4 @@
-import { deriveProductSessionSwitch, type ProductAction, type ProductProviderAction, type ProductSelectionAction, type ProductSessionMutationAction } from "@opencode-ai/product"
+import { deriveProductSessionSwitch, type ProductAction, type ProductMcpAction, type ProductProviderAction, type ProductSelectionAction, type ProductSessionMutationAction } from "@opencode-ai/product"
 import type { WebviewMessage } from "../../../bridge/types"
 
 export type VsCodeProductActionTarget =
@@ -6,6 +6,7 @@ export type VsCodeProductActionTarget =
   | { kind: "selection"; action: ProductSelectionAction }
   | { kind: "mutation"; action: ProductSessionMutationAction }
   | { kind: "provider"; action: ProductProviderAction }
+  | { kind: "mcp"; action: ProductMcpAction }
   | { kind: "none" }
   | { kind: "unavailable"; action: "session.retry" }
 
@@ -49,6 +50,9 @@ export function toVsCodeProductAction(action: ProductAction, options: VsCodeProd
   }
   if (action.type === "provider.connect" || action.type === "provider.authenticate" || action.type === "provider.openDocs" || action.type === "provider.retry") {
     return { kind: "provider", action }
+  }
+  if (action.type === "mcp.connect" || action.type === "mcp.disconnect" || action.type === "mcp.reconnect" || action.type === "mcp.authenticate") {
+    return { kind: "mcp", action }
   }
   if (action.type === "model.select" || action.type === "agent.select" || action.type === "variant.select") {
     return { kind: "selection", action }

@@ -1,4 +1,4 @@
-import { deriveProductSessionSwitch, type ProductAction, type ProductProviderAction, type ProductSelectionAction, type ProductSessionMutationAction } from "@opencode-ai/product"
+import { deriveProductSessionSwitch, type ProductAction, type ProductMcpAction, type ProductProviderAction, type ProductSelectionAction, type ProductSessionMutationAction } from "@opencode-ai/product"
 
 type TuiActionContext = {
   sessionID: string
@@ -20,6 +20,7 @@ export type TuiProductActionTarget =
   | { kind: "selection"; action: ProductSelectionAction }
   | { kind: "session.mutation"; action: ProductSessionMutationAction }
   | { kind: "provider"; action: ProductProviderAction }
+  | { kind: "mcp"; action: ProductMcpAction }
   | { kind: "none" }
   | { kind: "unavailable"; action: "session.retry" }
 
@@ -72,6 +73,9 @@ export function toTuiProductAction(action: ProductAction, context: TuiActionCont
   }
   if (action.type === "provider.connect" || action.type === "provider.authenticate" || action.type === "provider.openDocs" || action.type === "provider.retry") {
     return { kind: "provider", action }
+  }
+  if (action.type === "mcp.connect" || action.type === "mcp.disconnect" || action.type === "mcp.reconnect" || action.type === "mcp.authenticate") {
+    return { kind: "mcp", action }
   }
   if (action.type === "permission.reply") {
     return {

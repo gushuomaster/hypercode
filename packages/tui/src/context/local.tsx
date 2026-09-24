@@ -475,14 +475,15 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         const status = sync.data.mcp[name]
         return status?.status === "connected"
       },
-      async toggle(name: string) {
-        const status = sync.data.mcp[name]
-        if (status?.status === "connected") {
-          // Disable: disconnect the MCP
-          await sdk.client.mcp.disconnect({ name })
-        } else {
-          // Enable/Retry: connect the MCP (handles disabled, failed, and other states)
-          await sdk.client.mcp.connect({ name })
+      async run(action: Extract<import("@opencode-ai/product").ProductAction, { type: `mcp.${string}` }>) {
+        const target = toTuiProductAction(action, { sessionID: "" })
+        if (target.kind !== "mcp") return
+        if (target.action.type === "mcp.disconnect") {
+          await sdk.client.mcp.disconnect({ name: target.action.name })
+          return
+        }
+        if (target.action.type === "mcp.connect" || target.action.type === "mcp.reconnect") {
+          await sdk.client.mcp.connect({ name: target.action.name })
         }
       },
     }

@@ -12,6 +12,7 @@ import { filterPermission, filterQuestion, nav, relatedSessionMap, subtreeSessio
 import { sortMessages } from "./mutations"
 import { idle, text } from "./utils"
 import { toProductProviderStates } from "../../product/provider-adapter"
+import { toProductMcpStates } from "../../product/mcp-adapter"
 
 type SnapshotContext = {
   ref: SessionPanelRef
@@ -21,7 +22,7 @@ type SnapshotContext = {
   messageLimit?: number
 }
 
-type DeferredSnapshotData = Pick<SessionSnapshot, "sessionStatus" | "permissions" | "questions" | "providerAuth" | "providerStates" | "mcp" | "mcpResources" | "lsp" | "formatter" | "commands">
+type DeferredSnapshotData = Pick<SessionSnapshot, "sessionStatus" | "permissions" | "questions" | "providerAuth" | "providerStates" | "mcp" | "mcpStates" | "mcpResources" | "lsp" | "formatter" | "commands">
 
 export type SessionSnapshotBuild = {
   snapshot: SessionSnapshot
@@ -159,6 +160,7 @@ export async function buildSessionSnapshot({ ref, mgr, log, isSubmitting, messag
       providerDefault: defaults,
       configuredModel,
       mcp: {},
+      mcpStates: [],
       mcpResources: {},
       lsp: [],
       formatter: [],
@@ -231,6 +233,7 @@ async function loadDeferredSnapshot({
     commandList(sdk, dir),
   ])
 
+  const mcp = mcpStatusMap(mcpRes.data)
   return {
     sessionStatus: statusRes.data?.[sessionId] ?? idle(),
     permissions: filterPermission(permissionRes.data ?? [], requestSessionIds),
@@ -242,7 +245,8 @@ async function loadDeferredSnapshot({
       defaults,
       auth: providerAuthMap(providerAuthRes.data),
     }),
-    mcp: mcpStatusMap(mcpRes.data),
+    mcp,
+    mcpStates: toProductMcpStates(mcp),
     mcpResources: mcpResourceMap(resourceRes.data),
     lsp: lspStatuses(lspRes.data ?? [], dir),
     formatter: formatterStatuses(formatterRes.data),
@@ -403,6 +407,7 @@ function fallbackSnapshot(
     providerDefault: undefined,
     configuredModel: undefined,
     mcp: {},
+    mcpStates: [],
     mcpResources: {},
     lsp: [],
     formatter: [],

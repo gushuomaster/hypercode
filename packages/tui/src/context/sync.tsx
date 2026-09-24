@@ -32,12 +32,13 @@ import { batch, onMount } from "solid-js"
 import path from "path"
 import { useKV } from "./kv"
 import { usePermission } from "./permission"
-import type { ProductProviderState, ProductSessionMutationAction, ProductSessionMutationState, ProductSnapshot } from "@opencode-ai/product"
+import type { ProductMcpState, ProductProviderState, ProductSessionMutationAction, ProductSessionMutationState, ProductSnapshot } from "@opencode-ai/product"
 import { createProductSessionMutationState, deriveProductSessionMutationAvailability, hydrateProductMutableSessions, mergeProductSnapshot } from "@opencode-ai/product"
 import { reduceTuiProductEvent, toProductEvent, toProductSnapshot } from "../product/session-adapter"
 import { toTuiProductAction } from "../product/action-adapter"
 import { toTuiMutableSession, toTuiSessionMutationTarget } from "../product/session-mutation-adapter"
 import { toProductProviderStates } from "../product/provider-adapter"
+import { toProductMcpStates } from "../product/mcp-adapter"
 
 const emptyConsoleState: ConsoleState = {
   consoleManagedProviders: [],
@@ -117,6 +118,7 @@ export const {
       mcp: {
         [key: string]: McpStatus
       }
+      mcp_product: ProductMcpState[]
       mcp_resource: {
         [key: string]: McpResource
       }
@@ -152,6 +154,7 @@ export const {
       part: {},
       lsp: [],
       mcp: {},
+      mcp_product: [],
       mcp_resource: {},
       formatter: [],
       vcs: undefined,
@@ -556,7 +559,13 @@ export const {
             consoleStatePromise.then((consoleState) => setStore("console_state", reconcile(consoleState))),
             sdk.client.command.list({ workspace }).then((x) => setStore("command", reconcile(x.data ?? []))),
             sdk.client.lsp.status({ workspace }).then((x) => setStore("lsp", reconcile(x.data ?? []))),
-            sdk.client.mcp.status({ workspace }).then((x) => setStore("mcp", reconcile(x.data ?? {}))),
+            sdk.client.mcp.status({ workspace }).then((x) => {
+              const statuses = x.data ?? {}
+              batch(() => {
+                setStore("mcp", reconcile(statuses))
+                setStore("mcp_product", reconcile(toProductMcpStates(statuses)))
+              })
+            }),
             sdk.client.experimental.resource
               .list({ workspace })
               .then((x) => setStore("mcp_resource", reconcile(x.data ?? {}))),

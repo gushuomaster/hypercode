@@ -13,6 +13,13 @@ test("maps provider recovery intents without choosing a host implementation", ()
   })
 })
 
+test("maps MCP recovery intents without choosing a host implementation", () => {
+  expect(toTuiProductAction({ type: "mcp.reconnect", name: "docs" }, { sessionID: "session-1" })).toEqual({
+    kind: "mcp",
+    action: { type: "mcp.reconnect", name: "docs" },
+  })
+})
+
 test("maps shared product actions to TUI SDK intents", () => {
   const context = {
     sessionID: "session-1",

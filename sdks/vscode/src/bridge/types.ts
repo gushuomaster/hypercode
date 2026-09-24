@@ -1,6 +1,6 @@
 import type { AgentInfo, CommandInfo, FileDiff, FormatterStatus, LspStatus, McpResource, McpStatus, PermissionRequest, PromptFilePartInput, PromptSource, ProviderAuthMethod, ProviderInfo, QuestionRequest, SessionEvent, SessionInfo, SessionMessage, SessionStatus, Todo } from "../core/sdk"
+import type { ProductMcpState, ProductProviderState, ProductSnapshot } from "@opencode-ai/product"
 import type { DisplaySettings, PanelColorScheme, PanelTheme } from "../core/settings"
-import type { ProductProviderState, ProductSnapshot } from "@opencode-ai/product"
 import type { VsCodeSessionMutationEvent } from "../product/session-mutation"
 
 export const SESSION_PANEL_VIEW_TYPE = "hypercode.session"
@@ -37,6 +37,7 @@ export type SessionMessageHistory = {
 
 export type SessionSnapshot = SessionBootstrap & {
   product?: ProductSnapshot
+  mcpStates?: ProductMcpState[]
   display: DisplaySettings
   skillCatalog?: SkillCatalogEntry[]
   messageHistory?: SessionMessageHistory
@@ -122,7 +123,7 @@ export type HostMessage =
   | {
       type: "deferredUpdate"
       reason: string
-      payload: Pick<SessionSnapshot, "product" | "sessionStatus" | "permissions" | "questions" | "providerAuth" | "providerStates" | "mcp" | "mcpResources" | "lsp" | "formatter" | "commands">
+      payload: Pick<SessionSnapshot, "product" | "mcpStates" | "sessionStatus" | "permissions" | "questions" | "providerAuth" | "providerStates" | "mcp" | "mcpResources" | "lsp" | "formatter" | "commands">
     }
   | {
       type: "submitting"

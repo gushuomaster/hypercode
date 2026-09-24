@@ -2,7 +2,7 @@ import type { ComposerFileSelection, ComposerPathKind, SessionBootstrap, Session
 import type { DisplaySettings, PanelColorScheme, PanelTheme } from "../../../core/settings"
 import type { AgentInfo, CommandInfo, FileDiff, FormatterStatus, LspStatus, McpResource, McpStatus, MessageInfo, PermissionRequest, ProviderAuthMethod, ProviderInfo, QuestionRequest, SessionInfo, SessionMessage, SessionStatus, Todo } from "../../../core/sdk"
 import type { CommandPromptCatalog, CommandPromptInvocation } from "./command-prompt"
-import { createProductSessionState, createProductSnapshot, mergePartialProductSnapshot, mergeProductSnapshot, type ProductProviderState, type ProductSnapshot } from "@opencode-ai/product"
+import { createProductSessionState, createProductSnapshot, mergePartialProductSnapshot, mergeProductSnapshot, type ProductMcpState, type ProductProviderState, type ProductSnapshot } from "@opencode-ai/product"
 import { toProductSnapshot } from "../lib/product-session-adapter"
 
 export type VsCodeApi = {
@@ -100,6 +100,7 @@ export type AppState = {
       modelID: string
     }
     mcp: Record<string, McpStatus>
+    mcpStates: ProductMcpState[]
     mcpResources: Record<string, McpResource>
     lsp: LspStatus[]
     formatter: FormatterStatus[]
@@ -222,6 +223,7 @@ export function createInitialState(initialRef: SessionBootstrap["sessionRef"] | 
       providerDefault: undefined,
       configuredModel: undefined,
       mcp: {},
+      mcpStates: [],
       mcpResources: {},
       lsp: [],
       formatter: [],
@@ -399,6 +401,7 @@ export function normalizeSnapshotPayload(
     providerDefault: payload.providerDefault,
     configuredModel: payload.configuredModel,
     mcp: recordValue(payload.mcp) as Record<string, McpStatus>,
+    mcpStates: Array.isArray(payload.mcpStates) ? payload.mcpStates : [],
     mcpResources: recordValue(payload.mcpResources) as Record<string, McpResource>,
     lsp: Array.isArray(payload.lsp) ? payload.lsp : [],
     formatter: Array.isArray(payload.formatter) ? payload.formatter : [],
