@@ -64,6 +64,13 @@ export const dict: Record<Keys, string> = {
   "dialog.status.pluginCount": "{{count}} 个插件",
   "sidebar.mcp.active": "{{count}} 个已连接",
   "sidebar.mcp.activeWithErrors": "{{active}} 个已连接，{{errors}} 个异常",
+  "sidebar.context.title": "上下文",
+  "sidebar.context.tokens": "已使用 {{count}} tokens",
+  "sidebar.context.used": "已使用 {{percent}}%",
+  "sidebar.context.limitUnknown": "上下文上限未知",
+  "sidebar.context.spent": "本会话费用 {{cost}}",
+  "sidebar.lsp.disabled": "LSP 已禁用",
+  "sidebar.lsp.lazy": "处理匹配文件时自动启动",
 
   // 会话、技能、暂存、主题、变体
   "dialog.session.rename": "重命名会话",

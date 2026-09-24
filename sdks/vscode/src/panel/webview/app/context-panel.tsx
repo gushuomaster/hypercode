@@ -1,4 +1,5 @@
 import React from "react"
+import { deriveProductContextUsage } from "@opencode-ai/product"
 
 import type { MessageInfo, MessagePart, ProviderInfo, SessionInfo, SessionMessage } from "../../../core/sdk"
 import { displayModelRef, displayProviderRef, lastAssistantWithOutput, modelContextLimitForRef, sessionCost, totalTokens } from "../lib/session-meta"
@@ -258,6 +259,7 @@ function getSessionContextMetrics(messages: SessionMessage[], providers: Provide
 
   const model = contextModelRef(info)
   const limit = modelContextLimitForRef(model, providers)
+  const usage = deriveProductContextUsage(total, limit)
   return {
     totalCost,
     context: {
@@ -271,7 +273,7 @@ function getSessionContextMetrics(messages: SessionMessage[], providers: Provide
       cacheRead: info.tokens?.cache.read ?? 0,
       cacheWrite: info.tokens?.cache.write ?? 0,
       total,
-      usage: typeof limit === "number" && limit > 0 ? Math.round((total / limit) * 100) : null,
+      usage: usage.availability === "known" ? usage.percent : null,
     },
   }
 }

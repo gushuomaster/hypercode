@@ -2,6 +2,8 @@ import type { AssistantMessage } from "@opencode-ai/sdk/v2"
 import type { TuiPlugin, TuiPluginApi } from "@opencode-ai/plugin/tui"
 import type { BuiltinTuiPlugin } from "../builtins"
 import { createMemo } from "solid-js"
+import { translate as t } from "../../context/language"
+import { deriveProductContextUsage, type ProductContextUsage } from "@opencode-ai/product"
 
 const id = "internal:sidebar-context"
 
@@ -9,6 +11,11 @@ const money = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
 })
+
+export function sidebarContextUsageText(usage: ProductContextUsage) {
+  if (usage.availability === "unknown") return { textKey: "sidebar.context.limitUnknown" as const }
+  return { textKey: "sidebar.context.used" as const, params: { percent: usage.percent } }
+}
 
 function View(props: { api: TuiPluginApi; session_id: string }) {
   const theme = () => props.api.theme.current
@@ -21,7 +28,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
     if (!last) {
       return {
         tokens: 0,
-        percent: null,
+        usage: deriveProductContextUsage(0, undefined),
       }
     }
 
@@ -30,18 +37,19 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
     const model = props.api.state.provider.find((item) => item.id === last.providerID)?.models[last.modelID]
     return {
       tokens,
-      percent: model?.limit.context ? Math.round((tokens / model.limit.context) * 100) : null,
+      usage: deriveProductContextUsage(tokens, model?.limit.context),
     }
   })
+  const usage = createMemo(() => sidebarContextUsageText(state().usage))
 
   return (
     <box>
       <text fg={theme().text}>
-        <b>Context</b>
+        <b>{t("sidebar.context.title")}</b>
       </text>
-      <text fg={theme().textMuted}>{state().tokens.toLocaleString()} tokens</text>
-      <text fg={theme().textMuted}>{state().percent ?? 0}% used</text>
-      <text fg={theme().textMuted}>{money.format(cost())} spent</text>
+      <text fg={theme().textMuted}>{t("sidebar.context.tokens", { count: state().tokens.toLocaleString() })}</text>
+      <text fg={theme().textMuted}>{t(usage().textKey, "params" in usage() ? usage().params : undefined)}</text>
+      <text fg={theme().textMuted}>{t("sidebar.context.spent", { cost: money.format(cost()) })}</text>
     </box>
   )
 }

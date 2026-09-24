@@ -3,11 +3,23 @@ import { useSync } from "../../context/sync"
 import { createMemo, Show } from "solid-js"
 import { useTheme } from "../../context/theme"
 import { useTuiConfig } from "../../config"
-import { InstallationChannel, InstallationVersion } from "@opencode-ai/core/installation/version"
+import { InstallationVersion } from "@opencode-ai/core/installation/version"
 import { usePluginRuntime } from "../../plugin/runtime"
 
 import { getScrollAcceleration } from "../../util/scroll"
 import { WorkspaceLabel } from "../../component/workspace-label"
+
+export function deriveSidebarHeader(session: {
+  title: string
+  workspaceID?: string
+  share?: { url: string }
+}) {
+  return {
+    title: session.title,
+    workspaceID: session.workspaceID,
+    shareURL: session.share?.url,
+  }
+}
 
 export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
   const pluginRuntime = usePluginRuntime()
@@ -16,8 +28,9 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
   const { theme } = useTheme()
   const tuiConfig = useTuiConfig()
   const session = createMemo(() => sync.session.get(props.sessionID))
+  const header = createMemo(() => session() ? deriveSidebarHeader(session()!) : undefined)
   const workspace = () => {
-    const workspaceID = session()?.workspaceID
+    const workspaceID = header()?.workspaceID
     if (!workspaceID) return
     return project.workspace.get(workspaceID)
   }
@@ -50,21 +63,18 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               name="sidebar_title"
               mode="single_winner"
               session_id={props.sessionID}
-              title={session()!.title}
-              share_url={session()!.share?.url}
+              title={header()!.title}
+              share_url={header()!.shareURL}
             >
               <box paddingRight={1}>
                 <text fg={theme.text}>
-                  <b>{session()!.title}</b>
+                  <b>{header()!.title}</b>
                 </text>
-                <Show when={InstallationChannel !== "latest"}>
-                  <text fg={theme.textMuted}>{props.sessionID}</text>
-                </Show>
-                <Show when={session()!.workspaceID}>
+                <Show when={header()!.workspaceID}>
                   <text fg={theme.textMuted}>
                     <Show
                       when={workspace()}
-                      fallback={<WorkspaceLabel type="unknown" name={session()!.workspaceID!} status="error" icon />}
+                      fallback={<WorkspaceLabel type="unknown" name={header()!.workspaceID!} status="error" icon />}
                     >
                       {(item) => (
                         <WorkspaceLabel
@@ -77,8 +87,8 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                     </Show>
                   </text>
                 </Show>
-                <Show when={session()!.share?.url}>
-                  <text fg={theme.textMuted}>{session()!.share!.url}</text>
+                <Show when={header()!.shareURL}>
+                  <text fg={theme.textMuted}>{header()!.shareURL}</text>
                 </Show>
               </box>
             </pluginRuntime.Slot>

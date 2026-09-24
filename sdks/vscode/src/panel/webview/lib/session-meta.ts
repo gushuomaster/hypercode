@@ -1,5 +1,5 @@
 import type { SessionBootstrap } from "../../../bridge/types"
-import { deriveComposerSelection, type ProductFormatterState, type ProductLspState, type ProductMcpState } from "@opencode-ai/product"
+import { deriveComposerSelection, deriveProductContextUsage, type ProductFormatterState, type ProductLspState, type ProductMcpState } from "@opencode-ai/product"
 import type { AgentInfo, MessageInfo, ProviderInfo, SessionMessage } from "../../../core/sdk"
 import { displaySessionTitle } from "../../../core/session-titles"
 import { t } from "../../../i18n"
@@ -30,9 +30,10 @@ export function contextUsage(messages: SessionMessage[], providers: ProviderInfo
   }
 
   const limit = modelContextLimit(info, providers) ?? modelContextLimitForRef(fallbackModel, providers)
+  const usage = deriveProductContextUsage(tokens, limit)
   return {
     tokens,
-    percent: typeof limit === "number" && limit > 0 ? Math.round(tokens / limit * 100) : undefined,
+    percent: usage.availability === "known" ? usage.percent : undefined,
   }
 }
 

@@ -60,6 +60,13 @@ export const dict = {
   "dialog.status.pluginCount": "{{count}} plugins",
   "sidebar.mcp.active": "{{count}} active",
   "sidebar.mcp.activeWithErrors": "{{active}} active, {{errors}} errors",
+  "sidebar.context.title": "Context",
+  "sidebar.context.tokens": "{{count}} tokens",
+  "sidebar.context.used": "{{percent}}% used",
+  "sidebar.context.limitUnknown": "Context limit unavailable",
+  "sidebar.context.spent": "{{cost}} spent",
+  "sidebar.lsp.disabled": "LSP is disabled",
+  "sidebar.lsp.lazy": "Starts automatically when matching files are processed",
 
   // Session, skills, stash, themes, variants
   "dialog.session.rename": "Rename session",

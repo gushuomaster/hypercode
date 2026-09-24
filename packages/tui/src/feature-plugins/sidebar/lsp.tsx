@@ -1,8 +1,13 @@
 import type { TuiPlugin, TuiPluginApi } from "@opencode-ai/plugin/tui"
 import type { BuiltinTuiPlugin } from "../builtins"
 import { createMemo, For, Show, createSignal } from "solid-js"
+import { translate as t } from "../../context/language"
 
 const id = "internal:sidebar-lsp"
+
+export function deriveSidebarLspEmptyState(disabled: boolean) {
+  return disabled ? "sidebar.lsp.disabled" as const : "sidebar.lsp.lazy" as const
+}
 
 function View(props: { api: TuiPluginApi }) {
   const [open, setOpen] = createSignal(true)
@@ -22,7 +27,7 @@ function View(props: { api: TuiPluginApi }) {
       </box>
       <Show when={list().length <= 2 || open()}>
         <Show when={list().length === 0}>
-          <text fg={theme().textMuted}>{off() ? "LSPs are disabled" : "LSPs will activate as files are read"}</text>
+          <text fg={theme().textMuted}>{t(deriveSidebarLspEmptyState(off()))}</text>
         </Show>
         <For each={list()}>
           {(item) => (

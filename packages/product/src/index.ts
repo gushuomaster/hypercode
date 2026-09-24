@@ -1,6 +1,7 @@
 export * from "./action"
 export * from "./composer"
 export * from "./command"
+export * from "./context"
 export * from "./event"
 export * from "./formatter"
 export * from "./help"
