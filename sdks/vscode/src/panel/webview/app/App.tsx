@@ -12,7 +12,7 @@ import { useHostMessages } from "../hooks/useHostMessages"
 import { useModifierState } from "../hooks/useModifierState"
 import { useTimelineScroll } from "../hooks/useTimelineScroll"
 import { formatComposerFileContent, parseComposerFileQuery } from "../lib/composer-file-selection"
-import { agentColorClass, composerIdentity, composerMetrics, composerSelection, formatUsd, lastUserSelection, overallProductFormatterStatus, overallProductLspStatus, overallProductMcpStatus, sessionTitle } from "../lib/session-meta"
+import { agentColorClass, composerIdentity, composerMetrics, composerSelection, formatUsd, lastUserSelection, sessionTitle, statusItemForProductFormatter, statusItemForProductLsp, statusItemForProductMcp, statusToneForProductSummary } from "../lib/session-meta"
 import { toProductAgents, toProductProviders } from "../lib/product-adapter"
 import { buildComposerSubmitParts, composerMentionAgentOverride } from "./composer-mentions"
 import { ComposerFooter } from "./composer-footer"
@@ -20,7 +20,7 @@ import { absorbFileSelectionSuffix, composerMentions as mentionsFromParts, compo
 import { getSelectionOffsets, parseComposerEditor, renderComposerEditor, setCursorPosition, syncComposerPillSelection } from "./composer-editor-dom"
 import { isCompletedSlashCommand, resolveComposerAutocompleteAction, resolveComposerSlashAction } from "./composer-actions"
 import { collectDroppedFilePaths, shouldHandleComposerFileDrop } from "./composer-drop"
-import { autocompleteItemView, buildComposerMenuItems, mentionForQuery } from "./composer-menu"
+import { autocompleteItemView, buildComposerCommandCatalogInput, buildComposerMenuItems, mentionForQuery } from "./composer-menu"
 import { composerPrimaryAction } from "./composer-primary-action"
 import { composerEnterIntent, composerTabIntent, isShortcutTarget, leaderAction, shouldEnterShellMode, shouldExitShellModeOnBackspace, type ComposerMode } from "./keyboard-shortcuts"
 import { HIDDEN_CODEX_TODO_DOCK_STATE, nextCodexTodoDockState, sameCodexTodoDockState, type CodexTodoDockState } from "./codex-todo-dock-state"
@@ -39,7 +39,8 @@ import { t } from "../../../i18n"
 import { buildThemePickerItems, ThemePicker, type ThemePickerItem } from "./theme-picker"
 import { resolveTranscriptHistoryMode, shouldAutoLoadEarlierMessages, transcriptHistoryScrollThreshold } from "./transcript-history"
 import { AgentPicker, buildAgentPickerItems, type AgentPickerItem } from "./agent-picker"
-import { cycleProductAgentName, cycleProductModelVariantState, derivePendingInteraction, isProductSessionRunning, modelKey, modelVariants, sameModelRef, toggleProductFavoriteModel, updateProductRecentModels, type ProductAction } from "@opencode-ai/product"
+import { StatusPicker } from "./status-picker"
+import { cycleProductAgentName, cycleProductModelVariantState, derivePendingInteraction, deriveProductFormatterSummary, deriveProductLspSummary, deriveProductMcpSummary, isProductSessionRunning, modelKey, modelVariants, sameModelRef, toggleProductFavoriteModel, updateProductRecentModels, type ProductAction } from "@opencode-ai/product"
 import { toVsCodeProductAction, toVsCodeProductSelection, type VsCodeProductActionOptions } from "../lib/product-action-adapter"
 import { formatVsCodeProductError } from "../lib/product-text-adapter"
 
@@ -101,6 +102,7 @@ export function App() {
   const [contextPanelClosing, setContextPanelClosing] = React.useState(false)
   const [previewImage, setPreviewImage] = React.useState<PreviewImage | null>(null)
   const [skillPickerOpen, setSkillPickerOpen] = React.useState(false)
+  const [statusPickerMode, setStatusPickerMode] = React.useState<"mcp" | "system" | null>(null)
   const [skillPickerSelectedIndex, setSkillPickerSelectedIndex] = React.useState(0)
   const [codexTodoCollapsed, setCodexTodoCollapsed] = React.useState(false)
   const [codexTodoDock, setCodexTodoDock] = React.useState<CodexTodoDockState>(HIDDEN_CODEX_TODO_DOCK_STATE)
@@ -156,6 +158,12 @@ export function App() {
       agents: state.snapshot.agents,
       mcpResources: state.snapshot.mcpResources,
       skillCatalog: state.snapshot.skillCatalog,
+      providers: state.snapshot.providers,
+      providerStates: state.snapshot.providerStates,
+      messages: state.snapshot.messages,
+      mcpStates: state.snapshot.mcpStates,
+      lspStates: state.snapshot.lspStates,
+      formatterStates: state.snapshot.formatterStates,
     },
   }, fileResults), [
     fileResults,
@@ -167,6 +175,12 @@ export function App() {
     state.snapshot.mcpResources,
     state.snapshot.session,
     state.snapshot.skillCatalog,
+    state.snapshot.providers,
+    state.snapshot.providerStates,
+    state.snapshot.messages,
+    state.snapshot.mcpStates,
+    state.snapshot.lspStates,
+    state.snapshot.formatterStates,
   ])
   const composerAutocomplete = useComposerAutocomplete(composerMenuItems)
   const skillPickerItems = React.useMemo(() => skillPickerOpen
@@ -190,7 +204,21 @@ export function App() {
       selectedIndex,
     }
   }, [skillPickerItems, skillPickerOpen, skillPickerSelectedIndex, state.draft])
-  const suppressSlashAutocomplete = React.useMemo(() => isCompletedSlashCommand(state.draft, state.snapshot.commands), [state.draft, state.snapshot.commands])
+  const commandCatalogInput = React.useMemo(() => buildComposerCommandCatalogInput({
+    display: state.snapshot.display,
+    session: state.snapshot.session,
+    commands: state.snapshot.commands,
+    agents: state.snapshot.agents,
+    mcpResources: state.snapshot.mcpResources,
+    skillCatalog: state.snapshot.skillCatalog,
+    providers: state.snapshot.providers,
+    providerStates: state.snapshot.providerStates,
+    messages: state.snapshot.messages,
+    mcpStates: state.snapshot.mcpStates,
+    lspStates: state.snapshot.lspStates,
+    formatterStates: state.snapshot.formatterStates,
+  }), [state.snapshot.agents, state.snapshot.commands, state.snapshot.display, state.snapshot.formatterStates, state.snapshot.lspStates, state.snapshot.mcpResources, state.snapshot.mcpStates, state.snapshot.messages, state.snapshot.providers, state.snapshot.providerStates, state.snapshot.session, state.snapshot.skillCatalog])
+  const suppressSlashAutocomplete = React.useMemo(() => isCompletedSlashCommand(state.draft, commandCatalogInput), [commandCatalogInput, state.draft])
   const activeAutocomplete = composerMode === "shell" || !composerFocused
     ? null
     : skillPickerOpen
@@ -865,11 +893,9 @@ export function App() {
       return
     }
 
-    const slashAction = resolveComposerSlashAction(draft, state.snapshot.commands, {
-      showSkillsInSlashAutocomplete: state.snapshot.display.showSkillsInSlashAutocomplete,
-    })
+    const slashAction = resolveComposerSlashAction(draft, commandCatalogInput)
     if (slashAction) {
-      if (slashAction.type === "newSession") {
+      if (slashAction.kind === "builtin" && slashAction.commandID === "session.new") {
         setState((current) => ({
           ...current,
           draft: "",
@@ -883,17 +909,17 @@ export function App() {
         return
       }
 
-      if (slashAction.type === "openSkillPicker") {
+      if (slashAction.kind === "builtin" && slashAction.commandID === "skill.list") {
         openSkillPicker()
         return
       }
 
-      if (slashAction.type === "openAgentPicker") {
+      if (slashAction.kind === "builtin" && slashAction.commandID === "agent.list") {
         openAgentPicker()
         return
       }
 
-      if (slashAction.type === "openSessionPicker") {
+      if (slashAction.kind === "builtin" && slashAction.commandID === "session.list") {
         setState((current) => ({
           ...current,
           draft: "",
@@ -907,7 +933,7 @@ export function App() {
         return
       }
 
-      if (slashAction.type === "openThemePicker") {
+      if (slashAction.kind === "builtin" && slashAction.commandID === "theme.list") {
         setState((current) => ({
           ...current,
           draft: "",
@@ -919,6 +945,16 @@ export function App() {
         openThemePicker()
         return
       }
+      if (slashAction.kind === "builtin" && slashAction.commandID === "mcp.list") {
+        setStatusPickerMode("mcp")
+        setComposerState(emptyComposerParts(), "")
+        return
+      }
+      if (slashAction.kind === "builtin" && slashAction.commandID === "system.status") {
+        setStatusPickerMode("system")
+        setComposerState(emptyComposerParts(), "")
+        return
+      }
     }
 
     const mentions = mentionsFromParts(finalized)
@@ -926,8 +962,7 @@ export function App() {
     const images = state.imageAttachments.map((img) => ({ dataUrl: img.dataUrl, mime: img.mime, name: img.name }))
     const hostMessage = buildComposerHostMessage({
       draft,
-      commands: state.snapshot.commands,
-      showSkillsInSlashAutocomplete: state.snapshot.display.showSkillsInSlashAutocomplete,
+      commandCatalog: commandCatalogInput,
       parts,
       images,
       agent: selection.agent,
@@ -974,7 +1009,7 @@ export function App() {
       imageAttachments: [],
       error: "",
     }))
-  }, [blocked, composerMode, currentSelection, exitShellMode, openAgentPicker, openSkillPicker, openThemePicker, state.composerParts, state.imageAttachments, state.snapshot.commands])
+  }, [blocked, commandCatalogInput, composerMode, currentSelection, exitShellMode, openAgentPicker, openSkillPicker, openThemePicker, state.composerParts, state.imageAttachments, state.snapshot.commands])
 
   const composerPlaceholder = composerMode === "shell"
     ? t("composer.help.shell")
@@ -1150,6 +1185,7 @@ export function App() {
     setThemePickerOpen(false)
     setAgentPickerOpen(false)
     setModelPickerOpen(true)
+    setStatusPickerMode(null)
   }, [])
 
   function openThemePicker() {
@@ -1157,6 +1193,7 @@ export function App() {
     setModelPickerOpen(false)
     setAgentPickerOpen(false)
     setThemePickerOpen(true)
+    setStatusPickerMode(null)
   }
 
   function openAgentPicker() {
@@ -1167,6 +1204,7 @@ export function App() {
     setThemePickerOpen(false)
     setSkillPickerOpen(false)
     setAgentPickerOpen(true)
+    setStatusPickerMode(null)
     setComposerState(emptyComposerParts(), "")
   }
 
@@ -1424,9 +1462,12 @@ export function App() {
   }, [currentSelection.model, state.snapshot])
 
   const composerFooterBadges = React.useMemo(() => {
-    const mcp = overallProductMcpStatus(state.snapshot.mcpStates)
-    const lsp = overallProductLspStatus(state.snapshot.lspStates)
-    const formatter = overallProductFormatterStatus(state.snapshot.formatterStates)
+    const mcpSummary = deriveProductMcpSummary({ configured: state.snapshot.mcpStates.length > 0, states: state.snapshot.mcpStates })
+    const lspSummary = deriveProductLspSummary({ configured: state.snapshot.lspStates.length > 0, states: state.snapshot.lspStates })
+    const formatterSummary = deriveProductFormatterSummary({ configured: state.snapshot.formatterStates.length > 0, states: state.snapshot.formatterStates })
+    const mcp = { tone: statusToneForProductSummary(mcpSummary), items: state.snapshot.mcpStates.map(statusItemForProductMcp) }
+    const lsp = { tone: statusToneForProductSummary(lspSummary), items: state.snapshot.lspStates.map(statusItemForProductLsp) }
+    const formatter = { tone: statusToneForProductSummary(formatterSummary), items: state.snapshot.formatterStates.map(statusItemForProductFormatter) }
     return [
       { label: "MCP", tone: mcp.tone, items: mcp.items },
       { label: "LSP", tone: lsp.tone, items: lsp.items },
@@ -1569,6 +1610,37 @@ export function App() {
 
     const autocompleteAction = resolveComposerAutocompleteAction(item)
     if (autocompleteAction) {
+      if (autocompleteAction.type === "builtin") {
+        if (autocompleteAction.commandID === "session.new") {
+          clearComposerDraft()
+          postNewSession()
+        } else if (autocompleteAction.commandID === "session.list") {
+          openSessionPicker()
+        } else if (autocompleteAction.commandID === "agent.list") {
+          openAgentPicker()
+        } else if (autocompleteAction.commandID === "model.list" || autocompleteAction.commandID === "variant.list" || autocompleteAction.commandID === "provider.connect") {
+          openModelPicker()
+        } else if (autocompleteAction.commandID === "skill.list") {
+          openSkillPicker()
+        } else if (autocompleteAction.commandID === "theme.list") {
+          openThemePicker()
+        } else if (autocompleteAction.commandID === "mcp.list") {
+          setStatusPickerMode("mcp")
+        } else if (autocompleteAction.commandID === "system.status") {
+          setStatusPickerMode("system")
+        } else if (autocompleteAction.commandID === "session.compact") {
+          clearComposerDraft()
+          postProductAction({ type: "session.compact", model: currentSelection.model })
+        } else if (autocompleteAction.commandID === "session.undo") {
+          clearComposerDraft()
+          postProductAction({ type: "session.undo" })
+        } else if (autocompleteAction.commandID === "session.redo") {
+          clearComposerDraft()
+          postProductAction({ type: "session.redo" })
+        }
+        composerAutocomplete.close()
+        return
+      }
       if (autocompleteAction.type === "newSessionInPlace") {
         clearComposerDraft()
         postNewSession()
@@ -2315,6 +2387,15 @@ export function App() {
                           items={themePickerItems}
                           onClose={() => setThemePickerOpen(false)}
                           onSelect={selectThemePickerItem}
+                        />
+                      ) : null}
+                      {statusPickerMode ? (
+                        <StatusPicker
+                          mode={statusPickerMode}
+                          mcp={state.snapshot.mcpStates}
+                          lsp={state.snapshot.lspStates}
+                          formatter={state.snapshot.formatterStates}
+                          onClose={() => setStatusPickerMode(null)}
                         />
                       ) : null}
                     </div>

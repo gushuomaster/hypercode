@@ -1,32 +1,25 @@
-import type { CommandInfo } from "../../../core/sdk"
-
-type ComposerSlashActionOptions = {
-  showSkillsInSlashAutocomplete?: boolean
-}
+import { productCommandIDs, type ProductCommandID } from "@opencode-ai/product"
+import type { VsCodeCommandCatalogInput } from "../../../product/command-adapter"
+import { resolveVsCodeProductCommand } from "../../../product/command-adapter"
 
 export type ComposerSlashAction =
   | {
-      type: "newSession"
+      kind: "builtin"
+      commandID: ProductCommandID
+      arguments: string
     }
   | {
-      type: "openSessionPicker"
-    }
-  | {
-      type: "openSkillPicker"
-    }
-  | {
-      type: "openAgentPicker"
-    }
-  | {
-      type: "openThemePicker"
-    }
-  | {
-      type: "command"
-      command: string
+      kind: "dynamic"
+      name: string
+      source?: string
       arguments: string
     }
 
 export type ComposerAutocompleteAction =
+  | {
+      type: "builtin"
+      commandID: ProductCommandID
+    }
   | {
       type: "newSessionInPlace"
     }
@@ -66,6 +59,13 @@ export function resolveComposerAutocompleteAction(item: { id: string; kind: stri
     return undefined
   }
 
+  if (item.id.startsWith("product:")) {
+    const commandID = item.id.slice("product:".length)
+    if (productCommandIDs.includes(commandID as ProductCommandID)) {
+      return { type: "builtin", commandID: commandID as ProductCommandID }
+    }
+  }
+
   switch (item.id) {
     case "slash-new":
       return { type: "newSessionInPlace" }
@@ -83,9 +83,9 @@ export function resolveComposerAutocompleteAction(item: { id: string; kind: stri
       return { type: "openModelPicker" }
     case "slash-theme":
       return { type: "openThemePicker" }
-    case "slash-reset-agent":
+    case "host:reset-agent":
       return { type: "resetAgent" }
-    case "slash-refresh":
+    case "host:refresh":
       return { type: "refreshSession" }
     case "slash-sessions":
       return { type: "openSessionPicker" }
@@ -96,55 +96,19 @@ export function resolveComposerAutocompleteAction(item: { id: string; kind: stri
 
 export function resolveComposerSlashAction(
   draft: string,
-  commands: CommandInfo[],
-  options?: ComposerSlashActionOptions,
+  catalog: VsCodeCommandCatalogInput,
 ): ComposerSlashAction | undefined {
-  const slashMatch = draft.trim().match(/^\/(\S+)(?:\s+([\s\S]*))?$/)
-  if (!slashMatch) {
-    return undefined
-  }
-
-  const command = slashMatch[1] ?? ""
-  const args = (slashMatch[2] ?? "").trim()
-
-  if (command === "new" && !args) {
-    return { type: "newSession" }
-  }
-
-  if (command === "sessions" && !args) {
-    return { type: "openSessionPicker" }
-  }
-
-  if (command === "skills" && !args) {
-    return { type: "openSkillPicker" }
-  }
-
-  if (command === "agents" && !args) {
-    return { type: "openAgentPicker" }
-  }
-
-  if (command === "theme" && !args) {
-    return { type: "openThemePicker" }
-  }
-
-  const known = commands.find((item) => item.name === command)
-  if (!known) {
-    return undefined
-  }
-
-  return {
-    type: "command",
-    command,
-    arguments: args,
-  }
+  const resolved = resolveVsCodeProductCommand(draft, catalog)
+  if (!resolved) return undefined
+  if (resolved.kind === "builtin") return resolved
+  if (resolved.kind === "dynamic") return resolved
+  return undefined
 }
 
-export function isCompletedSlashCommand(draft: string, commands: CommandInfo[]) {
+export function isCompletedSlashCommand(draft: string, catalog: VsCodeCommandCatalogInput) {
   const slashMatch = draft.match(/^\/(\S+)\s+$/) ?? draft.trim().match(/^\/(\S+)$/)
   if (!slashMatch) {
     return false
   }
-
-  const command = slashMatch[1] ?? ""
-  return commands.some((item) => item.name === command)
+  return resolveVsCodeProductCommand(draft, catalog)?.kind === "dynamic"
 }

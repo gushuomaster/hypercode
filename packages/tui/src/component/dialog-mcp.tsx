@@ -10,6 +10,13 @@ import { translate as t } from "../context/language"
 import { deriveProductMcpAction, type ProductMcpState } from "@opencode-ai/product"
 import { toProductMcpStates } from "../product/mcp-adapter"
 
+export function mcpStatusLabel(state: ProductMcpState) {
+  if (state.availability === "connected") return "dialog.mcp.enabled" as const
+  if (state.availability === "failed" || state.availability === "needs_client_registration" || state.availability === "unsupported") return "dialog.mcp.failed" as const
+  if (state.availability === "needs_auth") return "dialog.mcp.auth" as const
+  return "dialog.mcp.disabled" as const
+}
+
 function Status(props: { state: ProductMcpState; loading: boolean }) {
   const { theme } = useTheme()
   if (props.loading) {
@@ -17,6 +24,12 @@ function Status(props: { state: ProductMcpState; loading: boolean }) {
   }
   if (props.state.availability === "connected") {
     return <span style={{ fg: theme.success, attributes: TextAttributes.BOLD }}>✓ {t("dialog.mcp.enabled")}</span>
+  }
+  if (props.state.availability === "failed" || props.state.availability === "needs_client_registration" || props.state.availability === "unsupported") {
+    return <span style={{ fg: theme.error }}>! {t("dialog.mcp.failed")}</span>
+  }
+  if (props.state.availability === "needs_auth") {
+    return <span style={{ fg: theme.warning }}>! {t("dialog.mcp.auth")}</span>
   }
   return <span style={{ fg: theme.textMuted }}>○ {t("dialog.mcp.disabled")}</span>
 }

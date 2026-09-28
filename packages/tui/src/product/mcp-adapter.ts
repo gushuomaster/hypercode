@@ -1,4 +1,4 @@
-import { deriveProductMcpStates, type ProductMcpState, type ProductMcpStateInput } from "@opencode-ai/product"
+import { deriveProductMcpStates, deriveProductMcpSummary, type ProductCapabilitySummary, type ProductMcpState, type ProductMcpStateInput } from "@opencode-ai/product"
 import type { McpStatus } from "@opencode-ai/sdk/v2"
 
 export function toProductMcpStates(statuses: Record<string, McpStatus>): ProductMcpState[] {
@@ -10,4 +10,8 @@ export function toProductMcpStates(statuses: Record<string, McpStatus>): Product
     },
     hostActions: ["connect", "disconnect", "reconnect"],
   })))
+}
+
+export function toProductMcpSummary(input: { configured: boolean; statuses: Record<string, McpStatus> }): ProductCapabilitySummary {
+  return deriveProductMcpSummary({ configured: input.configured, states: toProductMcpStates(input.statuses) })
 }

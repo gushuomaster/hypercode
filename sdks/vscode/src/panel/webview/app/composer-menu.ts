@@ -4,105 +4,62 @@ import type { ComposerAutocompleteItem } from "../hooks/useComposerAutocomplete"
 import { formatComposerFileContent, formatComposerFileDisplay, parseComposerFileQuery } from "../lib/composer-file-selection"
 import { localizedCommandDescription, t } from "../../../i18n"
 import { toVsCodeProductCommands } from "../../../product/command-adapter"
+import type { VsCodeCommandCatalogInput } from "../../../product/command-adapter"
 import { mergeProductSkillCatalog } from "@opencode-ai/product"
 import { toVsCodeTextKey } from "../lib/product-text-adapter"
 
 type ComposerMenuState = {
   composerAgentOverride?: AppState["composerAgentOverride"]
   composerMentionAgentOverride?: AppState["composerMentionAgentOverride"]
-  snapshot: Pick<AppState["snapshot"], "display" | "session" | "commands" | "agents" | "mcpResources" | "skillCatalog">
+  snapshot: Pick<AppState["snapshot"], "display" | "session" | "commands" | "agents" | "mcpResources" | "skillCatalog" | "providers" | "providerStates" | "messages" | "mcpStates" | "lspStates" | "formatterStates">
+}
+
+export function buildComposerCommandCatalogInput(snapshot: ComposerMenuState["snapshot"]): VsCodeCommandCatalogInput {
+  return {
+    supported: {},
+    hasSession: !!snapshot.session,
+    canUndo: snapshot.messages.some((message) => message.info.role === "user"),
+    canRedo: !!snapshot.session?.revert?.messageID,
+    hasVariants: snapshot.providers.some((provider) => Object.values(provider.models ?? {}).some((model) => Object.keys(model.variants ?? {}).length > 0)),
+    hasConnectableProvider: snapshot.providers.length > 0,
+    dynamic: snapshot.commands
+      .filter((command) => command.source !== "skill")
+      .map((command) => ({
+        id: `command:${command.name}`,
+        name: command.name,
+        title: command.name,
+        description: localizedCommandDescription(command),
+        source: command.source,
+      })),
+  }
 }
 
 export function buildComposerMenuItems(state: ComposerMenuState, files: ComposerPathResult[]): ComposerAutocompleteItem[] {
-  const slashItems: ComposerAutocompleteItem[] = [
-    {
-      id: "slash-agents",
-      label: "agents",
-      detail: t("slash.agents"),
-      keywords: ["agent", "primary", "subagent"],
-      trigger: "slash",
-      kind: "action",
-    },
-    {
-      id: "slash-new",
-      label: "new",
-      detail: t("slash.new"),
-      keywords: ["session", "fresh", "conversation"],
-      trigger: "slash",
-      kind: "action",
-    },
-    {
-      id: "slash-compact",
-      label: "compact",
-      detail: t("slash.compact"),
-      keywords: ["summarize", "summary", "compress", "session"],
-      trigger: "slash",
-      kind: "action",
-    },
-    {
-      id: "slash-model",
-      label: "model",
-      detail: t("slash.model"),
-      keywords: ["switch", "provider", "variant", "llm"],
-      trigger: "slash",
-      kind: "action",
-    },
-    {
-      id: "slash-theme",
-      label: "theme",
-      detail: t("slash.theme"),
-      keywords: ["switch", "appearance", "panel", "claude", "codex"],
-      trigger: "slash",
-      kind: "action",
-    },
-    {
-      id: "slash-sessions",
-      label: "sessions",
-      detail: t("slash.sessions"),
-      keywords: ["switch", "session", "related", "workspace", "tags"],
-      trigger: "slash",
-      kind: "action",
-    },
-    {
-      id: "slash-undo",
-      label: "undo",
-      detail: t("slash.undo"),
-      keywords: ["revert", "previous", "message", "back"],
-      trigger: "slash",
-      kind: "action",
-    },
-    {
-      id: "slash-refresh",
-      label: "refresh",
-      detail: t("slash.refresh"),
-      keywords: ["reload", "snapshot", "panel", "host"],
-      trigger: "slash",
-      kind: "action",
-    },
-    {
-      id: "slash-skills",
-      label: "skills",
-      detail: t("slash.skills"),
-      keywords: ["skill", "picker", "workflow"],
-      trigger: "slash",
-      kind: "action",
-    },
-  ]
+  const projection = toVsCodeProductCommands(buildComposerCommandCatalogInput(state.snapshot))
 
-  if (state.snapshot.session?.revert?.messageID) {
-    slashItems.push({
-      id: "slash-redo",
-      label: "redo",
-      detail: t("slash.redo"),
-      keywords: ["unrevert", "restore", "forward"],
-      trigger: "slash",
-      kind: "action",
-    })
-  }
+  const slashItems: ComposerAutocompleteItem[] = projection.catalog
+    .filter((entry) => entry.scope === "shared" && entry.availability === "available")
+    .map((entry) => ({
+      id: `product:${entry.id}`,
+      label: entry.name,
+      detail: entry.textKey ? t(toVsCodeTextKey(entry.textKey)) : entry.title,
+      keywords: [entry.name, ...entry.aliases, entry.category ?? ""].filter(Boolean),
+      trigger: "slash" as const,
+      kind: "action" as const,
+    }))
+
+  slashItems.push({
+    id: "host:refresh",
+    label: "refresh",
+    detail: t("slash.refresh"),
+    keywords: ["reload", "snapshot", "panel", "host"],
+    trigger: "slash",
+    kind: "action",
+  })
 
   if (state.composerAgentOverride || state.composerMentionAgentOverride) {
     slashItems.push({
-      id: "slash-reset-agent",
+      id: "host:reset-agent",
       label: "reset-agent",
       detail: t("slash.resetAgent"),
       keywords: ["agent", "default", "override"],
@@ -113,13 +70,7 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
 
   const commands = state.snapshot.commands.filter((cmd) => cmd.source !== "skill")
   const commandsByName = new Map(commands.map((command) => [command.name, command]))
-  const commandItems: ComposerAutocompleteItem[] = toVsCodeProductCommands(commands.map((cmd) => ({
-    id: `command:${cmd.name}`,
-    name: cmd.name,
-    title: cmd.name,
-    description: localizedCommandDescription(cmd),
-    source: cmd.source,
-  }))).flatMap((entry) => {
+  const commandItems: ComposerAutocompleteItem[] = projection.catalog.filter((entry) => entry.scope !== "shared").flatMap((entry) => {
     const cmd = commandsByName.get(entry.name)
     if (!cmd) return []
     return [{

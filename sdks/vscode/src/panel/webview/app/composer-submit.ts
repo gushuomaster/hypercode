@@ -1,5 +1,6 @@
 import type { ComposerPromptPart, WebviewMessage } from "../../../bridge/types"
-import type { CommandInfo, MessageInfo } from "../../../core/sdk"
+import type { MessageInfo } from "../../../core/sdk"
+import type { VsCodeCommandCatalogInput } from "../../../product/command-adapter"
 import { resolveComposerSlashAction } from "./composer-actions"
 
 type ComposerImageInput = NonNullable<Extract<WebviewMessage, { type: "submit" }>["images"]>
@@ -8,8 +9,8 @@ type ComposerHostMessage = Extract<WebviewMessage, { type: "submit" | "runSlashC
 
 type BuildComposerHostMessageInput = {
   draft: string
-  commands: CommandInfo[]
-  showSkillsInSlashAutocomplete?: boolean
+  commandCatalog?: VsCodeCommandCatalogInput
+  commands?: Array<{ name: string; description?: string; source?: string }>
   parts: ComposerPromptPart[]
   images: ComposerImageInput
   agent?: string
@@ -18,9 +19,21 @@ type BuildComposerHostMessageInput = {
 }
 
 export function buildComposerHostMessage(input: BuildComposerHostMessageInput): ComposerHostMessage {
-  const slashAction = resolveComposerSlashAction(input.draft, input.commands, {
-    showSkillsInSlashAutocomplete: input.showSkillsInSlashAutocomplete,
-  })
+  const commandCatalog = input.commandCatalog ?? {
+    supported: {},
+    hasSession: true,
+    canUndo: true,
+    canRedo: true,
+    hasVariants: true,
+    hasConnectableProvider: true,
+    dynamic: (input.commands ?? []).map((command) => ({
+      id: `command:${command.name}`,
+      name: command.name,
+      description: command.description,
+      source: command.source,
+    })),
+  } satisfies VsCodeCommandCatalogInput
+  const slashAction = resolveComposerSlashAction(input.draft, commandCatalog)
   const commandParts = input.images.map((attachment) => ({
     type: "file" as const,
     mime: attachment.mime,
@@ -28,10 +41,10 @@ export function buildComposerHostMessage(input: BuildComposerHostMessageInput): 
     filename: attachment.name,
   }))
 
-  if (slashAction?.type === "command") {
+  if (slashAction?.kind === "dynamic") {
     return {
       type: "runSlashCommand",
-      command: slashAction.command,
+      command: slashAction.name,
       arguments: slashAction.arguments,
       ...(commandParts.length > 0 ? { parts: commandParts } : {}),
       agent: input.agent,

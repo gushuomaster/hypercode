@@ -99,3 +99,17 @@ Therefore the closure claim is `NO_NEW_PRODUCT_ALIGNMENT_REGRESSION`; it is not 
 5. Delete compatibility only with zero production references and evidence that protocol, persistence, plugin and supported-runtime obligations have ended.
 6. Re-run the focused baseline, all three typechecks and VSCode package for every Product contract change.
 7. Do not compare full-suite pass counts without accounting for deleted/added tests; compare failing test identities and categories.
+
+## Cross-Host Product Contract Review
+
+The historical closure above predates the command and capability contract. Those portions are superseded by `docs/superpowers/specs/2026-09-28-cross-host-product-contract-design.md` and its implementation plan. A future upstream sync must review semantic IDs, not only changed filenames.
+
+For every affected behavior, record:
+
+- fact, meaning, support, and presentation ownership;
+- Product command/capability IDs and the raw facts supplied by both Hosts;
+- shared-fixture results for TUI and VS Code;
+- any explicit `host_only` or `unsupported` rationale;
+- the terminal result: `CROSS_HOST_CONTRACT_PRESERVED`, `CROSS_HOST_CONTRACT_ADAPTED`, or `NEEDS_HUMAN_DECISION`.
+
+Regex/source audits are supporting evidence only. Missing shared-fixture evidence or unexplained Host divergence blocks merge-back.

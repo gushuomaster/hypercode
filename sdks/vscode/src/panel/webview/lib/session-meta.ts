@@ -1,5 +1,5 @@
 import type { SessionBootstrap } from "../../../bridge/types"
-import { deriveComposerSelection, deriveProductContextUsage, type ProductFormatterState, type ProductLspState, type ProductMcpState } from "@opencode-ai/product"
+import { deriveComposerSelection, deriveProductContextUsage, type ProductCapabilitySummary, type ProductFormatterState, type ProductLspState, type ProductMcpState } from "@opencode-ai/product"
 import type { AgentInfo, MessageInfo, ProviderInfo, SessionMessage } from "../../../core/sdk"
 import { displaySessionTitle } from "../../../core/session-titles"
 import { t } from "../../../i18n"
@@ -16,6 +16,13 @@ export type StatusItem = {
   value: string
   action?: "connect" | "disconnect" | "reconnect" | "authenticate" | "removeAuth"
   actionLabel?: string
+}
+
+export function statusToneForProductSummary(summary: ProductCapabilitySummary): StatusTone {
+  if (summary.severity === "error") return "red"
+  if (summary.severity === "warning") return "orange"
+  if (summary.availability === "healthy") return "green"
+  return "gray"
 }
 
 export function sessionTitle(bootstrap: SessionBootstrap) {
@@ -146,6 +153,14 @@ export function formatUsd(value: number) {
   return `$${value.toFixed(4)}`
 }
 
+export function statusItemForProductFormatter(state: ProductFormatterState): StatusItem {
+  return {
+    name: state.name,
+    tone: state.severity === "warning" ? "orange" : "green",
+    value: state.enabled ? state.extensions.join(", ") || t("common.enabled") : t("common.disabled"),
+  }
+}
+
 export function overallProductFormatterStatus(states: ProductFormatterState[]) {
   const items = states.map((state): StatusItem => ({
     name: state.name,
@@ -186,6 +201,14 @@ export function statusItemForProductMcp(state: ProductMcpState): StatusItem {
     tone,
     value,
     ...(state.action ? { action: state.action, actionLabel: state.action } : {}),
+  }
+}
+
+export function statusItemForProductLsp(state: ProductLspState): StatusItem {
+  return {
+    name: state.name,
+    tone: state.severity === "error" ? "red" : "green",
+    value: state.diagnostic ? formatVsCodeProductError(state.diagnostic) : state.root,
   }
 }
 

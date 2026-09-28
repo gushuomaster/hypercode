@@ -36,7 +36,7 @@ describe("buildComposerMenuItems", () => {
       sessionId: "session-1",
     })
 
-    const item = buildComposerMenuItems(state, []).find((entry) => entry.id === "slash-agents")
+    const item = buildComposerMenuItems(state, []).find((entry) => entry.id === "product:agent.list")
 
     assert.ok(item)
     assert.equal(item.label, "agents")
@@ -86,7 +86,7 @@ describe("buildComposerMenuItems", () => {
     }]
 
     const items = buildComposerMenuItems(state, [])
-    const localSkillsAction = items.find((item) => item.id === "slash-skills")
+    const localSkillsAction = items.find((item) => item.id === "product:skill.list")
     const skillCommand = items.find((item) => item.trigger === "skill" && item.label === "using-superpowers")
 
     assert.ok(localSkillsAction)
@@ -165,7 +165,7 @@ describe("buildComposerMenuItems", () => {
     })
 
     const items = buildComposerMenuItems(state, [])
-    const themeItem = items.find((item) => item.trigger === "slash" && item.label === "theme")
+    const themeItem = items.find((item) => item.trigger === "slash" && item.label === "themes")
 
     assert.ok(themeItem)
     assert.equal(themeItem?.kind, "action")
