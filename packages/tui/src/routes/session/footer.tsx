@@ -6,15 +6,20 @@ import { useConnected } from "../../component/use-connected"
 import { createStore } from "solid-js/store"
 import { useRoute } from "../../context/route"
 import { translate as t } from "../../context/language"
+import { deriveProductLspSummary, deriveProductMcpSummary } from "@opencode-ai/product"
+import { toProductCapabilityConfigured } from "../../product/capability-adapter"
 
 export function Footer() {
   const { theme } = useTheme()
   const sync = useSync()
   const route = useRoute()
-  const mcp = createMemo(() => sync.data.mcp_product.filter((state) => state.availability === "connected").length)
-  const mcpError = createMemo(() => sync.data.mcp_product.some((state) => state.severity === "error"))
+  const configured = createMemo(() => toProductCapabilityConfigured(sync.data.config))
+  const mcpSummary = createMemo(() => deriveProductMcpSummary({ configured: configured().mcp, states: sync.data.mcp_product }))
+  const mcp = createMemo(() => mcpSummary().activeCount)
+  const mcpError = createMemo(() => mcpSummary().severity === "error")
   const lsp = createMemo(() => sync.data.lsp_product)
-  const lspError = createMemo(() => lsp().some((state) => state.severity === "error"))
+  const lspSummary = createMemo(() => deriveProductLspSummary({ configured: configured().lsp, states: lsp() }))
+  const lspError = createMemo(() => lspSummary().severity === "error")
   const permissions = createMemo(() => {
     if (route.data.type !== "session") return []
     return sync.data.permission[route.data.sessionID] ?? []
@@ -69,8 +74,8 @@ export function Footer() {
               </text>
             </Show>
             <text fg={theme.text}>
-              <span style={{ fg: lspError() ? theme.error : lsp().length > 0 ? theme.success : theme.textMuted }}>•</span>{" "}
-              {lsp().length} LSP
+              <span style={{ fg: lspError() ? theme.error : lspSummary().availability === "healthy" ? theme.success : theme.textMuted }}>•</span>{" "}
+              {lspSummary().activeCount} LSP
             </text>
             <Show when={mcp()}>
               <text fg={theme.text}>

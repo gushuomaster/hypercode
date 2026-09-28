@@ -94,7 +94,9 @@ export async function activate(ctx: vscode.ExtensionContext) {
     new SessionPanelSerializer(panels),
   )
 
-  commands(ctx, workspaceMgr, sessions, out, tabs, panels, capabilities, tags, tree)
+  commands(ctx, workspaceMgr, sessions, out, tabs, panels, capabilities, tags, tree, (ref) => {
+    focused.selectSession(ref)
+  })
 
   ctx.subscriptions.push(out, workspaceMgr, sessions, events, panels, focused, capabilities, statusBar, tree, todoView, diffView, subagentsView, sessionView, treeView, treeSelectionReg, treeActiveSyncReg, treeVisibilityReg, todoReg, diffReg, subagentsReg, sessionViewReg, serializer)
   out.appendLine("HyperCode activated")

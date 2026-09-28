@@ -198,7 +198,7 @@ export class SessionViewProvider implements vscode.WebviewViewProvider, vscode.D
     }
 
     if (message?.type === "newSession") {
-      void vscode.commands.executeCommand("hypercode.newSessionAndOpen", this.currentRef)
+      void vscode.commands.executeCommand("hypercode.newSession", this.currentRef)
       return
     }
 

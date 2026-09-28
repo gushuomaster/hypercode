@@ -1,5 +1,5 @@
 import * as vscode from "vscode"
-import type { WorkspaceRef } from "../bridge/types"
+import type { SessionPanelRef, WorkspaceRef } from "../bridge/types"
 import type { SessionInfo, SessionStatus } from "./sdk"
 import { openSettingsQuery } from "./settings"
 import { checkOpencodeAvailable, runtimeNotReadyMessage } from "./runtime-errors"
@@ -82,6 +82,7 @@ export function commands(
   capabilities: CapabilityStore,
   tags: SessionTagStore,
   tree: SidebarProvider,
+  selectSession: (ref: SessionPanelRef) => void,
 ) {
   let productSessionMutationState = createProductSessionMutationState()
   const onMutationState = (state: ProductSessionMutationState) => {
@@ -123,8 +124,12 @@ export function commands(
     vscode.commands.registerCommand("hypercode.saveImagePreview", async () => {
       await panels.runImagePreviewCommand("save")
     }),
-    vscode.commands.registerCommand("hypercode.newSession", async (item?: WorkspaceItem) => {
-      const rt = item?.runtime ?? firstRuntime(mgr)
+    vscode.commands.registerCommand("hypercode.newSession", async (item?: WorkspaceItem | WorkspaceRef) => {
+      const rt = item instanceof WorkspaceItem
+        ? item.runtime
+        : item
+          ? mgr.get(item.workspaceId)
+          : firstRuntime(mgr)
 
       if (!rt) {
         await vscode.window.showInformationMessage(t("common.openWorkspace"))
@@ -136,7 +141,12 @@ export function commands(
         return
       }
 
-      await vscode.commands.executeCommand("hypercode.newSessionAndOpen", workspaceRef(rt))
+      const target = await acquireNewSessionTarget(rt, sessions, out)
+      selectSession({
+        ...workspaceRef(rt),
+        sessionId: target.session.id,
+      })
+      void cleanupStaleNewSessions(rt, target.stale, sessions, tabs, out)
     }),
     vscode.commands.registerCommand("hypercode.newSessionAndOpen", async (workspace?: WorkspaceRef) => {
       const rt = workspace ? mgr.get(workspace.workspaceId) : firstRuntime(mgr)

@@ -4,8 +4,9 @@ import * as vscode from "vscode"
 
 import type { SessionPanelRef } from "../bridge/types"
 import type { SessionInfo, SessionStatus } from "../core/sdk"
-import { forkSessionMessage, manageSessionTags, openWorkspaceInBrowser, renameSession, resolveNewSessionOpenColumn, resolveReusableNewSession, resolveSeedSessionTarget } from "../core/commands"
+import { commands, forkSessionMessage, manageSessionTags, openWorkspaceInBrowser, renameSession, resolveNewSessionOpenColumn, resolveReusableNewSession, resolveSeedSessionTarget } from "../core/commands"
 import { setLocale } from "../i18n"
+import { WorkspaceItem } from "../sidebar/item"
 
 beforeEach(() => setLocale("en"))
 
@@ -145,6 +146,84 @@ describe("resolveReusableNewSession", () => {
 describe("resolveNewSessionOpenColumn", () => {
   test("opens newly created session panels beside the current editor column", () => {
     assert.equal(resolveNewSessionOpenColumn(), vscode.ViewColumn.Beside)
+  })
+})
+
+describe("new sidebar session", () => {
+  test("selects the session in the sidebar without opening an editor panel", async () => {
+    const created = session("session-sidebar", 30)
+    const runtime = {
+      workspaceId: "file:///workspace-a",
+      dir: "/workspace-a",
+      name: "workspace-a",
+      state: "ready" as const,
+      sessionsState: "ready" as const,
+      sessionStatuses: new Map<string, SessionStatus>(),
+      url: "http://127.0.0.1:3000",
+      port: 3000,
+      sdk: {
+        session: {
+          messages: async () => ({ data: [] }),
+        },
+      },
+    }
+    const registered = new Map<string, (...args: unknown[]) => unknown>()
+    const executed: string[] = []
+    const selected: SessionPanelRef[] = []
+    const registerCommand = vscode.commands.registerCommand
+    const executeCommand = vscode.commands.executeCommand
+    Object.defineProperty(vscode.commands, "registerCommand", {
+      configurable: true,
+      value: (name: string, handler: (...args: unknown[]) => unknown) => {
+        registered.set(name, handler)
+        return { dispose() {} }
+      },
+    })
+    Object.defineProperty(vscode.commands, "executeCommand", {
+      configurable: true,
+      value: async (name: string) => {
+        executed.push(name)
+      },
+    })
+
+    try {
+      Reflect.apply(commands, undefined, [
+        { subscriptions: [] },
+        {
+          list: () => [runtime],
+          get: () => runtime,
+        },
+        {
+          refresh: async () => undefined,
+          list: () => [created],
+        },
+        { appendLine() {} },
+        { closeSession() {} },
+        {},
+        {},
+        {},
+        {},
+        (ref: SessionPanelRef) => selected.push(ref),
+      ])
+
+      await registered.get("hypercode.newSession")?.(new WorkspaceItem(runtime))
+
+      assert.deepEqual(selected, [{
+        workspaceId: runtime.workspaceId,
+        dir: runtime.dir,
+        sessionId: created.id,
+      }])
+      assert.deepEqual(executed, [])
+    } finally {
+      Object.defineProperty(vscode.commands, "registerCommand", {
+        configurable: true,
+        value: registerCommand,
+      })
+      Object.defineProperty(vscode.commands, "executeCommand", {
+        configurable: true,
+        value: executeCommand,
+      })
+    }
   })
 })
 

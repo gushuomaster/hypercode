@@ -193,6 +193,12 @@ describe("sidebar session search", () => {
     assert.equal(items[0]?.label, "New session")
   })
 
+  test("selects a session without opening an editor panel", () => {
+    const item = new SessionItem(runtime(), session("s1", "Fix login"))
+
+    assert.equal(item.command, undefined)
+  })
+
   test("intersects workspace tag filters with text search results", () => {
     const items = buildWorkspaceChildren({
       runtime: {

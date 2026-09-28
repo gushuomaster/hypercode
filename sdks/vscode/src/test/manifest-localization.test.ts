@@ -31,4 +31,20 @@ describe("VS Code manifest localization", () => {
     expect(serialized).toContain("%hypercode.view.sessions%")
     expect(serialized).toContain("%hypercode.setting.showThinking%")
   })
+
+  test("offers editor opening as an explicit session action", async () => {
+    const manifest = await json("package.json") as {
+      contributes?: {
+        menus?: {
+          "view/item/context"?: Array<Record<string, string>>
+        }
+      }
+    }
+
+    expect(manifest.contributes?.menus?.["view/item/context"]).toContainEqual({
+      command: "hypercode.openSession",
+      when: "view == hypercode.sessions && (viewItem == session || viewItem == session-shared)",
+      group: "inline@0",
+    })
+  })
 })

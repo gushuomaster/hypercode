@@ -129,6 +129,9 @@ export type AgentInfo = {
 export type ConfigInfo = {
   model?: string
   default_agent?: string
+  mcp?: Record<string, { enabled?: boolean }>
+  lsp?: false | Record<string, { disabled?: boolean }>
+  formatter?: false | Record<string, { disabled?: boolean }>
 }
 
 export type McpStatus =

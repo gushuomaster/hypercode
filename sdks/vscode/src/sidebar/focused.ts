@@ -109,6 +109,7 @@ export class FocusedSessionStore implements vscode.Disposable {
 
   selectSession(ref?: SessionPanelRef) {
     this.ignoredNextActiveRef = undefined
+    this.activeRef = undefined
     this.selectedRef = ref
     void this.focus(this.resolveRef())
   }

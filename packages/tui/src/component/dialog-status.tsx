@@ -6,7 +6,9 @@ import { useSync } from "../context/sync"
 import { For, Show, createMemo } from "solid-js"
 import { translate as t } from "../context/language"
 import { formatTuiProductError } from "../product/text-adapter"
-import type { ProductMcpState } from "@opencode-ai/product"
+import { deriveProductFormatterSummary, deriveProductLspSummary, deriveProductMcpSummary, type ProductMcpState } from "@opencode-ai/product"
+import { toProductCapabilityConfigured } from "../product/capability-adapter"
+import { toTuiTextKey } from "../product/text-adapter"
 
 export type DialogStatusProps = {}
 
@@ -16,6 +18,10 @@ export function DialogStatus() {
   const dialog = useDialog()
 
   const enabledFormatters = createMemo(() => sync.data.formatter_product.filter((formatter) => formatter.enabled))
+  const configured = createMemo(() => toProductCapabilityConfigured(sync.data.config))
+  const mcpSummary = createMemo(() => deriveProductMcpSummary({ configured: configured().mcp, states: sync.data.mcp_product }))
+  const lspSummary = createMemo(() => deriveProductLspSummary({ configured: configured().lsp, states: sync.data.lsp_product }))
+  const formatterSummary = createMemo(() => deriveProductFormatterSummary({ configured: configured().formatter, states: sync.data.formatter_product }))
 
   const plugins = createMemo(() => {
     const list = sync.data.config.plugin ?? []
@@ -53,7 +59,7 @@ export function DialogStatus() {
           esc
         </text>
       </box>
-      <Show when={sync.data.mcp_product.length > 0} fallback={<text fg={theme.text}>{t("dialog.status.noMcp")}</text>}>
+      <Show when={sync.data.mcp_product.length > 0} fallback={<text fg={theme.text}>{t(toTuiTextKey(mcpSummary().textKey))}</text>}>
         <box>
           <text fg={theme.text}>{t("dialog.status.mcpCount", { count: sync.data.mcp_product.length })}</text>
           <For each={sync.data.mcp_product}>
@@ -82,7 +88,7 @@ export function DialogStatus() {
           </For>
         </box>
       </Show>
-      {sync.data.lsp_product.length > 0 && (
+      <Show when={sync.data.lsp_product.length > 0} fallback={<text fg={theme.text}>{t(toTuiTextKey(lspSummary().textKey))}</text>}>
         <box>
           <text fg={theme.text}>{t("dialog.status.lspCount", { count: sync.data.lsp_product.length })}</text>
           <For each={sync.data.lsp_product}>
@@ -109,8 +115,8 @@ export function DialogStatus() {
             )}
           </For>
         </box>
-      )}
-      <Show when={enabledFormatters().length > 0} fallback={<text fg={theme.text}>{t("dialog.status.noFormatters")}</text>}>
+      </Show>
+      <Show when={enabledFormatters().length > 0} fallback={<text fg={theme.text}>{t(toTuiTextKey(formatterSummary().textKey))}</text>}>
         <box>
           <text fg={theme.text}>{t("dialog.status.formatterCount", { count: enabledFormatters().length })}</text>
           <For each={enabledFormatters()}>

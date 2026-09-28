@@ -129,6 +129,26 @@ function createSdk(
 }
 
 describe("buildSessionSnapshot session list filtering", () => {
+  test("retains resolved capability configuration before runtime statuses load", async () => {
+    const current = session("configured")
+    const sdk = {
+      ...createSdk(current),
+      config: {
+        get: async () => ({ data: { mcp: { docs: { type: "remote", url: "https://example.test" } }, lsp: false, formatter: {} } }),
+      },
+    }
+    const build = await buildSessionSnapshot({
+      ref: { workspaceId: "ws-1", dir: "/workspace", sessionId: current.id },
+      mgr: { get: () => ({ workspaceId: "ws-1", dir: "/workspace", name: "workspace", state: "ready", sdk, sessions: new Map(), sessionStatuses: new Map() }) } as any,
+      log() {},
+      isSubmitting: () => false,
+    })
+
+    assert.deepEqual(build.snapshot.capabilityConfigured, { mcp: true, lsp: false, formatter: true })
+    assert.deepEqual(build.snapshot.mcpStates, [])
+    assert.deepEqual(build.snapshot.lspStates, [])
+  })
+
   test("localizes missing workspace runtime fallback", async () => {
     setLocale("zh")
     const build = await buildSessionSnapshot({

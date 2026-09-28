@@ -4,7 +4,7 @@ import { deriveComposerSelection, projectProductAgents, projectProductProviders 
 import { syncTrackedSession } from "../../core/session-list"
 import { loadSkillCatalog } from "../../core/skills"
 import { getDisplaySettings } from "../../core/settings"
-import type { AgentInfo, Client, CommandInfo, FileDiff, FormatterStatus, LspStatus, McpResource, McpStatus, ProviderAuthMethod, ProviderInfo, SessionInfo, SessionMessage } from "../../core/sdk"
+import type { AgentInfo, Client, CommandInfo, ConfigInfo, FileDiff, FormatterStatus, LspStatus, McpResource, McpStatus, ProviderAuthMethod, ProviderInfo, SessionInfo, SessionMessage } from "../../core/sdk"
 import { WorkspaceManager } from "../../core/workspace"
 import { t } from "../../i18n"
 import { summarizeSessionSnapshot } from "../shared/session-summary"
@@ -161,6 +161,11 @@ export async function buildSessionSnapshot({ ref, mgr, log, isSubmitting, messag
       providerAuth: {},
       providerDefault: defaults,
       configuredModel,
+      capabilityConfigured: {
+        mcp: Object.values(configRes.data?.mcp ?? {}).some((entry) => entry.enabled !== false),
+        lsp: configRes.data?.lsp !== false,
+        formatter: configRes.data?.formatter !== false,
+      },
       mcp: {},
       mcpStates: [],
       mcpResources: {},
@@ -483,10 +488,10 @@ async function configInfo(sdk: Client, directory: string) {
   const config = readSdkMember(sdk, "config")
   const get = readSdkMethod(config, "get")
   if (!get) {
-    return { data: undefined as { model?: string } | undefined }
+    return { data: undefined as ConfigInfo | undefined }
   }
 
-  return get({ directory }) as Promise<{ data?: { model?: string } }>
+  return get({ directory }) as Promise<{ data?: ConfigInfo }>
 }
 
 async function configProviders(sdk: Client, directory: string) {

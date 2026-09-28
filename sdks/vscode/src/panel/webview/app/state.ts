@@ -100,6 +100,7 @@ export type AppState = {
       modelID: string
     }
     mcp: Record<string, McpStatus>
+    capabilityConfigured?: { mcp: boolean; lsp: boolean; formatter: boolean }
     mcpStates: ProductMcpState[]
     mcpResources: Record<string, McpResource>
     lsp: LspStatus[]
@@ -405,6 +406,7 @@ export function normalizeSnapshotPayload(
     providerDefault: payload.providerDefault,
     configuredModel: payload.configuredModel,
     mcp: recordValue(payload.mcp) as Record<string, McpStatus>,
+    capabilityConfigured: payload.capabilityConfigured,
     mcpStates: Array.isArray(payload.mcpStates) ? payload.mcpStates : [],
     mcpResources: recordValue(payload.mcpResources) as Record<string, McpResource>,
     lsp: Array.isArray(payload.lsp) ? payload.lsp : [],

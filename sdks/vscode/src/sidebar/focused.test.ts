@@ -372,6 +372,25 @@ describe("focused session store", () => {
     assert.deepEqual(store.snapshot().subagents.map((item) => item.session.id), ["child-a"])
   })
 
+  test("explicit sidebar selection overrides the active editor panel session", async () => {
+    const active = {
+      workspaceId: "ws-1",
+      dir: "/workspace",
+      sessionId: "session-editor",
+    } satisfies SessionPanelRef
+    const selected = {
+      workspaceId: "ws-1",
+      dir: "/workspace",
+      sessionId: "session-sidebar",
+    } satisfies SessionPanelRef
+    const harness = createFocusedStoreHarness(active)
+
+    harness.store.selectSession(selected)
+    await settle()
+
+    assert.equal(harness.store.snapshot().ref?.sessionId, selected.sessionId)
+  })
+
   test("updates subagent status from session.status events", async () => {
     const harness = createFocusedStoreHarness()
 
@@ -493,7 +512,7 @@ function sessionInfo(id: string, parentID?: string, updated = 1) {
   }
 }
 
-function createFocusedStoreHarness() {
+function createFocusedStoreHarness(activeRef?: SessionPanelRef) {
   const ref: SessionPanelRef = {
     workspaceId: "ws-1",
     dir: "/workspace",
@@ -538,7 +557,7 @@ function createFocusedStoreHarness() {
       onDidChange: () => ({ dispose() {} }),
     } as any,
     {
-      activeSession: () => undefined,
+      activeSession: () => activeRef,
       onDidChangeActiveSession: () => ({ dispose() {} }),
     } as any,
     {

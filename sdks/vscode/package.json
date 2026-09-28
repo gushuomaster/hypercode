@@ -397,6 +397,11 @@
           "group": "inline@7"
         },
         {
+          "command": "hypercode.openSession",
+          "when": "view == hypercode.sessions && (viewItem == session || viewItem == session-shared)",
+          "group": "inline@0"
+        },
+        {
           "command": "hypercode.renameSession",
           "when": "view == hypercode.sessions && (viewItem == session || viewItem == session-shared)",
           "group": "inline@1"

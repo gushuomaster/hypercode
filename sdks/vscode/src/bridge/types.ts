@@ -40,6 +40,7 @@ export type SessionMessageHistory = {
 
 export type SessionSnapshot = SessionBootstrap & {
   product?: ProductSnapshot
+  capabilityConfigured?: { mcp: boolean; lsp: boolean; formatter: boolean }
   mcpStates?: ProductMcpState[]
   lspStates?: ProductLspState[]
   formatterStates?: ProductFormatterState[]

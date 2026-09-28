@@ -47,11 +47,6 @@ export class SessionItem extends vscode.TreeItem {
     this.iconPath = status?.type === "busy"
       ? new vscode.ThemeIcon("loading~spin")
       : new vscode.ThemeIcon("comment-discussion")
-    this.command = {
-      command: "hypercode.openSession",
-      title: t("sidebar.command.openSession"),
-      arguments: [this],
-    }
   }
 }
 

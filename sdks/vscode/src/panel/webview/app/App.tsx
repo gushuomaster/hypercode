@@ -1462,18 +1462,18 @@ export function App() {
   }, [currentSelection.model, state.snapshot])
 
   const composerFooterBadges = React.useMemo(() => {
-    const mcpSummary = deriveProductMcpSummary({ configured: state.snapshot.mcpStates.length > 0, states: state.snapshot.mcpStates })
-    const lspSummary = deriveProductLspSummary({ configured: state.snapshot.lspStates.length > 0, states: state.snapshot.lspStates })
-    const formatterSummary = deriveProductFormatterSummary({ configured: state.snapshot.formatterStates.length > 0, states: state.snapshot.formatterStates })
+    const mcpSummary = deriveProductMcpSummary({ configured: state.snapshot.capabilityConfigured?.mcp ?? state.snapshot.mcpStates.length > 0, states: state.snapshot.mcpStates })
+    const lspSummary = deriveProductLspSummary({ configured: state.snapshot.capabilityConfigured?.lsp ?? state.snapshot.lspStates.length > 0, states: state.snapshot.lspStates })
+    const formatterSummary = deriveProductFormatterSummary({ configured: state.snapshot.capabilityConfigured?.formatter ?? state.snapshot.formatterStates.length > 0, states: state.snapshot.formatterStates })
     const mcp = { tone: statusToneForProductSummary(mcpSummary), items: state.snapshot.mcpStates.map(statusItemForProductMcp) }
     const lsp = { tone: statusToneForProductSummary(lspSummary), items: state.snapshot.lspStates.map(statusItemForProductLsp) }
     const formatter = { tone: statusToneForProductSummary(formatterSummary), items: state.snapshot.formatterStates.map(statusItemForProductFormatter) }
     return [
-      { label: "MCP", tone: mcp.tone, items: mcp.items },
-      { label: "LSP", tone: lsp.tone, items: lsp.items },
-      { label: "Formatter", tone: formatter.tone, items: formatter.items },
+      { label: "MCP", tone: mcp.tone, items: mcp.items, summary: mcpSummary },
+      { label: "LSP", tone: lsp.tone, items: lsp.items, summary: lspSummary },
+      { label: "Formatter", tone: formatter.tone, items: formatter.items, summary: formatterSummary },
     ]
-  }, [state.snapshot.formatterStates, state.snapshot.lspStates, state.snapshot.mcpStates])
+  }, [state.snapshot.capabilityConfigured, state.snapshot.formatterStates, state.snapshot.lspStates, state.snapshot.mcpStates])
 
   const cycleComposerAgent = React.useCallback(() => {
     const next = cycleProductAgentName(toProductAgents(state.snapshot.agents), currentSelection.agent)
@@ -2395,6 +2395,7 @@ export function App() {
                           mcp={state.snapshot.mcpStates}
                           lsp={state.snapshot.lspStates}
                           formatter={state.snapshot.formatterStates}
+                          summaries={{ mcp: composerFooterBadges[0].summary, lsp: composerFooterBadges[1].summary, formatter: composerFooterBadges[2].summary }}
                           onClose={() => setStatusPickerMode(null)}
                         />
                       ) : null}
