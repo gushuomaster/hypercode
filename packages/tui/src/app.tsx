@@ -581,8 +581,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         title: t("command.session.switch"),
         category: t("command.category.session"),
         suggested: sync.data.session.length > 0,
-        slashName: "sessions",
-        slashAliases: ["resume", "continue"],
         run: () => {
           dialog.replace(() => <DialogSessionList />)
         },
@@ -592,8 +590,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         title: t("command.session.new"),
         suggested: route.data.type === "session",
         category: t("command.category.session"),
-        slashName: "new",
-        slashAliases: ["clear"],
         run: () => {
           route.navigate({
             type: "home",
@@ -640,9 +636,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         title: t("command.agent.switchModel"),
         suggested: true,
         category: t("command.category.agent"),
-        slashName: "models",
-        // Bias /mo toward /models over /move without changing global fuzzy scoring.
-        slashAliases: ["mo"],
         run: () => {
           dialog.replace(() => <DialogModel />)
         },
@@ -687,7 +680,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         name: "agent.list",
         title: t("command.agent.switch"),
         category: t("command.category.agent"),
-        slashName: "agents",
         run: () => {
           dialog.replace(() => <DialogAgent prompt={() => promptRef.current} />)
         },
@@ -696,7 +688,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         name: "mcp.list",
         title: t("command.agent.toggleMcps"),
         category: t("command.category.agent"),
-        slashName: "mcps",
         run: () => {
           dialog.replace(() => <DialogMcp />)
         },
@@ -723,7 +714,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         title: t("command.agent.switchVariant"),
         category: t("command.category.agent"),
         hidden: local.model.variant.list().length === 0,
-        slashName: "variants",
         run: () => {
           if (local.model.variant.list().length === 0) {
             return toast.show({
@@ -748,7 +738,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         name: "provider.connect",
         title: t("command.provider.connect"),
         suggested: !connected(),
-        slashName: "connect",
         run: () => {
           dialog.replace(() => <DialogProviderList />)
         },
@@ -772,7 +761,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
       {
         name: "opencode.status",
         title: t("command.system.status"),
-        slashName: "status",
         run: () => {
           dialog.replace(() => <DialogStatus />)
         },
@@ -790,7 +778,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
       {
         name: "theme.switch",
         title: t("command.system.theme"),
-        slashName: "themes",
         run: () => {
           dialog.replace(() => <DialogThemeList />)
         },
@@ -818,7 +805,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
       {
         name: "help.show",
         title: t("command.system.help"),
-        slashName: "help",
         run: () => {
           dialog.replace(() => <DialogHelp />)
         },

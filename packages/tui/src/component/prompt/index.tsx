@@ -53,9 +53,18 @@ import { createFadeIn } from "../../util/signal"
 import { DialogSkill } from "../dialog-skill"
 import { DialogWorkspaceUnavailable } from "../dialog-workspace-unavailable"
 import { useArgs } from "../../context/args"
-import { OPENCODE_BASE_MODE, useBindings, useCommandShortcut, useLeaderActive, useOpencodeKeymap } from "../../keymap"
+import {
+  OPENCODE_BASE_MODE,
+  useBindings,
+  useCommandShortcut,
+  useCommandSlashes,
+  useLeaderActive,
+  useOpencodeKeymap,
+} from "../../keymap"
 import { useTuiConfig } from "../../config"
 import { usePromptWorkspace } from "./workspace"
+import { resolveTuiProductCommand } from "../../product/command-adapter"
+import { toTuiTextKey } from "../../product/text-adapter"
 import { usePromptMove } from "./move"
 import { readLocalAttachment } from "./local-attachment"
 import { prepareAgentMention } from "../../prompt/agent"
@@ -169,6 +178,7 @@ export function Prompt(props: PromptProps) {
   const history = usePromptHistory()
   const stash = usePromptStash()
   const keymap = useOpencodeKeymap()
+  const slashCommands = useCommandSlashes()
   const agentShortcut = useCommandShortcut("agent.cycle")
   const paletteShortcut = useCommandShortcut("command.palette.show")
   const renderer = useRenderer()
@@ -522,7 +532,6 @@ export function Prompt(props: PromptProps) {
         title: t("command.prompt.skills"),
         name: "prompt.skills",
         category: t("command.category.prompt"),
-        slashName: "skills",
         run: () => {
           dialog.replace(() => (
             <DialogSkill
@@ -1009,6 +1018,36 @@ export function Prompt(props: PromptProps) {
       void exit()
       return true
     }
+    const commandResolution = resolveTuiProductCommand({
+      value: store.prompt.input,
+      context: slashCommands().context,
+      dynamic: sync.data.command
+        .filter((command) => command.source !== "skill")
+        .map((command) => ({
+          id: `dynamic:${command.source}:${command.name}`,
+          name: command.name,
+          title: command.name,
+          description: command.description,
+          source: command.source,
+        })),
+    })
+    if (commandResolution?.kind === "builtin") {
+      keymap.dispatchCommand(commandResolution.target)
+      input.extmarks.clear()
+      setStore("prompt", { input: "", parts: [] })
+      setStore("extmarkToPartIndex", new Map())
+      input.clear()
+      return true
+    }
+    if (commandResolution?.kind === "unavailable") {
+      toast.show({
+        message: commandResolution.reasonKey
+          ? t(toTuiTextKey(commandResolution.reasonKey))
+          : t("product.command.unsupported"),
+        variant: "warning",
+      })
+      return true
+    }
     const selectedModel = local.model.current()
     if (!selectedModel) {
       void promptModelWarning()
@@ -1112,10 +1151,7 @@ export function Prompt(props: PromptProps) {
         command: inputText,
       })
       setStore("mode", "normal")
-    } else if (
-      inputText.startsWith("/") &&
-      sync.data.command.some((x) => x.name === inputText.split("\n")[0].split(" ")[0].slice(1))
-    ) {
+    } else if (commandResolution?.kind === "dynamic") {
       move.startSubmit()
       // Parse command from first line, preserve multi-line content in arguments
       const firstLineEnd = inputText.indexOf("\n")
@@ -1126,7 +1162,7 @@ export function Prompt(props: PromptProps) {
 
       void sdk.client.session.command({
         sessionID,
-        command: command.slice(1),
+        command: commandResolution.name,
         arguments: args,
         agent: agent.name,
         model: `${selectedModel.providerID}/${selectedModel.modelID}`,

@@ -595,10 +595,6 @@ export function Session() {
       title: t("session.compact"),
       value: "session.compact",
       category: t("command.category.session"),
-      slash: {
-        name: "compact",
-        aliases: ["summarize"],
-      },
       run: () => {
         const selectedModel = local.model.current()
         if (!selectedModel) {
@@ -648,9 +644,6 @@ export function Session() {
       title: t("session.undo"),
       value: "session.undo",
       category: t("command.category.session"),
-      slash: {
-        name: "undo",
-      },
       run: async () => {
         const status = sync.data.session_status?.[route.sessionID]
         if (status?.type !== "idle") {
@@ -690,9 +683,6 @@ export function Session() {
       value: "session.redo",
       category: t("command.category.session"),
       enabled: !!session()?.revert?.messageID,
-      slash: {
-        name: "redo",
-      },
       run: () => {
         dialog.clear()
         const messageID = session()?.revert?.messageID

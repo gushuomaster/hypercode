@@ -10,7 +10,7 @@ import {
 } from "../keymap"
 import { useTuiConfig } from "../config"
 import { useLanguage } from "../context/language"
-import { toTuiProductCommands } from "../product/command-adapter"
+import { toTuiPaletteCommands } from "../product/command-adapter"
 
 type PaletteCommandEntry = ReturnType<OpenTuiKeymap["getCommandEntries"]>[number]
 
@@ -62,14 +62,11 @@ export function CommandPaletteDialog() {
       },
     }))
     const byName = new Map(candidates.map((candidate) => [candidate.value, candidate]))
-    return toTuiProductCommands(candidates.map((candidate) => ({
-      id: candidate.value,
-      name: candidate.value,
-      title: candidate.title,
-      description: candidate.description,
-      category: candidate.category,
-    }))).flatMap((entry) => {
-      const candidate = byName.get(entry.name)
+    return toTuiPaletteCommands({
+      registered: candidates.map((candidate) => candidate.value),
+      reachable: candidates.map((candidate) => candidate.value),
+    }).flatMap((entry) => {
+      const candidate = byName.get(entry.target)
       return candidate ? [candidate] : []
     })
   })

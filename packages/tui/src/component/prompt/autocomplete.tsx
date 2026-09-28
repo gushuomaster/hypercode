@@ -24,6 +24,7 @@ import { useBindings, useCommandSlashes, useOpencodeModeStack } from "../../keym
 import { displayCharAt, mentionTriggerIndex } from "../../prompt/display"
 import type { FileSystemEntry } from "@opencode-ai/sdk/v2"
 import { localizedDescription } from "../../i18n"
+import { toTuiDynamicProductCommands } from "../../product/command-adapter"
 
 function removeLineRange(input: string) {
   const hashIndex = input.lastIndexOf("#")
@@ -113,7 +114,7 @@ export function Autocomplete(props: {
   const sync = useSync()
   const data = useData()
   const project = useProject()
-  const slashes = useCommandSlashes()
+  const slashCommands = useCommandSlashes()
   const modeStack = useOpencodeModeStack()
   const { theme } = useTheme()
   const language = useLanguage()
@@ -457,10 +458,24 @@ export function Autocomplete(props: {
   )
 
   const commands = createMemo((): AutocompleteOption[] => {
-    const results: AutocompleteOption[] = [...slashes()]
+    const results: AutocompleteOption[] = [...slashCommands().entries]
+    const serverCommands = new Map(sync.data.command.map((command) => [command.name, command]))
+    const dynamic = toTuiDynamicProductCommands(
+      slashCommands().context,
+      sync.data.command
+        .filter((command) => command.source !== "skill")
+        .map((command) => ({
+          id: `dynamic:${command.source}:${command.name}`,
+          name: command.name,
+          title: command.name,
+          description: command.description,
+          source: command.source,
+        })),
+    )
 
-    for (const serverCommand of sync.data.command) {
-      if (serverCommand.source === "skill") continue
+    for (const entry of dynamic) {
+      const serverCommand = serverCommands.get(entry.name)
+      if (!serverCommand) continue
       const locale = language.locale()
       results.push({
         ...commandAutocompleteCopy(serverCommand, locale),

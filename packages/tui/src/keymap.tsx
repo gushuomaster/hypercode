@@ -16,6 +16,7 @@ import { KeymapProvider, useKeymap, useKeymapSelector, useBindings } from "@open
 import { createMemo, type Accessor } from "solid-js"
 import { useTuiConfig } from "./config"
 import { TuiKeybind } from "./config/keybind"
+import { toTuiSlashCommands, type TuiSlashCommandEntry } from "./product/command-adapter"
 
 export const LEADER_TOKEN = "leader"
 export const OPENCODE_BASE_MODE = "base"
@@ -30,10 +31,7 @@ export { useBindings, useKeymapSelector }
 
 export type OpenTuiKeymap = ReturnType<typeof useKeymap>
 type OpencodeModeStack = ReturnType<typeof createOpencodeModeStack>
-type CommandSlashEntry = {
-  display: string
-  description?: string
-  aliases?: string[]
+type CommandSlashEntry = TuiSlashCommandEntry & {
   onSelect: () => void
 }
 type Command = ReturnType<OpenTuiKeymap["getCommands"]>[number]
@@ -257,34 +255,46 @@ export function useCommandShortcut(command: string): Accessor<string> {
   )
 }
 
-export function useCommandSlashes(): Accessor<readonly CommandSlashEntry[]> {
+export function useCommandSlashes(): Accessor<{
+  entries: readonly CommandSlashEntry[]
+  context: ReturnType<typeof toTuiSlashCommands>["context"]
+}> {
   const keymap = useOpencodeKeymap()
-  const entries = useKeymapSelector((keymap: OpenTuiKeymap) =>
-    keymap.getCommandEntries({
-      visibility: "reachable",
+  const facts = useKeymapSelector((keymap: OpenTuiKeymap) => {
+    const query = {
       namespace: "palette",
       filter: isVisiblePaletteCommand,
-    }),
-  )
-
-  return createMemo<CommandSlashEntry[]>(() =>
-    entries().flatMap((entry) => {
-      const slashName = entry.command.slashName
-      if (typeof slashName !== "string" || !slashName) return []
-      const slashAliases = entry.command.slashAliases
-      return {
-        display: `/${slashName}`,
-        description:
-          typeof entry.command.desc === "string"
-            ? entry.command.desc
-            : typeof entry.command.title === "string"
-              ? entry.command.title
-              : undefined,
-        aliases: Array.isArray(slashAliases)
-          ? slashAliases.filter((alias): alias is string => typeof alias === "string").map((alias) => `/${alias}`)
+    }
+    const registered = keymap.getCommandEntries({
+      ...query,
+      visibility: "registered",
+    })
+    const reachable = keymap.getCommandEntries({
+      ...query,
+      visibility: "reachable",
+    })
+    return {
+      registered: registered.map((entry) => ({
+        name: entry.command.name,
+        title: typeof entry.command.title === "string" ? entry.command.title : undefined,
+        description: typeof entry.command.desc === "string" ? entry.command.desc : undefined,
+        slashName: typeof entry.command.slashName === "string" ? entry.command.slashName : undefined,
+        slashAliases: Array.isArray(entry.command.slashAliases)
+          ? entry.command.slashAliases.filter((alias): alias is string => typeof alias === "string")
           : undefined,
-        onSelect: () => keymap.dispatchCommand(entry.command.name),
-      }
-    }),
-  )
+      })),
+      reachable: reachable.map((entry) => entry.command.name),
+    }
+  })
+
+  return createMemo(() => {
+    const projection = toTuiSlashCommands(facts())
+    return {
+      context: projection.context,
+      entries: projection.entries.map((entry) => ({
+        ...entry,
+        onSelect: () => keymap.dispatchCommand(entry.target),
+      })),
+    }
+  })
 }
