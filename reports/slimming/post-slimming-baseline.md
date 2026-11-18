@@ -12,9 +12,9 @@
 |---|---:|---:|---:|---:|
 | 2026-09-16 历史基线 | 141 | 92 | 48 | 792 |
 | `359960c7d`（Product 跨宿主对齐） | 218 | 149 | 62 | 1538 |
-| 本轮暂存快照（openspec/trellis 迁移，提交前） | 220 | 149 | 62 | 1538 |
+| `467eb4d45`（openspec/trellis 迁移与收尾，**正式基线**） | 221 | 149 | 62 | 1538 |
 
-增量来源：Product 跨宿主对齐（TUI/VSCode 改为消费 `packages/product` 的命令目录与状态契约）、TUI 中文本地化、授权门禁接入点，属于 `KEEP` 类的有意成本。本轮迁移只多改了 2 个 upstream 仓库配置文件。收尾冒烟中又增加 1 个：`packages/opencode/test/preload.ts` 固定 `LANG=en_US.UTF-8`（系统语言回退上线后，让 upstream 英文断言在中文主机上保持稳定），预计 Modified upstream files 为 221。**提交后用 `-CurrentRef HEAD` 重新实测，把结果填回本表作为正式基线。**
+增量来源：Product 跨宿主对齐（TUI/VSCode 改为消费 `packages/product` 的命令目录与状态契约）、TUI 中文本地化、授权门禁接入点，属于 `KEEP` 类的有意成本。本轮迁移只多改了 2 个 upstream 仓库配置文件。收尾冒烟中又增加 1 个：`packages/opencode/test/preload.ts` 固定 `LANG=en_US.UTF-8`（系统语言回退上线后，让 upstream 英文断言在中文主机上保持稳定）。2026-11-18 提交后用 `-CurrentRef HEAD` 实测，结果见上表最后一行，即下一次同步对比的正式基线。
 
 ### 已修复的债务
 

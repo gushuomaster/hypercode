@@ -2,8 +2,10 @@
 
 ## 1. 仓库状态
 
-- [ ] 1.1 提交当前 openspec/trellis 迁移改动，确认 `git status` 干净（留到全部 change 完成后统一提交）
-- [ ] 1.2 经维护者确认后推送 `dev` 上未推送的 6 个提交，`git rev-list origin/dev..dev` 为空（待维护者确认）
+- [x] 1.1 提交当前 openspec/trellis 迁移改动，确认 `git status` 干净（留到全部 change 完成后统一提交）
+  - 2026-11-18 拆为两个提交：`a99a992b2`（Trellis/OpenSpec 迁移）、`467eb4d45`（产品代码与 change 收尾）；未跟踪的空任务目录 `.trellis/tasks/11-12-command-dispatch/` 不纳入
+- [x] 1.2 经维护者确认后推送 `dev` 上未推送的 6 个提交，`git rev-list origin/dev..dev` 为空（待维护者确认）
+  - 2026-11-18 维护者确认"提交并推送"；`dev` 快进到本 change 的提交后推送到 `origin`
 
 ## 2. 新基线
 
@@ -12,10 +14,10 @@
   - 本轮暂存快照（`git commit-tree` 生成的临时提交，未移动分支）实测 `220 / 149 / 62 / 1538`：只多 2 个 upstream 仓库配置文件；授权门禁、`cli/main.ts`、`cli/text.ts` 为 HyperCode 新增文件，不计入。提交后需用 `-CurrentRef HEAD` 再测一次
 - [x] 2.2 在三个 package 目录运行全量测试与 typecheck，记录失败身份（按类别），形成新的已知债务基线
   - 2026-11-18 扩大为五个包（product、core、tui、opencode、vscode）：typecheck 全部 PASS；失败逐条在 HEAD 与 pure upstream worktree 复跑归因，新回归 0（本轮引入的 3 个 VSCode `textKey` 断言失败已修复），已知失败签名写入基线文档"验证基线"
-- [ ] 2.3 更新基线文档：新 fork tax、已修复项（F-013、windows-validation-build 类型）、仍存在的债务（`run-real-doubao.ts`、`rebrand:check` 签名、Windows symlink EPERM 等），并在同步规范中引用新基线
+- [x] 2.3 更新基线文档：新 fork tax、已修复项（F-013、windows-validation-build 类型）、仍存在的债务（`run-real-doubao.ts`、`rebrand:check` 签名、Windows symlink EPERM 等），并在同步规范中引用新基线
   - 已完成：`reports/slimming/post-slimming-baseline.md` 顶部新增"2026-11-13 基线刷新"（fork tax、已修复与仍存在的债务、A/B 对照恢复）；`docs/规范/上游同步工作流总纲.md`"验证结论归因"引用该基线
   - 2.2 结果已填入"验证基线"小节
-  - 待办：提交后的正式 fork tax 填回表格
+  - 提交后 `-CurrentRef HEAD` 实测 `221 / 149 / 62 / 1538`（比暂存快照多 1：`test/preload.ts`），已作为正式基线填回表格
 
 ## 3. 对照验证能力
 
