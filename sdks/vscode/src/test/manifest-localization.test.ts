@@ -24,7 +24,8 @@ describe("VS Code manifest localization", () => {
       contributes: manifest.contributes,
     })
 
-    expect(manifest.version).toBe("1.18.30")
+    // The extension ships with the CLI it drives, so their versions must move together on every upstream sync.
+    expect(manifest.version).toBe((await Bun.file(path.join(import.meta.dir, "../../../../packages/opencode/package.json")).json()).version)
     expect(serialized).not.toMatch(/[\u3400-\u9fff]/)
     expect(serialized).not.toContain("HyperCode: Refresh")
     expect(serialized).toContain("%hypercode.command.refresh%")

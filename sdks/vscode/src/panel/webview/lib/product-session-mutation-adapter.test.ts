@@ -82,28 +82,28 @@ describe("VSCode session mutation adapter", () => {
 
   test("reduces confirmed and failed Host mutation results through Product", () => {
     const state = hydrateProductMutableSessions(createProductSessionMutationState(), [mutableSession])
-    const pending = toVsCodeSessionMutationTarget(state, { type: "session.share", sessionID: "session-a" }, "/workspace")
-    if (pending.kind !== "session.share") throw new Error("expected share target")
+    const pending = toVsCodeSessionMutationTarget(state, { type: "session.archive", sessionID: "session-a" }, "/workspace")
+    if (pending.kind !== "session.archive") throw new Error("expected archive target")
 
     const completed = reduceVsCodeSessionMutation(pending.state, {
       type: "success",
-      result: { type: "session.share", sessionID: "session-a", shareURL: "https://example.test/share" },
+      result: { type: "session.archive", sessionID: "session-a", archivedAt: 100 },
     })
-    assert.equal(completed.sessions["session-a"]?.shareURL, "https://example.test/share")
-    assert.equal(completed.mutations["session-a"]?.share?.state, "success")
+    assert.equal(completed.sessions["session-a"]?.archivedAt, 100)
+    assert.equal(completed.mutations["session-a"]?.archive?.state, "success")
 
     const failed = reduceVsCodeSessionMutation(pending.state, {
       type: "failure",
       failure: {
-        type: "session.share",
+        type: "session.archive",
         sessionID: "session-a",
         error: { code: "HTTP_403", message: "Forbidden", raw: "HTTP 403 Forbidden" },
       },
     })
-    assert.equal(failed.sessions["session-a"]?.shareURL, undefined)
-    assert.deepEqual(failed.mutations["session-a"]?.share, {
+    assert.equal(failed.sessions["session-a"]?.archivedAt, undefined)
+    assert.deepEqual(failed.mutations["session-a"]?.archive, {
       state: "error",
-      action: { type: "session.share", sessionID: "session-a" },
+      action: { type: "session.archive", sessionID: "session-a" },
       error: {
         code: "permission_denied",
         diagnosticCode: "HTTP_403",
@@ -139,28 +139,28 @@ describe("VSCode session mutation adapter", () => {
 
   test("keeps canonical state unchanged and emits raw diagnostics on host failure", async () => {
     const state = hydrateProductMutableSessions(createProductSessionMutationState(), [mutableSession])
-    const target = toVsCodeSessionMutationTarget(state, { type: "session.share", sessionID: "session-a" }, "/workspace")
-    if (target.kind !== "session.share") throw new Error("expected share target")
+    const target = toVsCodeSessionMutationTarget(state, { type: "session.archive", sessionID: "session-a" }, "/workspace")
+    if (target.kind !== "session.archive") throw new Error("expected archive target")
     const events: unknown[] = []
 
     const result = await runVsCodeSessionMutation(target, {
       update: async () => undefined,
-      archive: async () => 0,
-      share: async () => { throw Object.assign(new Error("Forbidden"), { name: "HTTP_403" }) },
+      archive: async () => { throw Object.assign(new Error("Forbidden"), { name: "HTTP_403" }) },
+      share: async () => "",
       unshare: async () => undefined,
       setTags: async () => undefined,
     }, (event) => events.push(event))
 
     assert.equal(result.ok, false)
-    assert.equal(result.state.sessions["session-a"]?.shareURL, undefined)
+    assert.equal(result.state.sessions["session-a"]?.archivedAt, undefined)
     assert.deepEqual(events, [{
       type: "pending",
       session: state.sessions["session-a"],
-      action: { type: "session.share", sessionID: "session-a" },
+      action: { type: "session.archive", sessionID: "session-a" },
     }, {
       type: "failure",
       failure: {
-        type: "session.share",
+        type: "session.archive",
         sessionID: "session-a",
         error: { code: "HTTP_403", message: "Forbidden", raw: "Forbidden" },
       },

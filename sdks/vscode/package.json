@@ -2,7 +2,7 @@
   "name": "hypercode",
   "displayName": "HyperCode",
   "description": "%hypercode.description%",
-  "version": "1.18.30",
+  "version": "1.19.6",
   "publisher": "hypercode",
   "repository": {
     "type": "git",
@@ -316,6 +316,16 @@
       }
     },
     "menus": {
+      "commandPalette": [
+        {
+          "command": "hypercode.shareSession",
+          "when": "false"
+        },
+        {
+          "command": "hypercode.unshareSession",
+          "when": "false"
+        }
+      ],
       "editor/title": [
         {
           "command": "hypercode.quickNewSession",
@@ -405,16 +415,6 @@
           "command": "hypercode.renameSession",
           "when": "view == hypercode.sessions && (viewItem == session || viewItem == session-shared)",
           "group": "inline@1"
-        },
-        {
-          "command": "hypercode.shareSession",
-          "when": "view == hypercode.sessions && viewItem == session",
-          "group": "inline@2"
-        },
-        {
-          "command": "hypercode.unshareSession",
-          "when": "view == hypercode.sessions && viewItem == session-shared",
-          "group": "inline@2"
         },
         {
           "command": "hypercode.archiveSession",

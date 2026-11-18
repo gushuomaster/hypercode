@@ -23,11 +23,12 @@ const runtimeEnglishBaseline = {
   "cmd/github.handler.ts": 4,
   "cmd/mcp.ts": 60,
   "cmd/plug.ts": 1,
-  "cmd/pr.ts": 6,
+  "cmd/pr.ts": 3,
   "cmd/run.ts": 11,
   "cmd/tui.ts": 5,
   "cmd/uninstall.ts": 16,
-  "cmd/upgrade.ts": 10,
+  // v1.19.6 加入 OpenCode 2 安装流程（+5）；HyperCode 没有更新渠道，handler 开头即退出，这些输出不可达。
+  "cmd/upgrade.ts": 15,
 }
 
 describe("CLI localization audit", () => {

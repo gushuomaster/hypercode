@@ -28,13 +28,13 @@ const compilers = await Promise.all([
     root,
     version: bunVersion,
     target: "linux-x64",
-    checksum: "951ee2aee855f08595aeec6225226a298d3fea83a3dcd6465c09cbccdf7e848f",
+    checksum: "bf8ccbfb2b0b80159e0f9a6d15c55317add8077534dbc6130a3edb52fccb395c",
   }),
   prepareCompiler({
     root,
     version: bunVersion,
     target: "linux-x64-baseline",
-    checksum: "a063908ae08b7852ca10939bbdc6ceed3ddabce8fb9402dce83d65d73b36e6c7",
+    checksum: "e0446eb55995772eb9894bebae9a6be368d985a8b9271ee124486f9946eedd76",
   }),
 ])
 const env = {

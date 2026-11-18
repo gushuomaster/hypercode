@@ -7,7 +7,8 @@ test("TUI derives undo/redo availability from Product session facts, matching VS
   const withSession = deriveProductCommandCatalog({ context: contextFromFacts(exampleSessionFacts) })
   expect(withSession.find((entry) => entry.id === "session.undo")?.availability).toBe("available")
   expect(withSession.find((entry) => entry.id === "session.redo")?.availability).toBe("available")
-  expect(withSession.find((entry) => entry.id === "session.unshare")?.availability).toBe("available")
+  // Session sharing is discontinued, so unshare stays unsupported even for a shared session.
+  expect(withSession.find((entry) => entry.id === "session.unshare")?.availability).toBe("unsupported")
 
   const noSession = deriveProductCommandCatalog({ context: contextFromFacts(emptySessionFacts) })
   expect(noSession.find((entry) => entry.id === "session.undo")?.availability).toBe("unavailable")

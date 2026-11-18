@@ -21,13 +21,14 @@ test("maps supported session mutations to TUI SDK targets with Product pending s
   })
   expect(rename.state.mutations["session-a"]?.rename?.state).toBe("pending")
 
+  // Session sharing is discontinued: Product reports both directions as unsupported without pending state.
   expect(toTuiSessionMutationTarget(state, { type: "session.share", sessionID: "session-a" })).toMatchObject({
-    kind: "session.share",
-    input: { sessionID: "session-a" },
+    kind: "unsupported",
+    action: "session.share",
   })
   expect(toTuiSessionMutationTarget(state, { type: "session.unshare", sessionID: "session-shared" })).toMatchObject({
-    kind: "session.unshare",
-    input: { sessionID: "session-shared" },
+    kind: "unsupported",
+    action: "session.unshare",
   })
 })
 
@@ -101,17 +102,17 @@ test("runs TUI mutations through shared pending and confirmed Product states", a
 
 test("keeps TUI canonical state unchanged when the host call fails", async () => {
   const state = hydrateProductMutableSessions(createProductSessionMutationState(), [mutableSession])
-  const target = toTuiSessionMutationTarget(state, { type: "session.share", sessionID: "session-a" })
-  if (target.kind !== "session.share") throw new Error("expected share target")
+  const target = toTuiSessionMutationTarget(state, { type: "session.rename", sessionID: "session-a", title: "Renamed" })
+  if (target.kind !== "session.update") throw new Error("expected update target")
   const result = await runTuiSessionMutation(target, {
-    update: async () => {},
-    share: async () => { throw Object.assign(new Error("Forbidden"), { name: "HTTP_403" }) },
+    update: async () => { throw Object.assign(new Error("Forbidden"), { name: "HTTP_403" }) },
+    share: async () => "",
     unshare: async () => {},
   }, () => {})
 
   expect(result.ok).toBe(false)
-  expect(result.state.sessions["session-a"]?.shareURL).toBeUndefined()
-  expect(result.state.mutations["session-a"]?.share).toMatchObject({
+  expect(result.state.sessions["session-a"]?.title).toBe(mutableSession.title)
+  expect(result.state.mutations["session-a"]?.rename).toMatchObject({
     state: "error",
     error: {
       code: "permission_denied",

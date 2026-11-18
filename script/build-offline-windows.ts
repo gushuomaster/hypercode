@@ -28,19 +28,19 @@ if (!semver.valid(version)) throw new Error("A valid semantic version is require
 
 if (!args["skip-build"]) {
   const bunVersion = (await Bun.file(path.join(root, "package.json")).json()).packageManager.split("@")[1]
-  if (bunVersion !== "1.3.14") throw new Error(`Unsupported Bun version for offline Windows build: ${bunVersion}`)
+  if (bunVersion !== "1.4.4") throw new Error(`Unsupported Bun version for offline Windows build: ${bunVersion}`)
   const compilers = [
     await prepareCompiler({
       root,
       version: bunVersion,
       target: "windows-x64",
-      checksum: "0a0620930b6675d7ba440e81f4e0e00d3cfbe096c4b140d3fff02205e9e18922",
+      checksum: "cd2c0fccc78f3ede1f50ca827a15f063eda13d4d150a3d0674f4f6e323d864a5",
     }),
     await prepareCompiler({
       root,
       version: bunVersion,
       target: "windows-x64-baseline",
-      checksum: "538f9c846355d9e847b2671bc00c47da4229a0befb24df3282b739770f3b475f",
+      checksum: "0f20ce6674d4f2dbcc8c5d59fdf99f7ba45f8c3b367e0f5781cbfa30a1c78d99",
     }),
   ]
   await run(

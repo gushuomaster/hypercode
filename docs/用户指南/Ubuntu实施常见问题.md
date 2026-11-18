@@ -6,8 +6,8 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 安装包 | `hypercode-offline-ubuntu20.04-x64-1.18.30.tar.gz` |
-| 校验文件 | `hypercode-offline-ubuntu20.04-x64-1.18.30.tar.gz.sha256` |
+| 安装包 | `hypercode-offline-ubuntu20.04-x64-1.19.6.tar.gz` |
+| 校验文件 | `hypercode-offline-ubuntu20.04-x64-1.19.6.tar.gz.sha256` |
 | SHA-256 | 以随包的 `.sha256` 文件为准，拷入目标机前先核对 |
 | 适用系统 | Ubuntu 20.04 及以上，x86_64，glibc |
 
@@ -20,8 +20,8 @@
 解压并安装（用最终使用 HyperCode 的普通用户执行，**不要加 `sudo`**）：
 
 ```bash
-tar -xzf hypercode-offline-ubuntu20.04-x64-1.18.30.tar.gz
-cd hypercode-offline-ubuntu20.04-x64-1.18.30
+tar -xzf hypercode-offline-ubuntu20.04-x64-1.19.6.tar.gz
+cd hypercode-offline-ubuntu20.04-x64-1.19.6
 ./install.sh
 export PATH="$HOME/.local/bin:$PATH"
 hypercode --version
@@ -91,7 +91,7 @@ hypercode license machine-id
 推荐用安装包里的脚本导入，不用手动建目录：
 
 ```bash
-cd hypercode-offline-ubuntu20.04-x64-1.18.30
+cd hypercode-offline-ubuntu20.04-x64-1.19.6
 ./install-license.sh /path/to/license.txt
 ```
 

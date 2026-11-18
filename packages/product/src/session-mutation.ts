@@ -254,8 +254,8 @@ function normalizeTags(tags: string[]) {
 function supports(capabilities: ProductSessionMutationCapabilities, action: ProductSessionMutationAction) {
   if (action.type === "session.rename") return capabilities.rename
   if (action.type === "session.archive") return capabilities.archive
-  if (action.type === "session.share") return capabilities.share
-  if (action.type === "session.unshare") return capabilities.unshare
+  // Session sharing is discontinued (see discontinuedCommands in command.ts): no host may share or unshare.
+  if (action.type === "session.share" || action.type === "session.unshare") return false
   return capabilities.tags
 }
 

@@ -110,7 +110,7 @@ HyperCode 当前最明显的独有特色，是在 VS Code 中提供了完整的�
 - Activity Bar 中的 `HyperCode` 入口
 - Secondary Sidebar 中的辅助区域
 - `Sessions`、`Todo`、`Modified Files`、`Subagents`、`Session` 等视图
-- 快速新建会话、搜索会话、归档、分享、按标签筛选、打开工作区浏览器、环境检查等命令
+- 快速新建会话、搜索会话、归档、按标签筛选、打开工作区浏览器、环境检查等命令
 
 这些能力来自当前扩展清单，说明 HyperCode 在编辑器里提供的是一个会话工作台，而不只是命令行的壳层。
 

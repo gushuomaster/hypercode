@@ -87,9 +87,6 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                     </Show>
                   </text>
                 </Show>
-                <Show when={header()!.shareURL}>
-                  <text fg={theme.textMuted}>{header()!.shareURL}</text>
-                </Show>
               </box>
             </pluginRuntime.Slot>
             <pluginRuntime.Slot name="sidebar_content" session_id={props.sessionID} />

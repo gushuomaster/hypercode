@@ -2,6 +2,8 @@ import { expect, test } from "bun:test"
 import { deriveProductCommandCatalog, deriveProductCommandSessionContext, resolveProductCommand } from "../src/command"
 import { sharedCommandContext, sharedCommandIDs, surfaceOptionalCommandIDs } from "./fixtures/command-contract"
 
+const discontinuedCommandIDs = ["session.share", "session.unshare"]
+
 test("filters hidden commands, deduplicates IDs, and sorts deterministically", () => {
   expect(deriveProductCommandCatalog([
     { id: "z", name: "z", title: "Zed", category: "tools" },
@@ -126,12 +128,12 @@ test("resolves dynamic commands with arguments without treating them as built-in
   })
 })
 
-test("keeps rename, share, unshare and fork surface-optional and requires an active session", () => {
+test("keeps rename and fork surface-optional and requires an active session", () => {
   const catalog = deriveProductCommandCatalog({
     context: { ...sharedCommandContext, hasSession: false, isShared: false },
   })
 
-  for (const id of surfaceOptionalCommandIDs) {
+  for (const id of surfaceOptionalCommandIDs.filter((id) => !discontinuedCommandIDs.includes(id))) {
     expect(catalog.find((entry) => entry.id === id)).toMatchObject({
       scope: "shared_surface_optional",
       availability: "unavailable",
@@ -140,20 +142,21 @@ test("keeps rename, share, unshare and fork surface-optional and requires an act
   }
 })
 
-test("unshare is only available for a session that is already shared", () => {
-  const notShared = deriveProductCommandCatalog({ context: { ...sharedCommandContext, isShared: false } })
-  const shared = deriveProductCommandCatalog({ context: sharedCommandContext })
+test("share and unshare are unsupported even when the host supports them and the session is shared", () => {
+  const catalog = deriveProductCommandCatalog({ context: sharedCommandContext })
 
-  expect(resolveProductCommand({ value: "/unshare", catalog: notShared })).toEqual({
+  for (const id of discontinuedCommandIDs) {
+    expect(catalog.find((entry) => entry.id === id)).toMatchObject({
+      scope: "shared_surface_optional",
+      availability: "unsupported",
+      reasonKey: "command.reason.unsupported",
+    })
+  }
+  expect(resolveProductCommand({ value: "/share", catalog })).toEqual({
     kind: "unavailable",
-    commandID: "session.unshare",
-    availability: "unavailable",
-    reasonKey: "command.reason.not_shared",
-  })
-  expect(resolveProductCommand({ value: "/unshare", catalog: shared })).toEqual({
-    kind: "builtin",
-    commandID: "session.unshare",
-    arguments: "",
+    commandID: "session.share",
+    availability: "unsupported",
+    reasonKey: "command.reason.unsupported",
   })
 })
 

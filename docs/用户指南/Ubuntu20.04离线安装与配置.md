@@ -21,7 +21,7 @@ hypercode-offline-ubuntu20.04-x64-<version>.tar.gz
 hypercode.vsix
 ```
 
-本文中的 `<version>` 指本次交付的版本号，即离线包文件名中的版本号，例如 `hypercode-offline-ubuntu20.04-x64-1.18.30.tar.gz` 的版本号是 `1.18.30`。执行命令时请替换为实际文件名中的版本号。
+本文中的 `<version>` 指本次交付的版本号，即离线包文件名中的版本号，例如 `hypercode-offline-ubuntu20.04-x64-1.19.6.tar.gz` 的版本号是 `1.19.6`。执行命令时请替换为实际文件名中的版本号。
 
 授权后还需要管理员签发的：
 

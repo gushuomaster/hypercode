@@ -86,8 +86,6 @@ import { translate as t } from "../../context/language"
 import { derivePendingInteraction } from "@opencode-ai/product"
 import { toPendingInteractionInput } from "../../product/session-adapter"
 import { toTuiProductAction } from "../../product/action-adapter"
-import { runTuiSessionMutation } from "../../product/session-mutation-adapter"
-import { formatTuiProductError } from "../../product/text-adapter"
 
 addDefaultParsers(parsers.parsers)
 
@@ -120,12 +118,10 @@ function goUpsellKeys(action: RetryAction) {
 }
 
 const sessionBindingCommands = [
-  "session.share",
   "session.rename",
   "session.timeline",
   "session.fork",
   "session.compact",
-  "session.unshare",
   "session.undo",
   "session.redo",
   "session.sidebar.toggle",
@@ -486,57 +482,6 @@ export function Session() {
 
   const sessionCommandList = createMemo(() => [
     {
-      title: session()?.share?.url ? t("session.share.copy") : t("session.share.create"),
-      value: "session.share",
-      suggested: route.type === "session",
-      category: t("command.category.session"),
-      enabled: !!session()?.share?.url || sync.session.mutation.availability({
-        type: "session.share",
-        sessionID: route.sessionID,
-      }).available,
-      slash: {
-        name: "share",
-      },
-      run: async () => {
-        const copy = (url: string) =>
-          clipboard
-            .write?.(url)
-            .then(() => toast.show({ message: t("session.share.copied"), variant: "success" }))
-            .catch(() => toast.show({ message: t("session.share.copyFailed"), variant: "error" }))
-        const url = session()?.share?.url
-        if (url) {
-          await copy(url)
-          dialog.clear()
-          return
-        }
-        if (!kv.get("share_consent", false)) {
-          const ok = await DialogConfirm.show(
-            dialog,
-            t("session.share.confirmTitle"),
-            t("session.share.confirmMessage"),
-          )
-          if (ok !== true) return
-          kv.set("share_consent", true)
-        }
-        const target = sync.session.mutation.target({ type: "session.share", sessionID: route.sessionID })
-        if (target.kind !== "session.share") return
-        const result = await runTuiSessionMutation(target, {
-          update: async () => {},
-          share: async (input) => {
-            const response = await sdk.client.session.share(input)
-            return response.data?.share?.url ?? ""
-          },
-          unshare: async () => {},
-        }, sync.session.mutation.set)
-        if (result.ok && result.result.type === "session.share") await copy(result.result.shareURL)
-        if (!result.ok) {
-          const status = result.state.mutations[route.sessionID]?.share
-          if (status?.state === "error") toast.show({ message: formatTuiProductError(status.error), variant: "error" })
-        }
-        dialog.clear()
-      },
-    },
-    {
       title: t("session.rename"),
       value: "session.rename",
       category: t("command.category.session"),
@@ -610,33 +555,6 @@ export function Session() {
           { sessionID: route.sessionID },
         )
         if (target.kind === "session.summarize") void sdk.client.session.summarize(target.input)
-        dialog.clear()
-      },
-    },
-    {
-      title: t("session.unshare"),
-      value: "session.unshare",
-      category: t("command.category.session"),
-      enabled: sync.session.mutation.availability({
-        type: "session.unshare",
-        sessionID: route.sessionID,
-      }).available,
-      slash: {
-        name: "unshare",
-      },
-      run: async () => {
-        const target = sync.session.mutation.target({ type: "session.unshare", sessionID: route.sessionID })
-        if (target.kind !== "session.unshare") return
-        const result = await runTuiSessionMutation(target, {
-          update: async () => {},
-          share: async () => "",
-          unshare: (input) => sdk.client.session.unshare(input),
-        }, sync.session.mutation.set)
-        if (result.ok) toast.show({ message: t("session.unshare.success"), variant: "success" })
-        if (!result.ok) {
-          const status = result.state.mutations[route.sessionID]?.unshare
-          if (status?.state === "error") toast.show({ message: formatTuiProductError(status.error), variant: "error" })
-        }
         dialog.clear()
       },
     },

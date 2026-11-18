@@ -20,7 +20,8 @@ test("VS Code derives undo/redo availability from Product session facts, respect
   const withSession = toVsCodeProductCommands(contextFromFacts(exampleSessionFacts))
   assert.equal(withSession.catalog.find((entry) => entry.id === "session.undo")?.availability, "available")
   assert.equal(withSession.catalog.find((entry) => entry.id === "session.redo")?.availability, "available")
-  assert.equal(withSession.catalog.find((entry) => entry.id === "session.unshare")?.availability, "available")
+  // Session sharing is discontinued, so unshare stays unsupported even for a shared session.
+  assert.equal(withSession.catalog.find((entry) => entry.id === "session.unshare")?.availability, "unsupported")
 
   const noSession = toVsCodeProductCommands(contextFromFacts(emptySessionFacts))
   assert.equal(noSession.catalog.find((entry) => entry.id === "session.undo")?.availability, "unavailable")

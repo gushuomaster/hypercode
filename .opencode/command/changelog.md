@@ -3,7 +3,7 @@ description: "Create the upcoming changelog from structured input"
 description_i18n:
   zh: "根据结构化输入创建即将发布的变更日志"
   en: "Create the upcoming changelog from structured input"
-model: opencode/gpt-5.4
+model: opencode/gpt-6-luna
 ---
 
 Create `UPCOMING_CHANGELOG.md` from the structured changelog input below.

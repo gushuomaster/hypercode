@@ -39,8 +39,9 @@ describe("session mutation availability", () => {
     expect(deriveProductSessionMutationAvailability(state, { type: "session.archive", sessionID: "session-a" })).toEqual({ available: false, reason: "unsupported" })
     expect(deriveProductSessionMutationAvailability(state, { type: "session.tag.add", sessionID: "session-a", tag: "ops" })).toEqual({ available: false, reason: "unsupported" })
     expect(deriveProductSessionMutationAvailability(state, { type: "session.archive", sessionID: "session-archived" })).toEqual({ available: false, reason: "already_archived" })
-    expect(deriveProductSessionMutationAvailability(state, { type: "session.share", sessionID: "session-shared" })).toEqual({ available: false, reason: "already_shared" })
-    expect(deriveProductSessionMutationAvailability(state, { type: "session.unshare", sessionID: "session-a" })).toEqual({ available: false, reason: "not_shared" })
+    // Sharing is discontinued: both directions are unsupported even when the host declares the capability.
+    expect(deriveProductSessionMutationAvailability(state, { type: "session.share", sessionID: "session-a" })).toEqual({ available: false, reason: "unsupported" })
+    expect(deriveProductSessionMutationAvailability(state, { type: "session.unshare", sessionID: "session-shared" })).toEqual({ available: false, reason: "unsupported" })
     expect(deriveProductSessionMutationAvailability(state, { type: "session.tag.add", sessionID: "session-archived", tag: "docs" })).toEqual({ available: false, reason: "duplicate_tag" })
     expect(deriveProductSessionMutationAvailability(state, { type: "session.tag.remove", sessionID: "session-archived", tag: "missing" })).toEqual({ available: false, reason: "missing_tag" })
   })
@@ -92,7 +93,7 @@ describe("session mutation lifecycle", () => {
     })
   })
 
-  test("commits archive, share, and unshare only after host confirmation", () => {
+  test("commits archive only after host confirmation", () => {
     const archived = runSuccess(hydratedSession(), { type: "session.archive", sessionID: "session-a" }, {
       type: "session.archive",
       sessionID: "session-a",
@@ -101,19 +102,6 @@ describe("session mutation lifecycle", () => {
     expect(archived.sessions["session-a"]?.archivedAt).toBe(100)
     expect(deriveProductSessionMutationAvailability(archived, { type: "session.archive", sessionID: "session-a" })).toEqual({ available: false, reason: "already_archived" })
 
-    const shared = runSuccess(hydratedSession(), { type: "session.share", sessionID: "session-a" }, {
-      type: "session.share",
-      sessionID: "session-a",
-      shareURL: "https://example.test/share",
-    })
-    expect(shared.sessions["session-a"]?.shareURL).toBe("https://example.test/share")
-    expect(deriveProductSessionMutationAvailability(shared, { type: "session.share", sessionID: "session-a" })).toEqual({ available: false, reason: "already_shared" })
-
-    const unshared = runSuccess(shared, { type: "session.unshare", sessionID: "session-a" }, {
-      type: "session.unshare",
-      sessionID: "session-a",
-    })
-    expect(unshared.sessions["session-a"]?.shareURL).toBeUndefined()
   })
 
   test("normalizes tag add and remove results without optimistic changes", () => {

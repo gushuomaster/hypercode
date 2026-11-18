@@ -112,12 +112,6 @@ export const composerParityFixtures: ComposerParityFixture[] = [
           detail: "Open the session picker for this workspace.",
         },
         {
-          id: "product:session.share",
-          kind: "action",
-          label: "share",
-          detail: "Share the current session and copy the share URL.",
-        },
-        {
           id: "product:skill.list",
           kind: "action",
           label: "skills",
@@ -168,12 +162,6 @@ export const composerParityFixtures: ComposerParityFixture[] = [
           kind: "action",
           label: "reset-agent",
           detail: "Reset the composer to the default agent.",
-        },
-        {
-          id: "product:session.share",
-          kind: "action",
-          label: "share",
-          detail: "Share the current session and copy the share URL.",
         },
         {
           id: "product:session.list",
@@ -270,12 +258,6 @@ export const composerParityFixtures: ComposerParityFixture[] = [
           kind: "action",
           label: "mcps",
           detail: "Inspect MCP servers and connection state.",
-        },
-        {
-          id: "product:session.share",
-          kind: "action",
-          label: "share",
-          detail: "Share the current session and copy the share URL.",
         },
         {
           id: "product:skill.list",
@@ -462,7 +444,6 @@ export const composerParityFixtures: ComposerParityFixture[] = [
         { id: "product:session.rename", kind: "action", label: "rename", detail: "Rename the current session." },
         { id: "command:review", kind: "command", label: "review", detail: "review changes [commit|branch|pr]" },
         { id: "product:session.list", kind: "action", label: "sessions", detail: "Open the session picker for this workspace." },
-        { id: "product:session.share", kind: "action", label: "share", detail: "Share the current session and copy the share URL." },
         { id: "product:skill.list", kind: "action", label: "skills", detail: "Open the skill picker and insert a skill command." },
         { id: "product:system.status", kind: "action", label: "status", detail: "Inspect HyperCode subsystem status." },
         { id: "product:theme.list", kind: "action", label: "themes", detail: "Open the session panel theme picker." },
@@ -484,7 +465,6 @@ export const composerParityFixtures: ComposerParityFixture[] = [
         { id: "command:review", kind: "command", label: "review", detail: "review changes [commit|branch|pr]" },
         { id: "host:refresh", kind: "action", label: "refresh", detail: "Ask the host to reload the current session snapshot." },
         // Secondary-field matches follow the prefix matches.
-        { id: "product:session.share", kind: "action", label: "share", detail: "Share the current session and copy the share URL." },
         { id: "product:session.list", kind: "action", label: "sessions", detail: "Open the session picker for this workspace." },
         { id: "command:init", kind: "command", label: "init", detail: "create/update AGENTS.md" },
         { id: "product:help.show", kind: "action", label: "help", detail: "Show shared HyperCode command help." },

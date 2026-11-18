@@ -20,6 +20,8 @@ export const Brand = {
   issueURL: undefined as string | undefined,
   providerURL: undefined as string | undefined,
   goURL: undefined as string | undefined,
+  // HyperCode has no online update channel; upstream update checks and installers stay off until one exists.
+  updateChannel: undefined as string | undefined,
   releaseRepo: "your-company/hypercode",
 }
 

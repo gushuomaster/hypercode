@@ -1,3 +1,4 @@
+import { Brand } from "@/brand"
 import { cmd } from "@/cli/cmd/cmd"
 import { Rpc } from "@/util/rpc"
 import { type rpc } from "../tui/worker"
@@ -10,6 +11,8 @@ import { withNetworkOptions, resolveNetworkOptionsNoConfig, hasArg } from "@/cli
 import { Filesystem } from "@/util/filesystem"
 import type { GlobalEvent } from "@opencode-ai/sdk/v2"
 import type { EventSource } from "@opencode-ai/tui/context/sdk"
+import type { UpdateNotice, UpdateSource } from "@opencode-ai/tui"
+import { InstallationVersion } from "@opencode-ai/core/installation/version"
 import { writeHeapSnapshot } from "v8"
 import { ServerAuth } from "@/server/auth"
 import { validateSession } from "../tui/validate-session"
@@ -45,6 +48,43 @@ function createEventSource(client: RpcClient): EventSource {
       return client.on<GlobalEvent>("global.event", (e) => {
         handler(e)
       })
+    },
+  }
+}
+
+// Mirrors the V2 CLI updater: the TUI process checks every 10 minutes and installs on this machine,
+// but only when the user picks an option in the /update dialog.
+function createUpdater(latest: () => Promise<UpdateNotice | undefined>): UpdateSource {
+  const listeners = new Set<(notice: UpdateNotice) => void>()
+  let current: UpdateNotice | undefined
+  const check = () =>
+    latest()
+      .then((notice) => {
+        if (!notice || JSON.stringify(notice) === JSON.stringify(current)) return
+        current = notice
+        listeners.forEach((notify) => notify(notice))
+      })
+      .catch(() => {})
+  setTimeout(check, 1000).unref?.()
+  setInterval(check, 10 * 60 * 1000).unref?.()
+  return {
+    subscribe: (notify) => {
+      if (current) notify(current)
+      listeners.add(notify)
+      return () => listeners.delete(notify)
+    },
+    check: async () => {
+      const { Installation } = await import("@/installation")
+      // A failed check leaves latest unset, which /update reports as "Couldn't check for updates."
+      const latest = await Installation.latest(await Installation.method()).catch(() => undefined)
+      return { current: InstallationVersion, latest }
+    },
+    apply: async (target) => {
+      const { Installation } = await import("@/installation")
+      const method = await Installation.method()
+      if (method === "unknown") throw new Error("Installation method not found")
+      if (target.type === "major") return Installation.upgradeMajor(method)
+      return Installation.upgrade(method, target.version)
     },
   }
 }
@@ -262,9 +302,10 @@ export const TuiThreadCommand = cmd({
         return
       }
 
-      setTimeout(() => {
-        client.call("checkUpgrade", { directory: cwd }).catch(() => {})
-      }, 1000).unref?.()
+      // HyperCode has no update channel: without an updater the TUI shows no update notice and no /update command.
+      const updater = Brand.updateChannel
+        ? createUpdater(async () => await client.call("checkUpgrade", { directory: cwd }))
+        : undefined
 
       try {
         const { Effect } = await import("effect")
@@ -284,6 +325,7 @@ export const TuiThreadCommand = cmd({
             fetch: transport.fetch,
             headers: transport.headers,
             events: transport.events,
+            updater,
             args: {
               continue: args.continue,
               sessionID: args.session,
@@ -303,7 +345,7 @@ export const TuiThreadCommand = cmd({
         unguard?.()
       } catch {}
     }
-    process.exit(0)
+    process.exit()
   },
 })
 // scratch

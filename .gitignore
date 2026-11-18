@@ -32,6 +32,7 @@ UPCOMING_CHANGELOG.md
 logs/
 *.bun-build
 tsconfig.tsbuildinfo
+/artifacts/
 release-artifacts/
 
 # License signing keys must never be committed

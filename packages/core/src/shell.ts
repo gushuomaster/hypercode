@@ -7,7 +7,7 @@ import { statSync } from "fs"
 import { setTimeout as sleep } from "node:timers/promises"
 import { Flag } from "./flag/flag"
 import { FSUtil } from "./fs-util"
-import { which } from "./util/which"
+import { isAppExecutionAlias, which } from "./util/which"
 
 const SIGKILL_TIMEOUT_MS = 200
 const META: Record<string, { deny?: boolean; login?: boolean; posix?: boolean; ps?: boolean }> = {
@@ -89,7 +89,8 @@ function rooted(file: string) {
 function resolve(file: string) {
   const shell = full(file)
   if (rooted(shell)) {
-    if (stat(shell)?.isFile()) return shell
+    // Check the alias first: stat throws EACCES for it.
+    if (isAppExecutionAlias(shell) || stat(shell)?.isFile()) return shell
     return
   }
   return which(shell) ?? undefined

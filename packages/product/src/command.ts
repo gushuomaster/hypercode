@@ -211,11 +211,14 @@ const sessionScopedCommands = new Set<ProductCommandID>([
   "session.fork",
 ])
 
+// Upstream OpenCode discontinued session sharing in v1.19; HyperCode follows on every host, whatever the host supports.
+const discontinuedCommands = new Set<ProductCommandID>(["session.share", "session.unshare"])
+
 function commandAvailability(id: ProductCommandID, context: ProductCommandContext): {
   availability: ProductCommandAvailability
   reasonKey?: ProductTextKey
 } {
-  if (context.supported[id] !== true) {
+  if (context.supported[id] !== true || discontinuedCommands.has(id)) {
     return { availability: "unsupported", reasonKey: "command.reason.unsupported" }
   }
   if (id === "variant.list" && !context.hasVariants) {

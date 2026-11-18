@@ -35,17 +35,35 @@
 
 upstream v1.19.x 的行为：省略 `autoupdate` 时联网检查版本；TUI 弹出 `/update` 对话框与更新提示；1.x 已最新时推销并安装 OpenCode 2.0；`opencode upgrade` 从 upstream 渠道安装。
 
-HyperCode 的处理，按改动从小到大：
+HyperCode 的处理（已实施）。唯一开关是 HyperCode 自有的 `packages/opencode/src/brand.ts` 中的 `Brand.updateChannel`（当前为 `undefined`）；将来有自己的更新渠道时只改这一处：
 
-1. `packages/opencode/src/cli/upgrade.ts` 的 `upgrade()` 在 HyperCode 中直接返回 `undefined`。这是 TUI 更新提示与推销的唯一数据来源，返回 `undefined` 时 upstream 代码本身就不提示。
-2. `packages/tui/src/app.tsx` 不注册 `/update` 命令，因此 TUI 和 VSCode 的命令列表都不出现它；`packages/tui/test/product/command-adapter.test.ts` 的 host_only 白名单保持不变。
-3. `cli/cmd/upgrade.ts` 的 handler 开头输出本地化提示"HyperCode 没有在线更新渠道，请向管理员获取新的安装包"，并以退出码 1 结束；命令保留，以免旧文档中的 `hypercode upgrade` 报"未知命令"。
-4. 新增 `dialog-update.tsx`、`update-notification.tsx` 原样保留（upstream 文件，不本地化）。因为已不可达，不加入 `hardcoded-copy` 清单；由第 5 条的测试保证不可达。
-5. 回归测试：`upgrade()` 在 `autoupdate` 省略、为 `true`、为 `"notify"` 时都返回 `undefined` 且不发起网络请求；`hypercode upgrade` 输出中文提示并以非零退出；TUI 命令列表不含 `/update`。
+1. `packages/opencode/src/cli/upgrade.ts` 的 `upgrade()` 在没有渠道时开头直接返回，早于读取 `autoupdate` 配置和任何网络请求，所以 `autoupdate` 省略、为 `true` 或 `"notify"` 结果相同。
+2. `packages/opencode/src/cli/cmd/tui.ts` 在没有渠道时不创建 updater。TUI 的更新提示与 `/update` 都以 updater 存在为前提，因此不会出现；`packages/tui/src/app.tsx` 另外删掉了 upstream 的 `/update` 注册块（其英文标题也会被 `hardcoded-copy` 审计拦下）。`packages/tui/test/product/command-adapter.test.ts` 的 host_only 白名单保持不变。
+3. `cli/cmd/upgrade.ts`：没有渠道时命令和 `--major` 选项都从帮助中隐藏；handler 开头输出本地化提示"HyperCode 没有在线更新渠道，请向管理员获取新的安装包。"并以退出码 1 结束。命令保留，以免旧文档中的 `hypercode upgrade` 报"未知命令"。
+4. 新增 `dialog-update.tsx`、`update-notification.tsx` 原样保留（upstream 文件，不本地化）。因为不可达，不加入 `hardcoded-copy` 清单；由第 5 条的测试保证不可达。`cmd/upgrade.ts` 中 upstream 新增的 OpenCode 2 安装输出同样不可达，`localization-audit` 运行时英文基线从 10 调到 15 并注明原因。
+5. 回归测试 `packages/opencode/test/cli/hypercode-update-channel.test.ts`：`Brand.updateChannel` 为空；`upgrade()` 返回 `undefined`；`hypercode upgrade` 中英文提示与退出码 1，`upgrade --major` 与 `upgrade --help` 不含"OpenCode 2"；`--help` 不列出 `upgrade`；`app.tsx` 不注册 `slashName: "update"`。变异验证：把 `updateChannel` 临时设为非空后，前四类断言全部失败。
 
 `HYPERCODE_DISABLE_AUTOUPDATE=1` 继续保留在离线模板里，作为双保险。
 
 `packages/desktop` 的 OpenCode 2 升级推销不处理：桌面版不在交付面，按 upstream 原样接收。
+
+## 会话分享停用（维护者决定：跟随 upstream）
+
+upstream `d320177aa4`（#55718）停止会话分享服务：服务端分享接口返回 "Session sharing has been discontinued"，`run --share` 隐藏并失效，`import` 不再接受分享 URL，TUI 删除 `/share`、`/unshare` 和侧栏分享链接。HyperCode 1.18.30 在 TUI 与 VSCode 都提供分享，若只合并 upstream，VSCode 仍会显示调用必然失败的入口。2026-11-18 维护者选择"跟随上游停用"。分类 `explicit_unsupported`，结论 `ACCEPT_UPSTREAM_DEFAULT`。
+
+- Product 统一裁决（两端不各自实现）：`packages/product/src/command.ts` 的 `discontinuedCommands` 使 `session.share`、`session.unshare` 在任何宿主上都是 `unsupported`，与宿主是否声明支持无关；`session-mutation.ts` 的 `supports()` 对两者恒返回 `false`。
+- TUI：接受 upstream 删除；首页提示与 i18n 删除 `tip.share`、`tip.shareAuto`、`tip.shareDisabled`、`tip.unshare`（以及指向更新渠道的 `tip.upgrade`）。
+- VSCode：`package.json` 删除会话树行内菜单中的分享项，命令面板以 `when: false` 隐藏 `hypercode.shareSession`、`hypercode.unshareSession`；命令 ID 保留，避免用户自定义快捷键报"命令不存在"。
+- 本地化：`import` 的新报错改用 `cliText()`，补中文；`run --share` 的弃用说明与 `import` 新描述补字典。
+- 测试：Product、TUI、VSCode 的契约与 parity 测试改为期望 `unsupported`；原用 share 演示宿主失败的测试改用 rename / archive。
+
+## 运行时版本：Bun 1.4.4
+
+upstream v1.19.6 把 `packageManager` 从 `bun@1.3.14` 升到 `bun@1.4.4`（构建脚本也依赖 1.4.4 的 musl 原生包行为）。EXE 内嵌 Bun 运行时，因此测试与打包都用 1.4.4。为不改动本机全局 Bun，从 npm registry 的 `@oven/bun-windows-x64@1.4.4` 取便携版放在 `D:\tmp-hc\bun-1.4.4`，验证与打包时放在 `PATH` 最前；`bun install --frozen-lockfile` 下 `bun.lock` 无变化。`plugin.openai.ws` 用例在 1.3.14 下失败、1.4.4 下通过，属于环境归因。
+
+离线构建脚本 `script/build-offline-linux.ts`、`build-offline-windows.ts` 的交叉编译器校验和改为 Bun 1.4.4 官方 `SHASUMS256.txt` 中的值，Windows 脚本的版本检查改为 `1.4.4`。
+
+Bun 1.4.4 对 Microsoft Store 版 PowerShell 7 的应用执行别名（`%LOCALAPPDATA%\Microsoft\WindowsApps\pwsh.exe`）调用 `stat` 会抛出 `EACCES`。v1.19.6 的 `packages/core/src/shell.ts` 会对配置的 shell 和 `Shell.list()` 的候选执行 `stat`，所以装了商店版 pwsh 的 Windows 用户在配置 `shell: "pwsh"` 时 shell 工具初始化失败，PTY 的 shell 列表接口也会报错。pure upstream v1.19.6 在 1.4.4 下同样失败（24 个 `[pwsh]` 用例），upstream 只在 2.x 的 `b6cfbec4cc`（#61952）中修复。1.18.30 交付版（Bun 1.3.14）没有这个问题，属于对交付用户的回退，因此回移植该修复的最小部分：`packages/core/src/util/which.ts` 的 `isAppExecutionAlias()`，`shell.ts` 的 `resolve()` 先判断别名再 `stat`，以及 upstream 的测试 fixture `test/fixture/app-execution-alias.ts` 和一条 core 测试（本机有商店应用时执行，否则跳过）。变异验证：去掉别名判断后该用例失败。下次同步到 2.x 时以 upstream 实现为准。
 
 ## 其他 Product Default Review
 
@@ -61,6 +79,7 @@ HyperCode 的处理，按改动从小到大：
 ## Cross-Host Product Contract Review
 
 - `/update`：不注册，两端都不出现，`CROSS_HOST_CONTRACT_PRESERVED`。
+- 会话分享：由 Product 统一判定为 `unsupported`，TUI 与 VSCode 结果一致，`CROSS_HOST_CONTRACT_PRESERVED`（见"会话分享停用"）。
 - `/status` 插件名路径分隔符修复：只影响展示文本，核对与 Product 状态契约一致。
 - 浏览器打开逻辑统一到 `@opencode-ai/core/open`：VSCode 不受影响。
 - `/variants`：见上表。

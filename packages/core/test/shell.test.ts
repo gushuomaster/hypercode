@@ -3,6 +3,9 @@ import path from "path"
 import { Shell } from "@opencode-ai/core/shell"
 import { FSUtil } from "@opencode-ai/core/fs-util"
 import { which } from "@opencode-ai/core/util/which"
+import { appExecutionAlias } from "./fixture/app-execution-alias"
+
+const alias = appExecutionAlias()
 
 const withShell = async (shell: string | undefined, fn: () => void | Promise<void>) => {
   const prev = process.env.SHELL
@@ -103,6 +106,14 @@ describe("shell", () => {
       await withShell(path.win32.basename(shell), async () => {
         expect(Shell.preferred()).toBe(shell)
       })
+    })
+
+    // Store installs of PowerShell 7 are app execution aliases; stat throws EACCES for them on Bun 1.4.4. Skipped where no
+    // Microsoft Store app is installed for the user; see the fixture.
+    test.skipIf(!alias)("resolves a configured app execution alias", async () => {
+      expect(Shell.preferred(alias!.file)).toBe(alias!.file)
+      expect(Shell.acceptable(alias!.file)).toBe(alias!.file)
+      expect(await Shell.list()).toBeArray()
     })
   }
 })

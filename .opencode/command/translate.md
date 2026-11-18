@@ -3,7 +3,7 @@ description: "Translate changed English documentation and UI copy"
 description_i18n:
   zh: "翻译已修改的英文文档和 UI 文案"
   en: "Translate changed English documentation and UI copy"
-model: opencode/gpt-5.6-sol
+model: opencode/gpt-6-sol
 ---
 
 run git diff and translate changed english doc and UI copy files to other international languages. Translate all languages in parallel to save time.
