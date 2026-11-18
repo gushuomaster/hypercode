@@ -1,0 +1,5 @@
+{"file": "openspec/changes/sync-upstream-v1-19-6/design.md", "reason": "冲突处理与更新渠道设计"}
+{"file": "openspec/changes/sync-upstream-v1-19-6/specs/product-default-policy/spec.md", "reason": "更新渠道需求"}
+{"file": "docs/规范/上游同步与品牌化规范.md", "reason": "品牌保留规则"}
+{"file": ".trellis/spec/tui/localization.md", "reason": "TUI 本地化约定"}
+{"file": ".trellis/spec/product/ownership-and-command-catalog.md", "reason": "Product 命令目录归属"}
