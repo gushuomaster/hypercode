@@ -1,95 +1,65 @@
-# HyperCode License 签发工具
+# HyperCode License 签发工具（内部）
 
-这是发证管理员在受控 Windows 机器上使用的 License 签发工具，不能分发给客户或目标机器。目标机器只需要最终生成的 `license.txt`。
+发证管理员使用的签发工具。工具代码可以留在内部开发仓库，但**不能**分发给客户，也不能进入 `hypercode.exe`、离线包或 `hypercode.vsix`。客户只拿到最终生成的 `license.txt`。
 
-推荐使用 Python GUI 构建的 `HyperCodeLicenseGenerator.exe`。原有 `licenseGenerator.cjs` 继续保留，用于兼容和算法核对。
+规格见 `openspec/changes/resolve-license-boundary/`（归档后为 `openspec/specs/license-gate/spec.md`）。
 
 ## 安全边界
 
-签发工具包含共享密钥 `secretKey = "hyper-aicode-secret-2024"`。EXE 虽然隐藏了源代码入口，但仍可能被逆向分析，因此只能由发证管理员保管，不能作为客户交付物。
+- License 使用 Ed25519 非对称签名。产品里只有公钥（`packages/opencode/src/license/public-key.ts`），拿到产品的人无法签发 license。
+- **私钥是唯一的秘密**。源文件默认在 `~/.hypercode-license/signing-key.pem`（仓库之外），`.gitignore` 已忽略 `*.pem`。请离线备份两份。
+- **构建出的 `HyperCodeLicenseGenerator.exe` 内置了私钥**，拷到任何电脑都能直接签发，因此 exe 本身和私钥一样需要保密：只在内部保管，不发给客户，不提交到 git（`dist` 已被忽略，测试也会拦截）。
+- 私钥丢失后无法继续签发；私钥或签发 exe 泄露后任何人都能签发。两种情况都按下面的“密钥轮换”处理。
 
-当前共享密钥已经进入仓库，属于半公开方案。如果需要真正的商业防护，应迁移到受控服务端签发或采用非对称签名，而不是继续把签发密钥放进客户端或离线工具。
+## 构建
 
-## 推荐方式：Python GUI
-
-### 1. 构建 EXE
-
-需要 Windows 和 Python 3.13。首次构建会在 `.artifacts` 中创建隔离环境，并安装固定版本的 PyInstaller。
-
-在仓库根目录执行：
+需要 Bun。在 `packages/opencode` 目录执行：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\packages\opencode\script\license\build.ps1
+bun script/license/build.ts            # 默认读取 ~/.hypercode-license/signing-key.pem
+bun script/license/build.ts --key D:\keys\signing-key.pem
 ```
 
-构建产物位于：
+产物为 `packages/opencode/script/license/dist/HyperCodeLicenseGenerator.exe`。构建时会核对私钥与产品内置公钥是否匹配，不匹配就拒绝构建。之后只需要把这个 exe 拷到发证电脑上使用，不用再带私钥文件。
 
-```text
-packages\opencode\script\license\dist\HyperCodeLicenseGenerator.exe
-```
+在有私钥文件的电脑上，也可以不构建，直接运行 `bun script/license/issue.ts <子命令>`，参数完全相同。
 
-`.artifacts` 和 `dist` 都是本地构建目录，不应提交仓库。
+## 签发流程
 
-### 2. 获取目标机器 ID
+1. 客户在目标机执行 `hypercode license machine-id`（不需要授权即可运行），把输出交给管理员。
+   输出形如 `5da1-32fc-0f7b-afcb-4c94-5361-4d2c-eb4a`：Windows 由系统 MachineGuid 派生，Linux 由 `/etc/machine-id` 派生。
+2. 管理员签发：
 
-在目标机器执行：
+   ```powershell
+   # 永久
+   HyperCodeLicenseGenerator.exe issue --mid 5da1-32fc-0f7b-afcb-4c94-5361-4d2c-eb4a --sub 客户名 --out license.txt
+   # 30 天（含今天）
+   HyperCodeLicenseGenerator.exe issue --mid <机器码> --days 30 --sub 客户名 --out license.txt
+   # 指定最后有效日（含当天）
+   HyperCodeLicenseGenerator.exe issue --mid <机器码> --exp 2027-06-30 --sub 客户名 --out license.txt
+   ```
+
+   每次签发都会先用产品内置公钥自检，确认无误才输出；签出的 license 一定能被当前版本接受。
+3. 客户把 `license.txt` 放到 `hypercode license path` 输出的位置（Linux 可用离线包的 `install-license.sh`），然后执行 `hypercode license status` 验证。
+
+## 首次生成密钥与密钥轮换
 
 ```powershell
-hypercode license machine-id
+HyperCodeLicenseGenerator.exe keygen            # 生成新私钥，并打印要写入 public-key.ts 的公钥行
+HyperCodeLicenseGenerator.exe pubkey            # 根据现有私钥重新打印公钥行
 ```
 
-把输出的机器 ID 发给发证管理员。
+`keygen` 不会覆盖已有私钥；确需覆盖时，加 `--force` 并指定新路径。
 
-### 3. 图形界面签发
+轮换步骤：
 
-双击运行 `HyperCodeLicenseGenerator.exe`：
+1. 生成新私钥（用新的 `--key` 路径）。
+2. 把新公钥行**追加**到 `public-key.ts`，然后发版。
+3. 用 `bun script/license/build.ts --key <新私钥>` 重新构建签发 exe，销毁旧 exe，之后用新 exe 签发。
+4. 要让旧 key 签发的 license 失效，在后续版本中从 `public-key.ts` 删除旧 `kid`，并为受影响的客户重新签发。
 
-1. 输入目标机器 ID。
-2. 选择“永久”“15 天”“30 天”或“90 天”。
-3. 点击“生成 License”。
-4. 复制 License 字符串，或者保存为 `license.txt`。
+## 旧格式
 
-修改机器 ID 或授权期限后，旧结果会自动失效，必须重新生成。
+2026-11 之前签发的 `sha256(机器码-共享密钥)` 格式 license 已停用。新版本会把它识别为“旧格式已停用”，客户需要用新版本的 `license machine-id` 输出重新申请签发。
 
-### 4. 写回并验证
-
-把生成的字符串写入目标机器对应平台的文件：
-
-- Windows：`C:\hyper-aicode\license.txt`
-- Linux：`~/hyper-aicode/license.txt`
-
-文件中只能包含最终 License 字符串，不要附加说明文字。随后执行：
-
-```powershell
-hypercode license status
-hypercode license path
-```
-
-返回 `HyperCode license is valid.` 即表示授权成功。
-
-## 兼容方式：Node.js
-
-如果发证机暂时不能构建 Python EXE，可以在 `packages/opencode/script/license` 目录继续使用原有脚本。
-
-永久 License：
-
-```powershell
-node -e "const {LicenseGenerator}=require('./licenseGenerator.cjs');const g=new LicenseGenerator();console.log(g.generateLicense('TARGET_MACHINE_ID'));"
-```
-
-时效 License，可选 `half-month`、`one-month` 或 `three-months`：
-
-```powershell
-node -e "const {LicenseGenerator}=require('./licenseGenerator.cjs');const g=new LicenseGenerator();console.log(g.generateTimedLicense('TARGET_MACHINE_ID','one-month'));"
-```
-
-## 算法一致性
-
-签发与验证共用同一套算法，分布在四处。修改任意一处时，必须同步修改并运行兼容性测试：
-
-- Python GUI：`packages/opencode/script/license/license_generator.py`
-- Node.js 兼容工具：`packages/opencode/script/license/licenseGenerator.cjs`
-- CLI 验证：`packages/opencode/src/license/license.ts`
-- VS Code 扩展验证：`sdks/vscode/src/license/licenseAlgorithm.ts`
-
-CLI 与扩展启动时会校验 `license.txt` 是否存在、非空、未过期且与当前机器 ID 匹配。日常开发机器也需要准备有效 License，确保开发环境与交付版本行为一致。
+开发机同样需要新格式 license 才能在非测试环境下运行 CLI；测试环境（`NODE_ENV=test`）会跳过门禁。

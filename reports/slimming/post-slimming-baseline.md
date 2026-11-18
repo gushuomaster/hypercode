@@ -1,5 +1,71 @@
 # HyperCode Post-Slimming Baseline
 
+## 2026-11-13 基线刷新（Product 跨宿主对齐后）
+
+下文 2026-09-16 的内容保留为历史记录；同步对比以本节为准。来源：`openspec/changes/prepare-upstream-sync`。
+
+### Fork Tax
+
+测量口径与命令不变（见下文"可重复测量命令"），upstream commit 仍为 `193de13a88d62a6409c6d385831180f1def527dc`。
+
+| 测量点 | Modified upstream files | Production paths | Core patch paths | Technical surface |
+|---|---:|---:|---:|---:|
+| 2026-09-16 历史基线 | 141 | 92 | 48 | 792 |
+| `359960c7d`（Product 跨宿主对齐） | 218 | 149 | 62 | 1538 |
+| 本轮暂存快照（openspec/trellis 迁移，提交前） | 220 | 149 | 62 | 1538 |
+
+增量来源：Product 跨宿主对齐（TUI/VSCode 改为消费 `packages/product` 的命令目录与状态契约）、TUI 中文本地化、授权门禁接入点，属于 `KEEP` 类的有意成本。本轮迁移只多改了 2 个 upstream 仓库配置文件。收尾冒烟中又增加 1 个：`packages/opencode/test/preload.ts` 固定 `LANG=en_US.UTF-8`（系统语言回退上线后，让 upstream 英文断言在中文主机上保持稳定），预计 Modified upstream files 为 221。**提交后用 `-CurrentRef HEAD` 重新实测，把结果填回本表作为正式基线。**
+
+### 已修复的债务
+
+- F-013（`test/config/config.test.ts:284`）与 `script/build-windows-validation.ts` 类型问题：`485b115f1 fix(opencode): restore full typecheck` 已修复，OpenCode typecheck 恢复全量通过。
+- `rebrand:check` 的 `core-env-alias-missing` / `runtime-env-alias-missing` blocked 签名：属于审计规则过时（C-001 把别名集中到 `packages/core/src/flag/env.ts` 后旧规则误报），已在 `cleanup-delivery-branding` 中修正规则。当前签名为 Blocked 0、Planned/Patchable 0/0、Manual 1（`README.md`），详见 `docs/规范/上游同步与品牌化规范.md`。
+- A/B 对照环境 `NOT_TESTED`（F-002 / B2）：Windows 上改用 `bun install --frozen-lockfile --backend=copyfile --minimum-release-age=0` 后可安装，已在 `193de13a8` 上跑通 `test/config/config.test.ts`（108 pass）。方法见 `docs/操作手册/上游同步操作流程.md` 第 7 步。
+
+### 仍存在的债务
+
+- `packages/opencode/script/run-real-doubao.ts`：改为 `packages/opencode/tsconfig.json` 的 `exclude`，不再影响 typecheck，但依赖未集成分支的问题仍在（`KNOWN_USER_SCRIPT_TYPE_DEBT`）。
+- CLI 运行时输出中 124 处 upstream 硬编码英文，已由 `packages/opencode/test/cli/localization-audit.test.ts` 冻结为基线。
+- 全量测试中的已知失败见下方"验证基线"。
+
+### 验证基线
+
+2026-11-18 在本轮暂存状态上运行（Windows，`core.autocrlf=true`）。归因方法：失败用例在 HEAD `359960c7d` 的干净 worktree 上复跑；仍失败的再到 pure upstream `193de13a8` worktree 复跑（方法见 `docs/操作手册/上游同步操作流程.md` 第 7 步）。
+
+| 包 | typecheck | 测试 |
+|---|---|---|
+| `packages/product` | PASS | 全部通过 |
+| `packages/core` | PASS | 1093 pass / 7 skip / 3 fail |
+| `packages/tui` | PASS | 278 pass / 1 skip / 4 fail |
+| `packages/opencode` | PASS | 3638 pass / 58 skip / 1 todo / 13 fail |
+| `sdks/vscode` | PASS（`check-types`） | `bun test`：441 pass / 29 fail / 20 errors（修复前） |
+
+**新回归：0。** 本轮暂存改动引入的 3 个失败已在本轮修复：`sdks/vscode` 的 `lsp-adapter`、`formatter-adapter`、`session-meta` 测试未跟进 `complete-capability-status-contract` 新增的 `textKey`（此前误记为已知债务）。另修复 HEAD 就存在的 `visible-copy-localization` 失败：`status-picker.tsx` 4 处硬编码英文。
+
+已知失败签名（同步后与此对比，不得新增）：
+
+| 包 | 失败 | 归因 |
+|---|---|---|
+| opencode | `Glob > scan()` ×2、`filesystem > resolve()` ×2、`nested symlinks`、`symlink handling` | `KNOWN_WINDOWS_SYMLINK_EPERM`（沿用 2026-09-16 基线） |
+| opencode | `cf-ai-gateway` ×4（`provider "anthropic.messages" is currently not supported`） | upstream：pure upstream `193de13a8` 同样失败 |
+| opencode | `snapshot-tool-race`、`tool.shell permissions > normalizes external_directory workdir variants on Windows` | upstream：pure upstream 同样失败 |
+| opencode | `offline Linux package > creates an offline archive…` | 环境：Windows 上 GNU tar 把 `C:` 当远程主机；HEAD 同样失败，Linux 构建产物已手工核对 |
+| core | `Config > does not load legacy config.json files`、`shell > normalizes Git Bash shell paths from env` | HEAD 同样失败 |
+| core | `Npm.add > reifies when package cache…` | 偶发：负载下 5000ms 超时，单独重跑两次通过 |
+| tui | `app.exit prints the session epilogue…`、`formats session continuation summary` | 断言仍期望 `opencode -s`，实际为 HyperCode 品牌；upstream 测试文件，为控制 fork tax 不改 |
+| tui | `DiffViewerFileTree > keeps loading and error quiet…` | 断言期望英文 `No files`，中文环境显示"没有文件"；同上不改 |
+| tui | `abbreviates paths within home boundaries` | Windows 路径分隔符 `~\project`；HEAD 同样失败 |
+| vscode | 5 个 `animates …` 测试 | 环境：`core.autocrlf=true` 使 CSS 为 CRLF，测试按 LF 匹配 |
+| vscode | 20 个 `Cannot find package 'vscode'` | 环境：需在 VS Code 扩展宿主（`vscode-test`）中运行，`bun test` 无法加载 |
+
+2026-09-16 基线中的"1 个 CLI help spacing snapshot"失败已不再出现。
+
+### 下一次同步目标
+
+见 `docs/阶段记录/专项_上游同步影响_20261113.md`：建议目标 v1.19.5（14 个真实冲突），合并前须先定案更新检查与 OpenCode 2.0 推销的处理；v2.2.7 单独立项。
+
+---
+
 固化时间：2026-09-16（Asia/Shanghai）
 
 ## Result

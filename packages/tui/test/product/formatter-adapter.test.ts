@@ -3,6 +3,6 @@ import { toProductFormatterStates } from "../../src/product/formatter-adapter"
 
 test("projects TUI formatter statuses into shared Product state", () => {
   expect(toProductFormatterStates([{ name: "prettier", enabled: true, extensions: [".ts"] }])).toEqual([
-    { name: "prettier", enabled: true, extensions: [".ts"], severity: "none" },
+    { name: "prettier", enabled: true, extensions: [".ts"], severity: "none", textKey: "item.formatter.enabled" },
   ])
 })

@@ -1,4 +1,4 @@
-import { productCommandIDs, type ProductCommandID } from "@opencode-ai/product"
+import { productCommandIDs, type ProductCommandAvailability, type ProductCommandID, type ProductTextKey } from "@opencode-ai/product"
 import type { VsCodeCommandCatalogInput } from "../../../product/command-adapter"
 import { resolveVsCodeProductCommand } from "../../../product/command-adapter"
 
@@ -14,6 +14,12 @@ export type ComposerSlashAction =
       source?: string
       arguments: string
     }
+  | {
+      kind: "unavailable"
+      commandID: string
+      availability: Exclude<ProductCommandAvailability, "available">
+      reasonKey?: ProductTextKey
+    }
 
 export type ComposerAutocompleteAction =
   | {
@@ -21,37 +27,10 @@ export type ComposerAutocompleteAction =
       commandID: ProductCommandID
     }
   | {
-      type: "newSessionInPlace"
-    }
-  | {
-      type: "openSkillPicker"
-    }
-  | {
-      type: "openAgentPicker"
-    }
-  | {
-      type: "undoSession"
-    }
-  | {
-      type: "redoSession"
-    }
-  | {
-      type: "compactSession"
-    }
-  | {
-      type: "openModelPicker"
-    }
-  | {
-      type: "openThemePicker"
-    }
-  | {
       type: "resetAgent"
     }
   | {
       type: "refreshSession"
-    }
-  | {
-      type: "openSessionPicker"
     }
 
 export function resolveComposerAutocompleteAction(item: { id: string; kind: string }): ComposerAutocompleteAction | undefined {
@@ -67,28 +46,10 @@ export function resolveComposerAutocompleteAction(item: { id: string; kind: stri
   }
 
   switch (item.id) {
-    case "slash-new":
-      return { type: "newSessionInPlace" }
-    case "slash-skills":
-      return { type: "openSkillPicker" }
-    case "slash-agents":
-      return { type: "openAgentPicker" }
-    case "slash-undo":
-      return { type: "undoSession" }
-    case "slash-redo":
-      return { type: "redoSession" }
-    case "slash-compact":
-      return { type: "compactSession" }
-    case "slash-model":
-      return { type: "openModelPicker" }
-    case "slash-theme":
-      return { type: "openThemePicker" }
     case "host:reset-agent":
       return { type: "resetAgent" }
     case "host:refresh":
       return { type: "refreshSession" }
-    case "slash-sessions":
-      return { type: "openSessionPicker" }
     default:
       return undefined
   }
@@ -100,9 +61,7 @@ export function resolveComposerSlashAction(
 ): ComposerSlashAction | undefined {
   const resolved = resolveVsCodeProductCommand(draft, catalog)
   if (!resolved) return undefined
-  if (resolved.kind === "builtin") return resolved
-  if (resolved.kind === "dynamic") return resolved
-  return undefined
+  return resolved
 }
 
 export function isCompletedSlashCommand(draft: string, catalog: VsCodeCommandCatalogInput) {

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { deriveProductCommandCatalog, resolveProductCommand } from "../src/command"
-import { sharedCommandContext, sharedCommandIDs } from "./fixtures/command-contract"
+import { deriveProductCommandCatalog, deriveProductCommandSessionContext, resolveProductCommand } from "../src/command"
+import { sharedCommandContext, sharedCommandIDs, surfaceOptionalCommandIDs } from "./fixtures/command-contract"
 
 test("filters hidden commands, deduplicates IDs, and sorts deterministically", () => {
   expect(deriveProductCommandCatalog([
@@ -20,7 +20,8 @@ test("owns the canonical shared command catalog independently of host registrati
     dynamic: [],
   })
 
-  expect(catalog.map((entry) => entry.id).sort()).toEqual(sharedCommandIDs)
+  expect(catalog.filter((entry) => entry.scope === "shared").map((entry) => entry.id).sort()).toEqual(sharedCommandIDs)
+  expect(catalog.filter((entry) => entry.scope === "shared_surface_optional").map((entry) => entry.id).sort()).toEqual(surfaceOptionalCommandIDs)
   expect(catalog.find((entry) => entry.id === "mcp.list")).toMatchObject({
     name: "mcps",
     aliases: ["mcp"],
@@ -122,5 +123,86 @@ test("resolves dynamic commands with arguments without treating them as built-in
     name: "review",
     arguments: "branch main",
     source: "mcp",
+  })
+})
+
+test("keeps rename, share, unshare and fork surface-optional and requires an active session", () => {
+  const catalog = deriveProductCommandCatalog({
+    context: { ...sharedCommandContext, hasSession: false, isShared: false },
+  })
+
+  for (const id of surfaceOptionalCommandIDs) {
+    expect(catalog.find((entry) => entry.id === id)).toMatchObject({
+      scope: "shared_surface_optional",
+      availability: "unavailable",
+      reasonKey: "command.reason.session_required",
+    })
+  }
+})
+
+test("unshare is only available for a session that is already shared", () => {
+  const notShared = deriveProductCommandCatalog({ context: { ...sharedCommandContext, isShared: false } })
+  const shared = deriveProductCommandCatalog({ context: sharedCommandContext })
+
+  expect(resolveProductCommand({ value: "/unshare", catalog: notShared })).toEqual({
+    kind: "unavailable",
+    commandID: "session.unshare",
+    availability: "unavailable",
+    reasonKey: "command.reason.not_shared",
+  })
+  expect(resolveProductCommand({ value: "/unshare", catalog: shared })).toEqual({
+    kind: "builtin",
+    commandID: "session.unshare",
+    arguments: "",
+  })
+})
+
+test("deriveProductCommandSessionContext applies revert boundary to canUndo", () => {
+  // revertMessageID = m3：m3 之前只有 m1(user), m2(assistant)，canUndo = true
+  const withRevert = deriveProductCommandSessionContext({
+    hasSession: true,
+    messages: [
+      { id: "m1", role: "user" },
+      { id: "m2", role: "assistant" },
+      { id: "m3", role: "user" },
+    ],
+    revertMessageID: "m3",
+    shareURL: "https://share.example/abc",
+  })
+  expect(withRevert).toEqual({ hasSession: true, canUndo: true, canRedo: true, isShared: true })
+
+  // revertMessageID = m1：m1 之前无消息，canUndo = false
+  const revertAtFirst = deriveProductCommandSessionContext({
+    hasSession: true,
+    messages: [{ id: "m1", role: "user" }],
+    revertMessageID: "m1",
+  })
+  expect(revertAtFirst).toMatchObject({ canUndo: false, canRedo: true })
+
+  // 无 revert：所有 user 消息可见，canRedo = false
+  const noRevert = deriveProductCommandSessionContext({
+    hasSession: true,
+    messages: [{ id: "m1", role: "user" }],
+  })
+  expect(noRevert).toMatchObject({ canUndo: true, canRedo: false, isShared: false })
+
+  // 无会话
+  const noSession = deriveProductCommandSessionContext({ hasSession: false, messages: [] })
+  expect(noSession).toEqual({ hasSession: false, canUndo: false, canRedo: false, isShared: false })
+})
+
+test("a host without an entry point gets unsupported instead of a faked command", () => {
+  const catalog = deriveProductCommandCatalog({
+    context: {
+      ...sharedCommandContext,
+      supported: { ...sharedCommandContext.supported, "session.fork": false },
+    },
+  })
+
+  expect(resolveProductCommand({ value: "/fork", catalog })).toEqual({
+    kind: "unavailable",
+    commandID: "session.fork",
+    availability: "unsupported",
+    reasonKey: "command.reason.unsupported",
   })
 })

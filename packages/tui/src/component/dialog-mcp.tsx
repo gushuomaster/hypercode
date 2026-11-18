@@ -1,76 +1,77 @@
 import { createMemo, createSignal } from "solid-js"
 import { useLocal } from "../context/local"
 import { useSync } from "../context/sync"
-import { map, pipe, entries, sortBy } from "remeda"
+import { map, pipe, sortBy } from "remeda"
 import { DialogSelect, type DialogSelectRef, type DialogSelectOption } from "../ui/dialog-select"
 import { useTheme } from "../context/theme"
-import { TextAttributes } from "@opentui/core"
 import { useSDK } from "../context/sdk"
 import { translate as t } from "../context/language"
-import { deriveProductMcpAction, type ProductMcpState } from "@opencode-ai/product"
+import { deriveProductMcpAction, type ProductMcpActionName, type ProductMcpState } from "@opencode-ai/product"
 import { toProductMcpStates } from "../product/mcp-adapter"
+import { toTuiTextKey } from "../product/text-adapter"
+import { useToast } from "../ui/toast"
 
-export function mcpStatusLabel(state: ProductMcpState) {
-  if (state.availability === "connected") return "dialog.mcp.enabled" as const
-  if (state.availability === "failed" || state.availability === "needs_client_registration" || state.availability === "unsupported") return "dialog.mcp.failed" as const
-  if (state.availability === "needs_auth") return "dialog.mcp.auth" as const
-  return "dialog.mcp.disabled" as const
+// Chinese title explains the failure; the original error stays in the message for diagnosis.
+export function mcpFailureToast(kind: "toggle" | "refresh", error?: unknown) {
+  const raw = error instanceof Error ? error.message : error === undefined ? undefined : String(error)
+  return {
+    variant: "error" as const,
+    title: t(kind === "toggle" ? "dialog.mcp.toggleFailed" : "dialog.mcp.refreshFailed"),
+    message: raw || t(kind === "refresh" ? "dialog.mcp.refreshNoData" : "dialog.mcp.toggleFailed"),
+  }
 }
 
-function Status(props: { state: ProductMcpState; loading: boolean }) {
+// Host only renders: the label comes from Product's per-item textKey and the tone from Product's severity.
+function Status(props: { state: ProductMcpState }) {
   const { theme } = useTheme()
-  if (props.loading) {
-    return <span style={{ fg: theme.textMuted }}>⋯ {t("dialog.mcp.loading")}</span>
+  const tone = () => {
+    if (props.state.severity === "error") return { fg: theme.error, icon: "!" }
+    if (props.state.severity === "warning") return { fg: theme.warning, icon: "!" }
+    return { fg: theme.textMuted, icon: "○" }
   }
-  if (props.state.availability === "connected") {
-    return <span style={{ fg: theme.success, attributes: TextAttributes.BOLD }}>✓ {t("dialog.mcp.enabled")}</span>
-  }
-  if (props.state.availability === "failed" || props.state.availability === "needs_client_registration" || props.state.availability === "unsupported") {
-    return <span style={{ fg: theme.error }}>! {t("dialog.mcp.failed")}</span>
-  }
-  if (props.state.availability === "needs_auth") {
-    return <span style={{ fg: theme.warning }}>! {t("dialog.mcp.auth")}</span>
-  }
-  return <span style={{ fg: theme.textMuted }}>○ {t("dialog.mcp.disabled")}</span>
+  return (
+    <span style={{ fg: tone().fg }}>
+      {tone().icon} {t(toTuiTextKey(props.state.textKey))}
+    </span>
+  )
 }
 
 export function DialogMcp() {
   const local = useLocal()
   const sync = useSync()
   const sdk = useSDK()
+  const toast = useToast()
   const [, setRef] = createSignal<DialogSelectRef<unknown>>()
-  const [loading, setLoading] = createSignal<string | null>(null)
+  // Raw fact only: which host action is running for which server. Product decides what that means.
+  const [pending, setPending] = createSignal<Record<string, ProductMcpActionName>>({})
 
-  const options = createMemo(() => {
-    // Track sync data and loading state to trigger re-render when they change
-    const mcpData = sync.data.mcp_product
-    const loadingMcp = loading()
+  const states = createMemo(() => toProductMcpStates(sync.data.mcp, pending()))
 
-    return pipe(
-      mcpData,
+  const options = createMemo(() =>
+    pipe(
+      states(),
       sortBy((state) => state.name),
       map((state) => ({
         value: state.name,
         title: state.name,
-        description: state.diagnostic?.message ?? (state.availability === "failed" ? t("dialog.mcp.failed") : state.availability),
-        footer: <Status state={state} loading={loadingMcp === state.name} />,
+        description: state.diagnostic?.message ?? t(toTuiTextKey(state.textKey)),
+        footer: <Status state={state} />,
         category: undefined,
       })),
-    )
-  })
+    ),
+  )
 
   const actions = createMemo(() => [
     {
       command: "dialog.mcp.toggle",
       title: t("dialog.mcp.toggle"),
       onTrigger: async (option: DialogSelectOption<string>) => {
-        // Prevent toggling while an operation is already in progress
-        if (loading() !== null) return
-
-        const state = sync.data.mcp_product.find((item) => item.name === option.value)
+        const state = states().find((item) => item.name === option.value)
         const action = state ? deriveProductMcpAction(state) : undefined
-        if (!action) return
-        setLoading(option.value)
+        // Product returns no action while this server is already connecting or disconnecting.
+        if (!state?.action || !action) return
+        const running = state.action
+        setPending((current) => ({ ...current, [option.value]: running }))
         try {
           await local.mcp.run(action)
           // Refresh MCP status from server
@@ -80,11 +81,13 @@ export function DialogMcp() {
             sync.set("mcp_product", toProductMcpStates(status.data))
           } else {
             console.error("Failed to refresh MCP status: no data returned")
+            toast.show(mcpFailureToast("refresh"))
           }
         } catch (error) {
           console.error("Failed to toggle MCP:", error)
+          toast.show(mcpFailureToast("toggle", error))
         } finally {
-          setLoading(null)
+          setPending(({ [option.value]: _done, ...rest }) => rest)
         }
       },
     },

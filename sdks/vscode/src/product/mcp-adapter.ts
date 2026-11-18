@@ -1,7 +1,8 @@
-import { deriveProductMcpStates, deriveProductMcpSummary, type ProductCapabilitySummary, type ProductMcpState, type ProductMcpStateInput } from "@opencode-ai/product"
+import { deriveProductMcpStates, deriveProductMcpSummary, type ProductCapabilityConfigInput, type ProductCapabilitySummary, type ProductMcpActionName, type ProductMcpState, type ProductMcpStateInput } from "@opencode-ai/product"
 import type { McpStatus } from "../core/sdk"
 
-export function toProductMcpStates(statuses: Record<string, McpStatus>): ProductMcpState[] {
+// `pending` reports only the raw fact that a host action is running for a server; Product decides what that means.
+export function toProductMcpStates(statuses: Record<string, McpStatus>, pending: Record<string, ProductMcpActionName> = {}): ProductMcpState[] {
   return deriveProductMcpStates(Object.entries(statuses).map(([name, status]): ProductMcpStateInput => ({
     name,
     status: {
@@ -9,9 +10,10 @@ export function toProductMcpStates(statuses: Record<string, McpStatus>): Product
       ...("error" in status && status.error ? { error: status.error, raw: status.error } : {}),
     },
     hostActions: ["connect", "disconnect", "reconnect", "authenticate"],
+    ...(pending[name] ? { pending: pending[name] } : {}),
   })))
 }
 
-export function toProductMcpSummary(input: { configured: boolean; statuses: Record<string, McpStatus> }): ProductCapabilitySummary {
-  return deriveProductMcpSummary({ configured: input.configured, states: toProductMcpStates(input.statuses) })
+export function toProductMcpSummary(input: { config: ProductCapabilityConfigInput; statuses: Record<string, McpStatus>; pending?: Record<string, ProductMcpActionName> }): ProductCapabilitySummary {
+  return deriveProductMcpSummary({ config: input.config, states: toProductMcpStates(input.statuses, input.pending) })
 }

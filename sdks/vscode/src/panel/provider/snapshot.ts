@@ -161,8 +161,8 @@ export async function buildSessionSnapshot({ ref, mgr, log, isSubmitting, messag
       providerAuth: {},
       providerDefault: defaults,
       configuredModel,
-      capabilityConfigured: {
-        mcp: Object.values(configRes.data?.mcp ?? {}).some((entry) => entry.enabled !== false),
+      capabilityConfig: configRes.data === undefined ? {} : {
+        mcp: Object.entries(configRes.data?.mcp ?? {}).map(([name, entry]) => ({ name, enabled: entry.enabled !== false })),
         lsp: configRes.data?.lsp !== false,
         formatter: configRes.data?.formatter !== false,
       },

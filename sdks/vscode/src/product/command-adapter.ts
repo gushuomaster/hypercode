@@ -30,6 +30,10 @@ export type VsCodeCommandTarget =
   | "openSkillPicker"
   | "openThemePicker"
   | "openCommandHelp"
+  | "renameSession"
+  | "shareSession"
+  | "unshareSession"
+  | "forkSession"
 
 const targets: Record<ProductCommandID, VsCodeCommandTarget> = {
   "session.new": "newSession",
@@ -46,6 +50,10 @@ const targets: Record<ProductCommandID, VsCodeCommandTarget> = {
   "skill.list": "openSkillPicker",
   "theme.list": "openThemePicker",
   "help.show": "openCommandHelp",
+  "session.rename": "renameSession",
+  "session.share": "shareSession",
+  "session.unshare": "unshareSession",
+  "session.fork": "forkSession",
 }
 
 export function toVsCodeProductCommands(inputs: ProductCommandInput[]): ProductCommandEntry[]

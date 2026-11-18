@@ -3,7 +3,7 @@
   "displayName": "HyperCode",
   "description": "%hypercode.description%",
   "version": "1.18.30",
-  "publisher": "sst-dev",
+  "publisher": "hypercode",
   "repository": {
     "type": "git",
     "url": "https://github.com/anomalyco/opencode"

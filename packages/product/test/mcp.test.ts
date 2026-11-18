@@ -42,4 +42,62 @@ describe("MCP product state", () => {
 
     expect(deriveProductMcpAction(state)).toEqual({ type: "mcp.authenticate", name: "docs" })
   })
+
+  test("selects the per-entry text key from availability so hosts do not", () => {
+    const states = deriveProductMcpStates(mcpStateFixture)
+
+    expect(states.map((state) => [state.name, state.textKey])).toEqual([
+      ["disabled", "item.mcp.disabled"],
+      ["docs", "item.mcp.needs_auth"],
+      ["local", "item.mcp.connected"],
+      ["registration", "item.mcp.needs_client_registration"],
+      ["zeta", "item.mcp.failed"],
+    ])
+    expect(deriveProductMcpState({ name: "x", status: { status: "unsupported" } }).textKey).toBe("item.mcp.unsupported")
+  })
+
+  test("models a running connect as connecting and hides conflicting actions", () => {
+    const state = deriveProductMcpState({ name: "docs", status: { status: "disabled" }, pending: "connect" })
+
+    expect(state).toEqual({
+      name: "docs",
+      availability: "connecting",
+      severity: "none",
+      pending: "connect",
+      availableActions: [],
+      textKey: "item.mcp.connecting",
+    })
+    expect(deriveProductMcpAction(state)).toBeUndefined()
+  })
+
+  test("a reconnect of a failed server is not reported as failed while it runs", () => {
+    const state = deriveProductMcpState({
+      name: "broken",
+      status: { status: "failed", error: "Connection refused", raw: "MCPFailed: broken" },
+      pending: "reconnect",
+    })
+
+    expect(state.availability).toBe("connecting")
+    expect(state.severity).toBe("none")
+    expect(state.availableActions).toEqual([])
+    expect(state.diagnostic).toBeUndefined()
+  })
+
+  test("a running disconnect keeps the current availability but offers no actions", () => {
+    const state = deriveProductMcpState({ name: "local", status: { status: "connected" }, pending: "disconnect" })
+
+    expect(state.availability).toBe("connected")
+    expect(state.pending).toBe("disconnect")
+    expect(state.textKey).toBe("item.mcp.disconnecting")
+    expect(state.availableActions).toEqual([])
+    expect(state.action).toBeUndefined()
+  })
+
+  test("a status already reported as connecting offers no actions even without a pending fact", () => {
+    const state = deriveProductMcpState({ name: "docs", status: { status: "connecting" } })
+
+    expect(state.severity).toBe("none")
+    expect(state.availableActions).toEqual([])
+    expect(state.textKey).toBe("item.mcp.connecting")
+  })
 })

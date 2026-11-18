@@ -4,6 +4,6 @@ import { toProductFormatterStates } from "./formatter-adapter"
 
 test("projects VS Code formatter statuses into shared Product state", () => {
   assert.deepEqual(toProductFormatterStates([{ name: "prettier", enabled: true, extensions: [".ts"] }]), [
-    { name: "prettier", enabled: true, extensions: [".ts"], severity: "none" },
+    { name: "prettier", enabled: true, extensions: [".ts"], severity: "none", textKey: "item.formatter.enabled" },
   ])
 })

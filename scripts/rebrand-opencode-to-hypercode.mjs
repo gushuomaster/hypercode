@@ -28,7 +28,7 @@ const brandPointCoverage = [
     id: "cli-banner-and-help",
     status: "supported",
     files: [
-      "packages/opencode/src/index.ts",
+      "packages/opencode/src/cli/main.ts",
       "packages/opencode/src/cli/error.ts",
       "packages/opencode/src/temporary.ts",
     ],
@@ -36,9 +36,9 @@ const brandPointCoverage = [
   },
   {
     id: "app-english-visible-copy",
-    status: "supported",
+    status: "out-of-delivery",
     files: ["packages/app/src/i18n/en.ts", "packages/desktop/src/renderer/i18n/en.ts"],
-    notes: "Auto-patches visible OpenCode string values, not keys or compatibility tokens.",
+    notes: "Web and desktop apps are not HyperCode deliverables; left as upstream to avoid fork tax.",
   },
   {
     id: "vscode-visible-metadata",
@@ -96,27 +96,13 @@ const fileRules = [
   },
   {
     file: "packages/app/src/i18n/en.ts",
-    mode: "auto",
-    protectedSignals: [
-      signal("provider_keys", /"dialog\.provider\.opencode[^"]*"/g),
-      signal("provider_connect_keys", /"provider\.connect\.opencodeZen[^"]*"/g),
-      signal("compat_config", /hypercode\.json or opencode\.json/g),
-      signal("zen_url", /opencode\.ai\/zen/g),
-      signal("wsl_opencode_keys", /"wsl\.onboarding\.[^"]*opencode[^"]*"/g),
-    ],
-    apply: (text) =>
-      applyLiteralRules(text, [
-        literalRule("visible_open_code", "OpenCode", "HyperCode", "Rewrite visible app English brand strings."),
-      ]),
+    mode: "out-of-delivery",
+    reason: "Web app is not a HyperCode deliverable (deliverables: hypercode.exe, hypercode.vsix, offline packages).",
   },
   {
     file: "packages/desktop/src/renderer/i18n/en.ts",
-    mode: "auto",
-    protectedSignals: [],
-    apply: (text) =>
-      applyLiteralRules(text, [
-        literalRule("visible_open_code", "OpenCode", "HyperCode", "Rewrite visible desktop updater English strings."),
-      ]),
+    mode: "out-of-delivery",
+    reason: "Desktop app is not a HyperCode deliverable (deliverables: hypercode.exe, hypercode.vsix, offline packages).",
   },
   {
     file: "packages/opencode/src/cli/error.ts",
@@ -142,7 +128,8 @@ const fileRules = [
       ]),
   },
   {
-    file: "packages/opencode/src/index.ts",
+    // src/index.ts only dynamically imports ./cli/main; the visible CLI name and banner guard live in main.ts.
+    file: "packages/opencode/src/cli/main.ts",
     mode: "auto",
     protectedSignals: [
       signal("import_namespace", protectedPatterns.import_namespace),
@@ -287,6 +274,11 @@ async function runRebrand(options) {
   const summary = createSummary(options)
 
   for (const rule of fileRules) {
+    if (rule.mode === "out-of-delivery") {
+      summary.skipped.push({ file: rule.file, reason: "out-of-delivery" })
+      continue
+    }
+
     const file = path.join(options.root, rule.file)
     const text = await readUtf8(file)
     if (text === undefined) {
@@ -638,8 +630,10 @@ async function auditProviderDisplayName(rootDir) {
   return result
 }
 
+// The extension no longer types a launch command into a terminal: core/server.ts spawns `<cli> serve --port` directly.
+// Public command ids are `hypercode.*` by policy (docs/规范/上游同步与品牌化规范.md), so command ids are not audited here.
 async function auditVscodeLaunchCommand(rootDir) {
-  const file = "sdks/vscode/src/extension.ts"
+  const file = "sdks/vscode/src/core/server.ts"
   const text = await readUtf8(path.join(rootDir, file))
   if (text === undefined) {
     return {
@@ -649,7 +643,7 @@ async function auditVscodeLaunchCommand(rootDir) {
           "vscode-launch-command-missing",
           file,
           "missing",
-          "VS Code extension launch file was not found for audit.",
+          "VS Code server launch file was not found for audit.",
           "Inspect the launch command manually.",
         ),
       ],
@@ -657,54 +651,35 @@ async function auditVscodeLaunchCommand(rootDir) {
   }
 
   const result = emptyAudit()
-  const hasHypercodeCommand = /const CLI_COMMAND = "hypercode"/.test(text)
-  const hasOpenCodeCommand = /const CLI_COMMAND = "opencode"/.test(text) || /opencode --port/.test(text)
-  const hasHypercodeTerminal = /const TERMINAL_NAME = "HyperCode"/.test(text)
-  const hasOpenCodeTerminal = /const TERMINAL_NAME = "OpenCode"/.test(text)
-  const hasPortLaunch = /terminal\.sendText\(`\$\{CLI_COMMAND\} --port \$\{port\}`\)/.test(text)
-  const hasProtectedCommandIds = /registerCommand\("opencode\./.test(text)
-  const renamedCommandIds = /registerCommand\("hypercode\./.test(text)
-  const keepsInternalPortEnv = /_EXTENSION_OPENCODE_PORT/.test(text) && /OPENCODE_CALLER/.test(text)
+  const prefersHypercode = text.includes('detectAvailableCommand(["hypercode", "opencode"]) ?? "hypercode"')
+  const defaultsToOpenCode = /detectAvailableCommand\(\["opencode"/.test(text) || /\?\? "opencode"/.test(text)
+  const spawnsServe = text.includes('["serve", "--port"')
 
-  if (renamedCommandIds) {
-    result.blocked.push(
-      blockedFinding(
-        "vscode-command-id-renamed",
+  if (/OPENCODE_CALLER/.test(text)) {
+    result.protected.push(
+      protectedFinding("vscode-internal-env-preserved", file, "Internal OPENCODE_CALLER compatibility marker remains unchanged."),
+    )
+  }
+
+  if (prefersHypercode && spawnsServe) {
+    result.protected.push(
+      protectedFinding(
+        "vscode-launch-command-hypercode",
         file,
-        "high-risk-compatibility-break",
-        "Extension command ids were renamed away from opencode.*.",
-        'Keep user-visible labels as HyperCode, but preserve internal command ids like "opencode.openTerminal".',
+        'VS Code spawns "hypercode serve --port ...", falling back to the opencode alias only when hypercode is not on PATH.',
       ),
-    )
-  }
-
-  if (hasProtectedCommandIds) {
-    result.protected.push(
-      protectedFinding("vscode-command-ids-preserved", file, 'Internal command ids still use the protected "opencode.*" namespace.'),
-    )
-  }
-
-  if (keepsInternalPortEnv) {
-    result.protected.push(
-      protectedFinding("vscode-internal-env-preserved", file, "Internal VS Code port/caller env compatibility markers remain unchanged."),
-    )
-  }
-
-  if (hasHypercodeCommand && hasHypercodeTerminal && hasPortLaunch) {
-    result.protected.push(
-      protectedFinding("vscode-launch-command-hypercode", file, 'VS Code launches "hypercode --port ..." and labels the terminal "HyperCode".'),
     )
     return result
   }
 
-  if (hasOpenCodeCommand || hasOpenCodeTerminal) {
+  if (defaultsToOpenCode) {
     result.manualCheckRequired.push(
       manualFinding(
         "vscode-launch-command-open-code-visible",
         file,
         "needs-manual-check",
-        "VS Code launch command or terminal label still exposes OpenCode branding.",
-        'Switch only the visible launch command/terminal label to HyperCode while keeping internal "opencode.*" ids intact.',
+        "VS Code still resolves the opencode CLI before hypercode.",
+        'Prefer "hypercode" and keep "opencode" only as a fallback alias.',
       ),
     )
     return result
@@ -715,8 +690,8 @@ async function auditVscodeLaunchCommand(rootDir) {
       "vscode-launch-command-unknown",
       file,
       "needs-manual-check",
-      "Unable to confirm the HyperCode launch command and terminal label from the current source.",
-      'Verify the extension launches "hypercode --port ..." and shows "HyperCode" in the terminal title.',
+      "Unable to confirm the HyperCode launch command from the current source.",
+      'Verify the extension spawns "hypercode serve --port ..." and only falls back to "opencode".',
     ),
   )
   return result
@@ -761,18 +736,26 @@ async function auditArtifactNaming(rootDir) {
 
 async function auditConfigCompatibility(rootDir) {
   const result = emptyAudit()
+  const envFile = "packages/core/src/flag/env.ts"
   const flagFile = "packages/core/src/flag/flag.ts"
   const runtimeFile = "packages/opencode/src/effect/runtime-flags.ts"
   const configFile = "packages/opencode/src/config/config.ts"
   const configPathsFile = "packages/opencode/src/config/paths.ts"
 
+  const envText = await readUtf8(path.join(rootDir, envFile))
   const flagText = await readUtf8(path.join(rootDir, flagFile))
   const runtimeText = await readUtf8(path.join(rootDir, runtimeFile))
   const configText = await readUtf8(path.join(rootDir, configFile))
   const configPathsText = await readUtf8(path.join(rootDir, configPathsFile))
 
   const aliasLine = 'key.startsWith("OPENCODE_") ? `HYPERCODE_${key.slice("OPENCODE_".length)}` : undefined'
-  if (flagText?.includes(aliasLine)) {
+  const runtimeAliasLine = 'name.startsWith("OPENCODE_") ? `HYPERCODE_${name.slice("OPENCODE_".length)}` : undefined'
+  // C-001 (17dacc365) centralized the alias in env.ts `names()`: HYPERCODE_* first, then the OPENCODE_* fallback.
+  const sharedAlias = !!envText?.includes(runtimeAliasLine) && envText.includes("return alias ? [alias, name] : [name]")
+  const coreUsesSharedAlias = sharedAlias && !!flagText?.includes('import { names } from "./env"')
+  const runtimeUsesSharedAlias = sharedAlias && !!runtimeText?.includes('import { names } from "@opencode-ai/core/flag/env"')
+
+  if (flagText?.includes(aliasLine) || coreUsesSharedAlias) {
     result.protected.push(
       protectedFinding("core-env-alias", flagFile, "Core flags prefer HYPERCODE_* while preserving OPENCODE_* fallback."),
     )
@@ -788,8 +771,7 @@ async function auditConfigCompatibility(rootDir) {
     )
   }
 
-  const runtimeAliasLine = 'name.startsWith("OPENCODE_") ? `HYPERCODE_${name.slice("OPENCODE_".length)}` : undefined'
-  if (runtimeText?.includes(runtimeAliasLine)) {
+  if (runtimeText?.includes(runtimeAliasLine) || runtimeUsesSharedAlias) {
     result.protected.push(
       protectedFinding(
         "runtime-env-alias",
@@ -848,7 +830,7 @@ async function auditCliVisibleBrand(rootDir) {
   const result = emptyAudit()
   const checks = [
     {
-      file: "packages/opencode/src/index.ts",
+      file: "packages/opencode/src/cli/main.ts",
       ok: (text) => text.includes('.scriptName("hypercode")') && text.includes('text.startsWith("hypercode ")'),
       visibleOldBrand: (text) => text.includes('.scriptName("opencode")') || text.includes('text.startsWith("opencode ")'),
       detail: 'CLI entrypoint shows "hypercode" in visible banner/help paths.',
@@ -959,7 +941,7 @@ async function createSyntheticFixture(rootDir) {
       'export const help = "Try: `opencode models` to list available models"',
       'export const config = "Or check your config (hypercode.json or opencode.json) provider/model names"',
     ].join("\n"),
-    "packages/opencode/src/index.ts": [
+    "packages/opencode/src/cli/main.ts": [
       'import * as Log from "@opencode-ai/core/util/log"',
       'import { ensureProcessMetadata } from "@opencode-ai/core/util/opencode-process"',
       'if (!text.startsWith("opencode ")) return',
@@ -978,17 +960,21 @@ async function createSyntheticFixture(rootDir) {
       "  name: displayName,",
       "}",
     ].join("\n"),
+    "packages/core/src/flag/env.ts": [
+      "export function names(name: string) {",
+      '  const alias = name.startsWith("OPENCODE_") ? `HYPERCODE_${name.slice("OPENCODE_".length)}` : undefined',
+      "  return alias ? [alias, name] : [name]",
+      "}",
+    ].join("\n"),
     "packages/core/src/flag/flag.ts": [
-      'function env(key: string) {',
-      '  const alias = key.startsWith("OPENCODE_") ? `HYPERCODE_${key.slice("OPENCODE_".length)}` : undefined',
-      "  return (alias ? process.env[alias] : undefined) ?? process.env[key]",
+      'import { names } from "./env"',
+      "function env(key: string) {",
+      "  return names(key).map((name) => process.env[name]).find((value) => value !== undefined)",
       "}",
     ].join("\n"),
     "packages/opencode/src/effect/runtime-flags.ts": [
-      'function env(name: string) {',
-      '  const alias = name.startsWith("OPENCODE_") ? `HYPERCODE_${name.slice("OPENCODE_".length)}` : undefined',
-      "  return (alias ? process.env[alias] : undefined) ?? process.env[name]",
-      "}",
+      'import { names } from "@opencode-ai/core/flag/env"',
+      "const string = (name: string) => names(name).map((key) => Config.string(key))",
     ].join("\n"),
     "packages/opencode/src/config/config.ts": [
       'const candidates = ["hypercode.jsonc", "hypercode.json", "opencode.jsonc", "opencode.json", "config.json"]',
@@ -1029,18 +1015,12 @@ async function createSyntheticFixture(rootDir) {
       'vsce publish --packagePath dist/opencode.vsix',
       'npx ovsx publish dist/opencode.vsix -p "$OPENVSX_TOKEN"',
     ].join("\n"),
-    "sdks/vscode/src/extension.ts": [
-      'import * as vscode from "vscode"',
-      'const CLI_COMMAND = "opencode"',
-      'const TERMINAL_NAME = "OpenCode"',
-      'vscode.commands.registerCommand("opencode.openTerminal", async () => {})',
-      "const terminal = vscode.window.createTerminal({",
-      "  env: {",
-      '    _EXTENSION_OPENCODE_PORT: "12345",',
-      '    OPENCODE_CALLER: "vscode",',
-      "  },",
-      "})",
-      'terminal.sendText(`${CLI_COMMAND} --port ${port}`)',
+    "sdks/vscode/src/core/server.ts": [
+      "export function resolveOpencodeCommand() {",
+      '  return detectAvailableCommand(["opencode"]) ?? "opencode"',
+      "}",
+      'const env = { ...process.env, OPENCODE_CALLER: "vscode-ui" }',
+      'cp.spawn(command, ["serve", "--port", String(port), "--hostname", "127.0.0.1"], { env })',
     ].join("\n"),
   }
 
@@ -1056,21 +1036,22 @@ async function verifySyntheticFixture(rootDir, dryRunResult, writeResult) {
   const appI18n = await read("packages/app/src/i18n/en.ts")
   const desktopI18n = await read("packages/desktop/src/renderer/i18n/en.ts")
   const cliError = await read("packages/opencode/src/cli/error.ts")
-  const cliIndex = await read("packages/opencode/src/index.ts")
+  const cliIndex = await read("packages/opencode/src/cli/main.ts")
   const temporary = await read("packages/opencode/src/temporary.ts")
   const provider = await read("packages/opencode/src/provider/provider.ts")
   const vscodePackage = JSON.parse(await read("sdks/vscode/package.json"))
   const vscodePublish = await read("sdks/vscode/script/publish")
-  const vscodeExtension = await read("sdks/vscode/src/extension.ts")
+  const vscodeServer = await read("sdks/vscode/src/core/server.ts")
   const docsBinary = await read("docs/hypercode-binary-plugin-distribution.md")
   const readme = await read("README.md")
 
   const checks = [
-    check("app-visible-brand", appI18n.includes("HyperCode default provider")),
-    check("app-opencode-zen-visible-brand", appI18n.includes("HyperCode Zen is available here.")),
-    check("app-link-protected", appI18n.includes("opencode.ai/zen")),
-    check("app-config-fallback-protected", appI18n.includes("hypercode.json or opencode.json")),
-    check("desktop-visible-brand", desktopI18n.includes("latest version of HyperCode")),
+    check("app-out-of-delivery-untouched", appI18n.includes("OpenCode default provider")),
+    check("desktop-out-of-delivery-untouched", desktopI18n.includes("latest version of OpenCode")),
+    check(
+      "dry-run-out-of-delivery-skipped",
+      dryRunResult.skipped.some((item) => item.file === "packages/app/src/i18n/en.ts" && item.reason === "out-of-delivery"),
+    ),
     check("cli-error-brand", cliError.includes("HyperCode does not support MCP authentication yet.")),
     check("cli-error-example", cliError.includes("`hypercode models`")),
     check("cli-error-config-protected", cliError.includes("hypercode.json or opencode.json")),
@@ -1093,7 +1074,7 @@ async function verifySyntheticFixture(rootDir, dryRunResult, writeResult) {
     check("publish-vsix-rewritten", vscodePublish.includes("dist/hypercode.vsix")),
     check("artifact-doc-rewritten", docsBinary.includes("hypercode-windows-x64") && docsBinary.includes("hypercode.exe") && docsBinary.includes("hypercode.vsix")),
     check("manual-readme-protected", readme.includes("https://github.com/anomalyco/opencode")),
-    check("vscode-launch-command-manual", vscodeExtension.includes('const CLI_COMMAND = "opencode"')),
+    check("vscode-launch-command-manual", vscodeServer.includes('?? "opencode"')),
     check(
       "dry-run-provider-manual-detected",
       dryRunResult.manualCheckRequired.some((item) => item.id === "provider-display-name-open-code-zen"),
@@ -1110,8 +1091,14 @@ async function verifySyntheticFixture(rootDir, dryRunResult, writeResult) {
       "dry-run-protected-config-detected",
       dryRunResult.protected.some((item) => item.id === "config-directory-dual-support"),
     ),
+    check(
+      "dry-run-shared-env-alias-detected",
+      dryRunResult.protected.some((item) => item.id === "core-env-alias") &&
+        dryRunResult.protected.some((item) => item.id === "runtime-env-alias"),
+    ),
     check("write-kept-provider-manual", writeResult.written.includes("packages/opencode/src/provider/provider.ts") === false),
-    check("write-kept-vscode-launch-manual", writeResult.written.includes("sdks/vscode/src/extension.ts") === false),
+    check("write-kept-vscode-launch-manual", writeResult.written.includes("sdks/vscode/src/core/server.ts") === false),
+    check("write-kept-app-out-of-delivery", writeResult.written.includes("packages/app/src/i18n/en.ts") === false),
   ]
 
   return {

@@ -76,6 +76,8 @@ describe("offline Linux package", () => {
     )
     expect(environment).toContain("export OPENCODE_DISABLE_LSP_DOWNLOAD=1")
     expect(readme).toContain("OPENCODE_DISABLE_LSP_DOWNLOAD=1")
+    expect(environment).toContain("export HYPERCODE_DISABLE_AUTOUPDATE=1")
+    expect(readme).toContain("HYPERCODE_DISABLE_AUTOUPDATE=1")
     expect(await fs.readFile(result.checksum, "utf8")).toMatch(/^[0-9a-f]{64}  hypercode-offline-/)
   })
 })

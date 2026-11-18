@@ -5,7 +5,7 @@ import { formatComposerFileContent, formatComposerFileDisplay, parseComposerFile
 import { localizedCommandDescription, t } from "../../../i18n"
 import { toVsCodeProductCommands } from "../../../product/command-adapter"
 import type { VsCodeCommandCatalogInput } from "../../../product/command-adapter"
-import { mergeProductSkillCatalog } from "@opencode-ai/product"
+import { mergeProductSkillCatalog, productCommandIDs, deriveProductCommandSessionContext } from "@opencode-ai/product"
 import { toVsCodeTextKey } from "../lib/product-text-adapter"
 
 type ComposerMenuState = {
@@ -16,10 +16,14 @@ type ComposerMenuState = {
 
 export function buildComposerCommandCatalogInput(snapshot: ComposerMenuState["snapshot"]): VsCodeCommandCatalogInput {
   return {
-    supported: {},
-    hasSession: !!snapshot.session,
-    canUndo: snapshot.messages.some((message) => message.info.role === "user"),
-    canRedo: !!snapshot.session?.revert?.messageID,
+    supported: { "session.fork": false },
+    // Product 统一推导会话可用性事实，Host 只上报原始数据。
+    ...deriveProductCommandSessionContext({
+      hasSession: !!snapshot.session,
+      messages: snapshot.messages.map((message) => ({ id: message.info.id, role: message.info.role })),
+      revertMessageID: snapshot.session?.revert?.messageID,
+      shareURL: snapshot.session?.share?.url,
+    }),
     hasVariants: snapshot.providers.some((provider) => Object.values(provider.models ?? {}).some((model) => Object.keys(model.variants ?? {}).length > 0)),
     hasConnectableProvider: snapshot.providers.length > 0,
     dynamic: snapshot.commands
@@ -37,8 +41,9 @@ export function buildComposerCommandCatalogInput(snapshot: ComposerMenuState["sn
 export function buildComposerMenuItems(state: ComposerMenuState, files: ComposerPathResult[]): ComposerAutocompleteItem[] {
   const projection = toVsCodeProductCommands(buildComposerCommandCatalogInput(state.snapshot))
 
+  const builtinIDs = new Set<string>(productCommandIDs)
   const slashItems: ComposerAutocompleteItem[] = projection.catalog
-    .filter((entry) => entry.scope === "shared" && entry.availability === "available")
+    .filter((entry) => builtinIDs.has(entry.id) && entry.availability === "available")
     .map((entry) => ({
       id: `product:${entry.id}`,
       label: entry.name,
@@ -70,7 +75,7 @@ export function buildComposerMenuItems(state: ComposerMenuState, files: Composer
 
   const commands = state.snapshot.commands.filter((cmd) => cmd.source !== "skill")
   const commandsByName = new Map(commands.map((command) => [command.name, command]))
-  const commandItems: ComposerAutocompleteItem[] = projection.catalog.filter((entry) => entry.scope !== "shared").flatMap((entry) => {
+  const commandItems: ComposerAutocompleteItem[] = projection.catalog.filter((entry) => !builtinIDs.has(entry.id)).flatMap((entry) => {
     const cmd = commandsByName.get(entry.name)
     if (!cmd) return []
     return [{

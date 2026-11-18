@@ -16,6 +16,12 @@ describe("locale core", () => {
     expect(normalizeLocale(undefined, {})).toBe("en")
   })
 
+  test("falls back to the OS display language when locale variables are unset", () => {
+    expect(normalizeLocale(undefined, { systemLocale: "zh-CN" })).toBe("zh")
+    expect(normalizeLocale(undefined, { systemLocale: "en-US" })).toBe("en")
+    expect(normalizeLocale(undefined, { LANG: "en_US.UTF-8", systemLocale: "zh-CN" })).toBe("en")
+  })
+
   test("keeps an explicit supported locale", () => {
     expect(normalizeLocale("zh", { LANG: "en_US.UTF-8" })).toBe("zh")
     expect(normalizeLocale("en", { LANG: "zh_CN.UTF-8" })).toBe("en")

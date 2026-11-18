@@ -1,14 +1,22 @@
 import { expect, test } from "bun:test"
-import { toProductCapabilityConfigured } from "../../src/product/capability-adapter"
+import { toProductCapabilityConfig } from "../../src/product/capability-adapter"
 
-test("preserves explicit capability configuration facts", () => {
-  expect(toProductCapabilityConfigured({
+test("reports raw configuration facts without deciding what they mean", () => {
+  expect(toProductCapabilityConfig({
     mcp: { docs: { type: "remote", url: "https://example.test" }, off: { enabled: false } },
     lsp: false,
     formatter: {},
-  })).toEqual({ mcp: true, lsp: false, formatter: true })
+  }, true)).toEqual({
+    mcp: [{ name: "docs", enabled: true }, { name: "off", enabled: false }],
+    lsp: false,
+    formatter: true,
+  })
 })
 
-test("treats an empty capability configuration as not configured", () => {
-  expect(toProductCapabilityConfigured({ mcp: {}, lsp: {}, formatter: {} })).toEqual({ mcp: false, lsp: true, formatter: true })
+test("an empty MCP configuration is reported as zero servers, not as disabled", () => {
+  expect(toProductCapabilityConfig({ mcp: {}, lsp: {}, formatter: {} }, true)).toEqual({ mcp: [], lsp: true, formatter: true })
+})
+
+test("reports no facts at all until the config has loaded", () => {
+  expect(toProductCapabilityConfig({}, false)).toEqual({})
 })

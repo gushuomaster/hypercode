@@ -16,10 +16,12 @@
 至少准备以下文件：
 
 ```text
-hypercode-offline-ubuntu20.04-x64-1.17.3.tar.gz
+hypercode-offline-ubuntu20.04-x64-<version>.tar.gz
 
 hypercode.vsix
 ```
+
+本文中的 `<version>` 指本次交付的版本号，即离线包文件名中的版本号，例如 `hypercode-offline-ubuntu20.04-x64-1.18.30.tar.gz` 的版本号是 `1.18.30`。执行命令时请替换为实际文件名中的版本号。
 
 授权后还需要管理员签发的：
 
@@ -60,8 +62,8 @@ license.txt
 
 ```bash
 cd ~/Downloads
-tar -xzf hypercode-offline-ubuntu20.04-x64-1.17.3.tar.gz
-cd hypercode-offline-ubuntu20.04-x64-1.17.3
+tar -xzf hypercode-offline-ubuntu20.04-x64-<version>.tar.gz
+cd hypercode-offline-ubuntu20.04-x64-<version>
 ./install.sh
 ```
 
@@ -88,10 +90,10 @@ hypercode --version
 hypercode --help
 ```
 
-预期版本为：
+预期输出的版本号与离线包文件名中的 `<version>` 一致：
 
 ```text
-1.17.3
+<version>
 ```
 
 ## 3. 安装 License
@@ -104,9 +106,11 @@ hypercode --help
 hypercode license machine-id
 ```
 
-把输出的 machine-id 交给发证管理员。管理员在受控 Windows 电脑上使用 `HyperCodeLicenseGenerator.exe` 生成 `license.txt`。
+把输出的 machine-id 交给发证管理员。管理员在受控电脑上使用 `HyperCodeLicenseGenerator.exe` 生成 `license.txt`（以 `HCL2.` 开头的一行文本）。
 
-License 当前与目标 Ubuntu 的 `/etc/machine-id` 绑定，不与 `1.17.3` 安装包版本绑定。虚拟机重新克隆或 machine-id 改变后，需要重新签发。
+License 与目标 Ubuntu 的 `/etc/machine-id` 绑定，不与安装包版本绑定。虚拟机重新克隆或 machine-id 改变后，需要重新签发；从同一模板克隆的虚拟机如果没有重新生成 `/etc/machine-id`，machine-id 会相同，部署前请先重新生成。
+
+从旧版本升级时，旧格式 License 会失效（`license status` 提示“旧格式授权已停用”），需要用新版本 `license machine-id` 的输出重新签发。
 
 ### 3.2 导入 license.txt
 
@@ -205,6 +209,7 @@ nano ~/.config/opencode/hypercode.env
 
 ```bash
 export HYPERCODE_DISABLE_MODELS_FETCH=1
+export HYPERCODE_DISABLE_AUTOUPDATE=1
 export HYPERCODE_INTERNAL_API_KEY='替换为真实内网密钥'
 ```
 
@@ -212,6 +217,7 @@ export HYPERCODE_INTERNAL_API_KEY='替换为真实内网密钥'
 
 ```bash
 export HYPERCODE_DISABLE_MODELS_FETCH=1
+export HYPERCODE_DISABLE_AUTOUPDATE=1
 export HYPERCODE_INTERNAL_API_KEY='unused'
 ```
 

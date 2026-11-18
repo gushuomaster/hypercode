@@ -56,6 +56,7 @@ nano ~/.config/opencode/hypercode.env
 ```bash
 export HYPERCODE_QWEN_API_KEY='unused'
 export HYPERCODE_DISABLE_MODELS_FETCH=1
+export HYPERCODE_DISABLE_AUTOUPDATE=1
 ```
 
 需要鉴权则把 `unused` 换成真实密钥。

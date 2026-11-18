@@ -4,7 +4,7 @@ import type { AgentInfo, MessageInfo, ProviderInfo, SessionMessage } from "../..
 import { displaySessionTitle } from "../../../core/session-titles"
 import { t } from "../../../i18n"
 import { toProductAgents, toProductProviders } from "./product-adapter"
-import { formatVsCodeProductError } from "./product-text-adapter"
+import { formatVsCodeProductError, toVsCodeTextKey } from "./product-text-adapter"
 
 export type ModelRef = NonNullable<MessageInfo["model"]>
 
@@ -157,16 +157,12 @@ export function statusItemForProductFormatter(state: ProductFormatterState): Sta
   return {
     name: state.name,
     tone: state.severity === "warning" ? "orange" : "green",
-    value: state.enabled ? state.extensions.join(", ") || t("common.enabled") : t("common.disabled"),
+    value: (state.enabled && state.extensions.join(", ")) || t(toVsCodeTextKey(state.textKey)),
   }
 }
 
 export function overallProductFormatterStatus(states: ProductFormatterState[]) {
-  const items = states.map((state): StatusItem => ({
-    name: state.name,
-    tone: state.severity === "warning" ? "orange" : "green",
-    value: state.enabled ? state.extensions.join(", ") || t("common.enabled") : t("common.disabled"),
-  }))
+  const items = states.map(statusItemForProductFormatter)
   if (items.length === 0) return { tone: "gray" as const, items }
   if (items.every((item) => item.tone === "green")) return { tone: "green" as const, items }
   if (items.every((item) => item.tone === "orange")) return { tone: "orange" as const, items }
@@ -184,18 +180,9 @@ export function overallProductMcpStatus(states: ProductMcpState[]) {
 }
 
 export function statusItemForProductMcp(state: ProductMcpState): StatusItem {
-  const tone = state.severity === "error" ? "red" : state.severity === "warning" ? "orange" : state.availability === "connected" ? "green" : "gray"
-  const value = state.diagnostic
-    ? formatVsCodeProductError(state.diagnostic)
-    : state.availability === "connected"
-      ? t("status.connected")
-      : state.availability === "disabled"
-        ? t("common.disabled")
-        : state.availability === "needs_auth"
-          ? t("status.needsAuthentication")
-          : state.availability === "needs_client_registration"
-            ? t("status.clientRegistrationRequired")
-            : t("common.error")
+  // Host only renders: tone comes from Product's severity and wording from Product's per-item textKey.
+  const tone = state.severity === "error" ? "red" : state.severity === "warning" ? "orange" : "gray"
+  const value = state.diagnostic ? formatVsCodeProductError(state.diagnostic) : t(toVsCodeTextKey(state.textKey))
   return {
     name: state.name,
     tone,
@@ -213,11 +200,7 @@ export function statusItemForProductLsp(state: ProductLspState): StatusItem {
 }
 
 export function overallProductLspStatus(states: ProductLspState[]) {
-  const items = states.map((state): StatusItem => ({
-    name: state.name,
-    tone: state.severity === "error" ? "red" : "green",
-    value: state.diagnostic ? formatVsCodeProductError(state.diagnostic) : state.root,
-  }))
+  const items = states.map(statusItemForProductLsp)
   if (items.length === 0) return { tone: "gray" as const, items }
   if (items.every((item) => item.tone === "green")) return { tone: "green" as const, items }
   if (items.every((item) => item.tone === "red")) return { tone: "red" as const, items }

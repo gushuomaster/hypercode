@@ -94,7 +94,7 @@ export async function updatePanelColorScheme(colorScheme: PanelColorScheme) {
 }
 
 export function openSettingsQuery() {
-  return "@ext:sst-dev.hypercode"
+  return "@ext:hypercode.hypercode"
 }
 
 export function proxyRestartMessage() {

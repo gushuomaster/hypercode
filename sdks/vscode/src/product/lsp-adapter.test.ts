@@ -13,8 +13,9 @@ test("projects VS Code LSP statuses into the shared Product state", () => {
       root: "/workspace",
       availability: "error",
       severity: "error",
+      textKey: "item.lsp.error",
       diagnostic: { message: "LSP connection failed", textKey: "error.lsp.connection_failed" },
     },
-    { id: "ts", name: "TypeScript", root: "/workspace", availability: "connected", severity: "none" },
+    { id: "ts", name: "TypeScript", root: "/workspace", availability: "connected", severity: "none", textKey: "item.lsp.connected" },
   ])
 })

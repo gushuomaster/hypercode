@@ -7,18 +7,18 @@ import { createStore } from "solid-js/store"
 import { useRoute } from "../../context/route"
 import { translate as t } from "../../context/language"
 import { deriveProductLspSummary, deriveProductMcpSummary } from "@opencode-ai/product"
-import { toProductCapabilityConfigured } from "../../product/capability-adapter"
+import { toProductCapabilityConfig } from "../../product/capability-adapter"
 
 export function Footer() {
   const { theme } = useTheme()
   const sync = useSync()
   const route = useRoute()
-  const configured = createMemo(() => toProductCapabilityConfigured(sync.data.config))
-  const mcpSummary = createMemo(() => deriveProductMcpSummary({ configured: configured().mcp, states: sync.data.mcp_product }))
+  const config = createMemo(() => toProductCapabilityConfig(sync.data.config, sync.status !== "loading"))
+  const mcpSummary = createMemo(() => deriveProductMcpSummary({ config: config(), states: sync.data.mcp_product }))
   const mcp = createMemo(() => mcpSummary().activeCount)
   const mcpError = createMemo(() => mcpSummary().severity === "error")
   const lsp = createMemo(() => sync.data.lsp_product)
-  const lspSummary = createMemo(() => deriveProductLspSummary({ configured: configured().lsp, states: lsp() }))
+  const lspSummary = createMemo(() => deriveProductLspSummary({ config: config(), states: lsp() }))
   const lspError = createMemo(() => lspSummary().severity === "error")
   const permissions = createMemo(() => {
     if (route.data.type !== "session") return []

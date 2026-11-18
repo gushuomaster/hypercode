@@ -644,6 +644,7 @@ export function Session() {
       title: t("session.undo"),
       value: "session.undo",
       category: t("command.category.session"),
+      enabled: messagesBeforeRevert().some((item) => item.role === "user"),
       run: async () => {
         const status = sync.data.session_status?.[route.sessionID]
         if (status?.type !== "idle") {

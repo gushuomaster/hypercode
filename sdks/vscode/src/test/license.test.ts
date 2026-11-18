@@ -1,102 +1,114 @@
 import assert from "node:assert/strict"
-import * as fs from "node:fs/promises"
-import * as os from "node:os"
-import * as path from "node:path"
 import { describe, test } from "node:test"
+import type * as vscode from "vscode"
 
-import { generateExpectedLicense, validateLicenseKey } from "../license/licenseAlgorithm"
-import { getMachineId } from "../license/machineId"
-import { resolveLicensePath } from "../license/licensePaths"
-import { localizedLicenseMessage, validateLicense } from "../license/licenseValidator"
+import { localizedLicenseMessage } from "../license/licenseCommands"
+import { parseLicenseStatus, queryLicense, type CliRun } from "../license/licenseStatus"
+import { WorkspaceManager } from "../core/workspace"
+import { isMissingOpencodeError } from "../core/runtime-errors"
 import { setLocale } from "../i18n"
 
-const machine = "BFEBFBFF000B0671"
+const licensePath = "/home/hyper/hyper-aicode/license.txt"
+const cli = (stdout: string, code = 0): CliRun => async () => ({ code, stdout, stderr: "" })
+const json = (status: string) => JSON.stringify({ ok: status === "valid", status, path: licensePath, expires: null, message: null })
 
-describe("license algorithm", () => {
-  test("permanent license is bound to the machine id", () => {
-    const key = generateExpectedLicense(machine)
-    assert.equal(validateLicenseKey(key, machine).valid, true)
-    assert.equal(validateLicenseKey(key, "OTHER").valid, false)
+describe("license status from CLI", () => {
+  test("parses the JSON payload printed by `license status --json`", async () => {
+    assert.deepEqual(await queryLicense(cli(`log line\n${json("legacy_format")}\n`)), {
+      ok: false,
+      status: "legacy_format",
+      path: licensePath,
+      expires: null,
+      message: null,
+    })
+    assert.equal((await queryLicense(cli(json("valid")))).ok, true)
   })
 
-  test("expired timed license is rejected", () => {
-    const key = generateExpectedLicense(machine, new Date("2000-01-01T00:00:00"))
-    const result = validateLicenseKey(key, machine)
-    assert.equal(result.valid, false)
-    assert.equal(result.reason, "expired")
+  test("never treats an unusable CLI as licensed", async () => {
+    assert.equal((await queryLicense(cli("not json"))).status, "cli_unavailable")
+    assert.equal((await queryLicense(cli(json("valid"), 1))).status, "cli_unavailable")
+    assert.equal(parseLicenseStatus(JSON.stringify({ ok: true, status: "expired", path: licensePath }))?.ok, false)
+    const missing = await queryLicense(async () => {
+      throw new Error('command "hypercode" was not found on the current host PATH')
+    })
+    assert.equal(missing.status, "cli_unavailable")
+    assert.equal(isMissingOpencodeError(missing.message ?? ""), true)
+  })
+
+  test("localizes every CLI status code", () => {
+    setLocale("zh")
+    const codes = [
+      "missing",
+      "empty",
+      "read_error",
+      "malformed",
+      "legacy_format",
+      "bad_signature",
+      "machine_mismatch",
+      "expired",
+      "unsupported_platform",
+      "machine_id_error",
+    ]
+    for (const status of codes) {
+      const message = localizedLicenseMessage({ ok: false, status, path: licensePath, expires: null, message: null })
+      assert.notEqual(message, status, status)
+      assert.match(message, /[一-鿿]/, status)
+    }
+    assert.match(
+      localizedLicenseMessage({ ok: false, status: "legacy_format", path: licensePath, expires: null, message: null }),
+      /旧格式.*hypercode license machine-id/,
+    )
+    assert.match(
+      localizedLicenseMessage({ ok: false, status: "unsupported_platform", path: licensePath, expires: null, message: null }),
+      /不在 HyperCode 交付范围/,
+    )
   })
 })
 
-describe("license paths", () => {
-  test("uses fixed Windows path", () => {
-    assert.equal(resolveLicensePath({ platform: "win32" }), "C:\\hyper-aicode\\license.txt")
-  })
-})
+describe("workspace license gate", () => {
+  const folder = { uri: { toString: () => "file:///repo", fsPath: "/repo" }, name: "repo", index: 0 } as unknown as vscode.WorkspaceFolder
+  const out = { appendLine() {} } as unknown as vscode.OutputChannel
 
-describe("machine id", () => {
-  test("falls back to PowerShell when wmic is unavailable on Windows", async () => {
-    const seen: string[] = []
-    const id = await getMachineId({
-      platform: "win32",
-      run: async (command) => {
-        seen.push(command)
-        if (command === "wmic cpu get processorid") {
-          throw new Error("spawn wmic ENOENT")
-        }
-        if (command.includes("Get-CimInstance Win32_Processor")) {
-          return "BFEBFBFF000B0671\r\n"
-        }
-        throw new Error(`unexpected command: ${command}`)
+  test("blocks the runtime and offers license actions when the CLI reports an invalid license", async () => {
+    setLocale("zh")
+    const prompts: string[] = []
+    let spawned = false
+    const manager = new WorkspaceManager(out, {
+      queryLicense: async () => ({ ok: false, status: "machine_mismatch", path: licensePath, expires: null, message: null }),
+      promptForLicenseIssue: async (message) => {
+        prompts.push(message)
+        return undefined
+      },
+      spawn: () => {
+        spawned = true
+        throw new Error("must not spawn")
       },
     })
-
-    assert.equal(id, machine)
-    assert.deepEqual(seen, [
-      "wmic cpu get processorid",
-      'powershell -NoProfile -Command "(Get-CimInstance Win32_Processor | Select-Object -First 1 -ExpandProperty ProcessorId).Trim()"',
-    ])
-  })
-})
-
-describe("license validator", () => {
-  async function withTmp(run: (file: string) => Promise<void>) {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "hc-license-"))
-    const file = path.join(dir, "license.txt")
-    try {
-      await run(file)
-    } finally {
-      await fs.rm(dir, { recursive: true, force: true })
-    }
-  }
-
-  test("missing file reports missing", async () => {
-    setLocale("en")
-    await withTmp(async (file) => {
-      const result = await validateLicense({ licensePath: file })
-      assert.equal(result.ok, false)
-      assert.equal(result.ok === false && result.reason, "missing")
-    })
+    const rt = await manager.ensure(folder)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.equal(rt?.state, "error")
+    assert.equal(spawned, false)
+    assert.equal(prompts.length, 1)
+    assert.match(prompts[0], /授权不属于这台设备/)
   })
 
-  test("default validation rejects invalid key but accepts a signed one", async () => {
-    setLocale("en")
-    await withTmp(async (file) => {
-      await fs.writeFile(file, "garbage")
-      const bad = await validateLicense({ licensePath: file, machineId: machine })
-      assert.equal(bad.ok, false)
-
-      await fs.writeFile(file, generateExpectedLicense(machine))
-      const good = await validateLicense({ licensePath: file, machineId: machine })
-      assert.equal(good.ok, true)
+  test("reports an unusable CLI as a runtime failure without license prompts", async () => {
+    let prompted = false
+    const manager = new WorkspaceManager(out, {
+      queryLicense: async () => ({
+        ok: false,
+        status: "cli_unavailable",
+        message: 'command "hypercode" was not found on the current host PATH',
+      }),
+      promptForLicenseIssue: async () => {
+        prompted = true
+        return undefined
+      },
     })
-  })
-
-  test("localizes generated validation reasons only at the user interface boundary", async () => {
-    setLocale("zh")
-    await withTmp(async (file) => {
-      const result = await validateLicense({ licensePath: file })
-      assert.equal(result.ok === false && result.message, "License file does not exist.")
-      assert.equal(result.ok === false && localizedLicenseMessage(result), "授权文件不存在。")
-    })
+    const rt = await manager.ensure(folder)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.equal(rt?.state, "error")
+    assert.equal(isMissingOpencodeError(rt?.err), true)
+    assert.equal(prompted, false)
   })
 })

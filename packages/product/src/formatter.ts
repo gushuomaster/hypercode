@@ -1,8 +1,11 @@
+import type { ProductTextKey } from "./text"
+
 export type ProductFormatterState = {
   name: string
   enabled: boolean
   extensions: string[]
   severity: "none" | "warning"
+  textKey: Extract<ProductTextKey, `item.formatter.${string}`>
 }
 
 export type ProductFormatterStateInput = {
@@ -18,6 +21,7 @@ export function deriveProductFormatterState(input: ProductFormatterStateInput): 
     enabled: input.enabled,
     extensions,
     severity: input.enabled ? "none" : "warning",
+    textKey: input.enabled ? "item.formatter.enabled" : "item.formatter.disabled",
   }
 }
 

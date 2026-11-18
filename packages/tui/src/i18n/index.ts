@@ -6,7 +6,7 @@ export type Locale = "en" | "zh"
 
 export const LOCALES: readonly Locale[] = ["zh", "en"]
 
-type Environment = Partial<Record<"LANG" | "LC_ALL" | "LANGUAGE", string | undefined>>
+type Environment = Partial<Record<"LANG" | "LC_ALL" | "LANGUAGE" | "systemLocale", string | undefined>>
 
 const dicts: Record<Locale, typeof en> = {
   en,
@@ -15,17 +15,21 @@ const dicts: Record<Locale, typeof en> = {
 
 let locale = normalizeLocale(undefined)
 
-export function normalizeLocale(
-  value: unknown,
-  environment: Environment = {
+export function normalizeLocale(value: unknown, environment: Environment = localeEnvironment()): Locale {
+  if (value === "en" || value === "zh") return value
+  const detected =
+    environment.LANG || environment.LC_ALL || environment.LANGUAGE || environment.systemLocale || ""
+  return detected.toLowerCase().startsWith("zh") ? "zh" : "en"
+}
+
+// Windows does not set LANG, so the OS display language (via ICU) is the last fallback.
+export function localeEnvironment(): Environment {
+  return {
     LANG: process.env.LANG,
     LC_ALL: process.env.LC_ALL,
     LANGUAGE: process.env.LANGUAGE,
-  },
-): Locale {
-  if (value === "en" || value === "zh") return value
-  const detected = environment.LANG || environment.LC_ALL || environment.LANGUAGE || ""
-  return detected.toLowerCase().startsWith("zh") ? "zh" : "en"
+    systemLocale: Intl.DateTimeFormat().resolvedOptions().locale,
+  }
 }
 
 export function getLocale() {

@@ -313,7 +313,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1
 .\\install.ps1 -LicensePath D:\\transfer\\license.txt
 \`\`\`
 
-License 固定安装到 \`C:\\hyper-aicode\\license.txt\`。
+License 固定安装到 \`C:\\hyper-aicode\\license.txt\`。机器码由 Windows 系统标识派生；从旧版本升级时，旧格式 License 会失效，需要用新版本输出的机器码重新签发。克隆系统镜像前请执行 sysprep，否则克隆出的机器码相同。
 
 ## MiniMax
 

@@ -23,6 +23,10 @@ const targets: Record<ProductCommandID, string> = {
   "skill.list": "prompt.skills",
   "theme.list": "theme.switch",
   "help.show": "help.show",
+  "session.rename": "session.rename",
+  "session.share": "session.share",
+  "session.unshare": "session.unshare",
+  "session.fork": "session.fork",
 }
 
 const commandIDsByTarget = new Map(Object.entries(targets).map(([id, target]) => [target, id as ProductCommandID]))
@@ -61,7 +65,7 @@ export type TuiSlashCommandProjection = {
 export type TuiPaletteCommandEntry = {
   id: string
   target: string
-  scope: "shared" | "host_only"
+  scope: "shared" | "shared_surface_optional" | "host_only"
 }
 
 export function toTuiProductCommands(inputs: ProductCommandInput[]): ProductCommandEntry[]
@@ -86,7 +90,8 @@ export function toTuiProductCommands(input: ProductCommandInput[] | TuiCommandFa
 }
 
 export function toTuiDynamicProductCommands(context: ProductCommandContext, inputs: ProductCommandInput[]): ProductCommandEntry[] {
-  return deriveProductCommandCatalog({ context, dynamic: inputs }).filter((entry) => entry.scope !== "shared")
+  const builtinIDs = new Set<string>(productCommandIDs)
+  return deriveProductCommandCatalog({ context, dynamic: inputs }).filter((entry) => !builtinIDs.has(entry.id))
 }
 
 export function resolveTuiProductCommand(input: {
@@ -116,7 +121,7 @@ export function toTuiSlashCommands(input: {
   const registered = new Map(input.registered.map((command) => [command.name, command]))
   const reachable = new Set(input.reachable)
   const shared = projection.catalog.flatMap((entry): TuiSlashCommandEntry[] => {
-    if (entry.scope !== "shared" || entry.availability !== "available") return []
+    if ((entry.scope !== "shared" && entry.scope !== "shared_surface_optional") || entry.availability !== "available") return []
     const target = targets[entry.id as ProductCommandID]
     const command = registered.get(target)
     if (!command) return []
@@ -149,10 +154,10 @@ export function toTuiPaletteCommands(input: TuiCommandFacts): TuiPaletteCommandE
   const registered = new Set(input.registered)
   const reachable = new Set(input.reachable)
   const shared = projection.catalog.flatMap((entry): TuiPaletteCommandEntry[] => {
-    if (entry.scope !== "shared" || entry.availability !== "available") return []
+    if ((entry.scope !== "shared" && entry.scope !== "shared_surface_optional") || entry.availability !== "available") return []
     const target = targets[entry.id as ProductCommandID]
     if (!registered.has(target) || !reachable.has(target)) return []
-    return [{ id: entry.id, target, scope: "shared" }]
+    return [{ id: entry.id, target, scope: entry.scope }]
   })
   const host = input.reachable
     .filter((target) => registered.has(target) && !commandIDsByTarget.has(target))

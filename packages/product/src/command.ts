@@ -18,6 +18,10 @@ export const productCommandIDs = [
   "skill.list",
   "theme.list",
   "help.show",
+  "session.rename",
+  "session.share",
+  "session.unshare",
+  "session.fork",
 ] as const
 
 export type ProductCommandID = typeof productCommandIDs[number]
@@ -29,6 +33,27 @@ export type ProductCommandContext = {
   canRedo?: boolean
   hasVariants?: boolean
   hasConnectableProvider?: boolean
+  isShared?: boolean
+}
+
+// Host 只上报会话原始数据，命令可用性事实的语义统一由 Product 推导。
+export type ProductCommandSessionFacts = {
+  hasSession: boolean
+  messages: { id: string; role: string }[]
+  revertMessageID?: string
+  shareURL?: string
+}
+
+// canUndo：撤销点之前仍存在 user 消息；canRedo：存在撤销点；isShared：存在分享链接。
+export function deriveProductCommandSessionContext(facts: ProductCommandSessionFacts) {
+  const revertIndex = facts.revertMessageID ? facts.messages.findIndex((message) => message.id === facts.revertMessageID) : -1
+  const visible = revertIndex === -1 ? facts.messages : facts.messages.slice(0, revertIndex)
+  return {
+    hasSession: facts.hasSession,
+    canUndo: facts.hasSession && visible.some((message) => message.role === "user"),
+    canRedo: facts.hasSession && !!facts.revertMessageID,
+    isShared: facts.hasSession && !!facts.shareURL,
+  }
 }
 
 export type ProductCommandInput = {
@@ -76,6 +101,7 @@ type ProductCommandDefinition = {
   name: string
   aliases?: string[]
   textKey: ProductTextKey
+  scope?: Exclude<ProductCommandScope, "host_only">
 }
 
 const builtinCommands: ProductCommandDefinition[] = [
@@ -93,6 +119,10 @@ const builtinCommands: ProductCommandDefinition[] = [
   { id: "skill.list", name: "skills", textKey: "command.skill.list" },
   { id: "theme.list", name: "themes", aliases: ["theme"], textKey: "command.theme.list" },
   { id: "help.show", name: "help", textKey: "command.help.show" },
+  { id: "session.rename", name: "rename", textKey: "command.session.rename", scope: "shared_surface_optional" },
+  { id: "session.share", name: "share", textKey: "command.session.share", scope: "shared_surface_optional" },
+  { id: "session.unshare", name: "unshare", textKey: "command.session.unshare", scope: "shared_surface_optional" },
+  { id: "session.fork", name: "fork", textKey: "command.session.fork", scope: "shared_surface_optional" },
 ]
 
 export function deriveProductCommandCatalog(input: ProductCommandCatalogInput): ProductCommandEntry[]
@@ -108,7 +138,7 @@ export function deriveProductCommandCatalog(input: ProductCommandCatalogInput | 
       aliases: definition.aliases ?? [],
       title: definition.name,
       textKey: definition.textKey,
-      scope: "shared",
+      scope: definition.scope ?? "shared",
       availability: availability.availability,
       ...(availability.reasonKey ? { reasonKey: availability.reasonKey } : {}),
     }
@@ -171,6 +201,16 @@ function deriveDynamicProductCommands(inputs: ProductCommandInput[]): ProductCom
   return [...entries.values()].sort(compareCommands)
 }
 
+const sessionScopedCommands = new Set<ProductCommandID>([
+  "session.compact",
+  "session.undo",
+  "session.redo",
+  "session.rename",
+  "session.share",
+  "session.unshare",
+  "session.fork",
+])
+
 function commandAvailability(id: ProductCommandID, context: ProductCommandContext): {
   availability: ProductCommandAvailability
   reasonKey?: ProductTextKey
@@ -184,8 +224,11 @@ function commandAvailability(id: ProductCommandID, context: ProductCommandContex
   if (id === "provider.connect" && !context.hasConnectableProvider) {
     return { availability: "unavailable", reasonKey: "command.reason.no_provider" }
   }
-  if ((id === "session.compact" || id === "session.undo" || id === "session.redo") && !context.hasSession) {
+  if (sessionScopedCommands.has(id) && !context.hasSession) {
     return { availability: "unavailable", reasonKey: "command.reason.session_required" }
+  }
+  if (id === "session.unshare" && !context.isShared) {
+    return { availability: "unavailable", reasonKey: "command.reason.not_shared" }
   }
   if (id === "session.undo" && !context.canUndo) {
     return { availability: "unavailable", reasonKey: "command.reason.undo_unavailable" }

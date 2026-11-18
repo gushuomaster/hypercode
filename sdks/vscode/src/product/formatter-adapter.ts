@@ -1,4 +1,4 @@
-import { deriveProductFormatterStates, deriveProductFormatterSummary, type ProductCapabilitySummary, type ProductFormatterState } from "@opencode-ai/product"
+import { deriveProductFormatterStates, deriveProductFormatterSummary, type ProductCapabilityConfigInput, type ProductCapabilitySummary, type ProductFormatterState } from "@opencode-ai/product"
 import type { FormatterStatus } from "../core/sdk"
 
 export function toProductFormatterStates(statuses: FormatterStatus[]): ProductFormatterState[] {
@@ -9,6 +9,6 @@ export function toProductFormatterStates(statuses: FormatterStatus[]): ProductFo
   })))
 }
 
-export function toProductFormatterSummary(input: { configured: boolean; statuses: FormatterStatus[] }): ProductCapabilitySummary {
-  return deriveProductFormatterSummary({ configured: input.configured, states: toProductFormatterStates(input.statuses) })
+export function toProductFormatterSummary(input: { config: ProductCapabilityConfigInput; statuses: FormatterStatus[] }): ProductCapabilitySummary {
+  return deriveProductFormatterSummary({ config: input.config, states: toProductFormatterStates(input.statuses) })
 }

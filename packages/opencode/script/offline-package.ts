@@ -210,13 +210,13 @@ const installLicenseScript = `#!/bin/sh
 set -eu
 
 if [ "$#" -ne 1 ]; then
-  echo "Usage: ./install-license.sh /path/to/license.txt" >&2
+  echo "用法：./install-license.sh /path/to/license.txt" >&2
   exit 1
 fi
 
 source_file="$1"
-[ -f "$source_file" ] || { echo "License file does not exist: $source_file" >&2; exit 1; }
-[ -s "$source_file" ] || { echo "License file is empty: $source_file" >&2; exit 1; }
+[ -f "$source_file" ] || { echo "授权文件不存在：$source_file" >&2; exit 1; }
+[ -s "$source_file" ] || { echo "授权文件为空：$source_file" >&2; exit 1; }
 
 license_dir="\${HOME}/hyper-aicode"
 license_file="$license_dir/license.txt"
@@ -231,9 +231,9 @@ fi
 if [ -z "$hypercode_bin" ] && [ -x "\${HOME}/.local/bin/hypercode" ]; then
   hypercode_bin="\${HOME}/.local/bin/hypercode"
 fi
-[ -n "$hypercode_bin" ] || { echo "HyperCode is not installed or not in PATH." >&2; exit 1; }
+[ -n "$hypercode_bin" ] || { echo "未找到 HyperCode，请先安装或把它加入 PATH。" >&2; exit 1; }
 
-echo "Installed License to $license_file"
+echo "授权已安装到 $license_file"
 "$hypercode_bin" license status
 `
 
@@ -261,6 +261,7 @@ const configTemplate = `{
 
 const environmentTemplate = `export HYPERCODE_DISABLE_MODELS_FETCH=1
 export OPENCODE_DISABLE_LSP_DOWNLOAD=1
+export HYPERCODE_DISABLE_AUTOUPDATE=1
 export HYPERCODE_INTERNAL_API_KEY='REPLACE_WITH_INTERNAL_API_KEY'
 `
 
@@ -305,7 +306,7 @@ hypercode license machine-id
 hypercode license status
 \`\`\`
 
-License 最终保存到 \`~/hyper-aicode/license.txt\`。克隆虚拟机或修改 \`/etc/machine-id\` 后需要重新签发。
+License 最终保存到 \`~/hyper-aicode/license.txt\`。克隆虚拟机或修改 \`/etc/machine-id\` 后需要重新签发。从旧版本升级时，旧格式 License 会失效，需要用新版本 \`license machine-id\` 的输出重新签发。
 
 ## 内网模型配置
 
@@ -320,7 +321,7 @@ chmod 600 ~/.config/opencode/hypercode.env
 . ~/.config/opencode/hypercode.env
 \`\`\`
 
-把模板中的地址、\`MODEL_ID\` 和密钥占位值改成现场值。环境模板默认设置 \`HYPERCODE_DISABLE_MODELS_FETCH=1\` 和 \`OPENCODE_DISABLE_LSP_DOWNLOAD=1\`，防止运行时访问公共 \`models.dev\` 或自动下载 LSP 依赖；LSP 分析仍默认启用，并可使用目标机已有的语言服务器。可将加载命令加入目标用户的 shell 配置。
+把模板中的地址、\`MODEL_ID\` 和密钥占位值改成现场值。环境模板默认设置 \`HYPERCODE_DISABLE_MODELS_FETCH=1\`、\`OPENCODE_DISABLE_LSP_DOWNLOAD=1\` 和 \`HYPERCODE_DISABLE_AUTOUPDATE=1\`，防止运行时访问公共 \`models.dev\`、自动下载 LSP 依赖或从上游渠道自动更新；LSP 分析仍默认启用，并可使用目标机已有的语言服务器。可将加载命令加入目标用户的 shell 配置。
 
 ## 验收
 

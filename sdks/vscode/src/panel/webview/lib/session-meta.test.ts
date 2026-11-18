@@ -272,8 +272,8 @@ describe("session meta composer state", () => {
   test("renders Product formatter and MCP projections without a legacy host reducer", () => {
     setLocale("en")
     assert.deepEqual(overallProductFormatterStatus([
-      { name: "prettier", enabled: true, extensions: [".ts"], severity: "ok" },
-      { name: "rustfmt", enabled: false, extensions: [".rs"], severity: "warning" },
+      { name: "prettier", enabled: true, extensions: [".ts"], severity: "none", textKey: "item.formatter.enabled" },
+      { name: "rustfmt", enabled: false, extensions: [".rs"], severity: "warning", textKey: "item.formatter.disabled" },
     ]), {
       tone: "orange",
       items: [
@@ -282,7 +282,7 @@ describe("session meta composer state", () => {
       ],
     })
     assert.deepEqual(overallProductMcpStatus([
-      { name: "docs", availability: "needs_auth", severity: "warning", action: "authenticate", diagnostic: undefined },
+      { name: "docs", availability: "needs_auth", severity: "warning", action: "authenticate", textKey: "item.mcp.needs_auth", diagnostic: undefined },
     ]), {
       tone: "orange",
       items: [{ name: "docs", tone: "orange", value: "Needs authentication", action: "authenticate", actionLabel: "authenticate" }],

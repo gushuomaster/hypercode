@@ -144,7 +144,8 @@ describe("buildSessionSnapshot session list filtering", () => {
       isSubmitting: () => false,
     })
 
-    assert.deepEqual(build.snapshot.capabilityConfigured, { mcp: true, lsp: false, formatter: true })
+    // Host reports raw facts only; whether they mean disabled, idle or unconfigured is Product's decision.
+    assert.deepEqual(build.snapshot.capabilityConfig, { mcp: [{ name: "docs", enabled: true }], lsp: false, formatter: true })
     assert.deepEqual(build.snapshot.mcpStates, [])
     assert.deepEqual(build.snapshot.lspStates, [])
   })

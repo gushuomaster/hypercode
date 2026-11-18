@@ -2,7 +2,7 @@
 
 ## 目的与边界
 
-本记录是 [Product Default Policy Design](../superpowers/specs/2026-09-24-product-default-policy-design.md) 的首批审计基线。它记录当前代码证据与本轮决策，不创建新的架构 Phase，也不把 upstream 默认值自动判定为缺陷。
+本记录是 [Product Default Policy Design](../../openspec/changes/archive/2026-09-24-product-default-policy/design.md) 的首批审计基线。它记录当前代码证据与本轮决策，不创建新的架构 Phase，也不把 upstream 默认值自动判定为缺陷。
 
 本轮只实施已经明确批准的 LSP 决策。Formatter、MCP、更新、模型目录、Skill/Plugin 等能力即使在矩阵中完成现状审计，也不会在没有独立产品决策时顺手修改 runtime default。
 
@@ -79,7 +79,7 @@ VSCode package                  pass
 git diff --check                pass
 ```
 
-全量测试与既有 [Product Alignment Maintenance Baseline](../superpowers/specs/2026-09-24-product-alignment-maintenance-baseline.md) 对比：
+全量测试与既有 [Product Alignment Maintenance Baseline](../../openspec/changes/archive/2026-09-24-product-alignment-maintenance-baseline/design.md) 对比：
 
 - TUI full：`243 pass / 4 known fail / 1 skip`，失败身份和旧基线一致：过期的 `opencode` 品牌断言、两个 Windows path/session continuation 断言，以及环境敏感的 DiffViewer empty-state 断言。
 - VSCode full：`406 pass / 29 known fail / 18 known errors`，失败身份和旧基线一致：缺少运行时 `vscode`、CSS animation 断言、autocomplete parity fixtures 和 malformed timeline fixture。

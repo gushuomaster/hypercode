@@ -1,5 +1,5 @@
 import type { AgentInfo, CommandInfo, FileDiff, FormatterStatus, LspStatus, McpResource, McpStatus, PermissionRequest, PromptFilePartInput, PromptSource, ProviderAuthMethod, ProviderInfo, QuestionRequest, SessionEvent, SessionInfo, SessionMessage, SessionStatus, Todo } from "../core/sdk"
-import type { ProductFormatterState, ProductLspState, ProductMcpState, ProductProviderState, ProductSkillItem, ProductSnapshot } from "@opencode-ai/product"
+import type { ProductCapabilityConfigInput, ProductFormatterState, ProductLspState, ProductMcpState, ProductProviderState, ProductSkillItem, ProductSnapshot } from "@opencode-ai/product"
 import type { DisplaySettings, PanelColorScheme, PanelTheme } from "../core/settings"
 import type { VsCodeSessionMutationEvent } from "../product/session-mutation"
 
@@ -40,7 +40,7 @@ export type SessionMessageHistory = {
 
 export type SessionSnapshot = SessionBootstrap & {
   product?: ProductSnapshot
-  capabilityConfigured?: { mcp: boolean; lsp: boolean; formatter: boolean }
+  capabilityConfig?: ProductCapabilityConfigInput
   mcpStates?: ProductMcpState[]
   lspStates?: ProductLspState[]
   formatterStates?: ProductFormatterState[]

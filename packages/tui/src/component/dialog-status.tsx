@@ -6,8 +6,8 @@ import { useSync } from "../context/sync"
 import { For, Show, createMemo } from "solid-js"
 import { translate as t } from "../context/language"
 import { formatTuiProductError } from "../product/text-adapter"
-import { deriveProductFormatterSummary, deriveProductLspSummary, deriveProductMcpSummary, type ProductMcpState } from "@opencode-ai/product"
-import { toProductCapabilityConfigured } from "../product/capability-adapter"
+import { deriveProductFormatterSummary, deriveProductLspSummary, deriveProductMcpSummary } from "@opencode-ai/product"
+import { toProductCapabilityConfig } from "../product/capability-adapter"
 import { toTuiTextKey } from "../product/text-adapter"
 
 export type DialogStatusProps = {}
@@ -17,11 +17,11 @@ export function DialogStatus() {
   const { theme } = useTheme()
   const dialog = useDialog()
 
-  const enabledFormatters = createMemo(() => sync.data.formatter_product.filter((formatter) => formatter.enabled))
-  const configured = createMemo(() => toProductCapabilityConfigured(sync.data.config))
-  const mcpSummary = createMemo(() => deriveProductMcpSummary({ configured: configured().mcp, states: sync.data.mcp_product }))
-  const lspSummary = createMemo(() => deriveProductLspSummary({ configured: configured().lsp, states: sync.data.lsp_product }))
-  const formatterSummary = createMemo(() => deriveProductFormatterSummary({ configured: configured().formatter, states: sync.data.formatter_product }))
+  const config = createMemo(() => toProductCapabilityConfig(sync.data.config, sync.status !== "loading"))
+  const mcpSummary = createMemo(() => deriveProductMcpSummary({ config: config(), states: sync.data.mcp_product }))
+  const lspSummary = createMemo(() => deriveProductLspSummary({ config: config(), states: sync.data.lsp_product }))
+  const formatterSummary = createMemo(() => deriveProductFormatterSummary({ config: config(), states: sync.data.formatter_product }))
+  const tone = (severity: "none" | "warning" | "error") => (severity === "error" ? theme.error : severity === "warning" ? theme.warning : theme.textMuted)
 
   const plugins = createMemo(() => {
     const list = sync.data.config.plugin ?? []
@@ -59,85 +59,70 @@ export function DialogStatus() {
           esc
         </text>
       </box>
-      <Show when={sync.data.mcp_product.length > 0} fallback={<text fg={theme.text}>{t(toTuiTextKey(mcpSummary().textKey))}</text>}>
-        <box>
-          <text fg={theme.text}>{t("dialog.status.mcpCount", { count: sync.data.mcp_product.length })}</text>
-          <For each={sync.data.mcp_product}>
-            {(item) => (
-              <box flexDirection="row" gap={1}>
-                <text
-                  flexShrink={0}
-                  style={{
-                    fg: (
-                      {
-                        none: item.availability === "connected" ? theme.success : theme.textMuted,
-                        warning: theme.warning,
-                        error: theme.error,
-                      } as Record<string, typeof theme.success>
-                    )[item.severity],
-                  }}
-                >
-                  •
-                </text>
-                <text fg={theme.text} wrapMode="word">
-                  <b>{item.name}</b>{" "}
-                  <span style={{ fg: theme.textMuted }}>{mcpStatusText(item)}</span>
-                </text>
-              </box>
-            )}
-          </For>
-        </box>
-      </Show>
-      <Show when={sync.data.lsp_product.length > 0} fallback={<text fg={theme.text}>{t(toTuiTextKey(lspSummary().textKey))}</text>}>
-        <box>
-          <text fg={theme.text}>{t("dialog.status.lspCount", { count: sync.data.lsp_product.length })}</text>
-          <For each={sync.data.lsp_product}>
-            {(item) => (
-              <box flexDirection="row" gap={1}>
-                <text
-                  flexShrink={0}
-                  style={{
-                    fg: {
-                      connected: theme.success,
-                      error: theme.error,
-                    }[item.availability],
-                  }}
-                >
-                  •
-                </text>
-                <text fg={theme.text} wrapMode="word">
-                  <b>{item.name}</b>{" "}
-                  <span style={{ fg: theme.textMuted }}>
-                    {item.diagnostic ? formatTuiProductError(item.diagnostic) : item.root}
-                  </span>
-                </text>
-              </box>
-            )}
-          </For>
-        </box>
-      </Show>
-      <Show when={enabledFormatters().length > 0} fallback={<text fg={theme.text}>{t(toTuiTextKey(formatterSummary().textKey))}</text>}>
-        <box>
-          <text fg={theme.text}>{t("dialog.status.formatterCount", { count: enabledFormatters().length })}</text>
-          <For each={enabledFormatters()}>
-            {(item) => (
-              <box flexDirection="row" gap={1}>
-                <text
-                  flexShrink={0}
-                  style={{
-                    fg: theme.success,
-                  }}
-                >
-                  •
-                </text>
-                <text wrapMode="word" fg={theme.text}>
-                  <b>{item.name}</b>
-                </text>
-              </box>
-            )}
-          </For>
-        </box>
-      </Show>
+      <box>
+        <text fg={theme.text}>{t(toTuiTextKey(mcpSummary().textKey))}</text>
+        <For each={sync.data.mcp_product}>
+          {(item) => (
+            <box flexDirection="row" gap={1}>
+              <text
+                flexShrink={0}
+                style={{
+                  fg: tone(item.severity),
+                }}
+              >
+                •
+              </text>
+              <text fg={theme.text} wrapMode="word">
+                <b>{item.name}</b>{" "}
+                <span style={{ fg: theme.textMuted }}>{item.diagnostic ? formatTuiProductError(item.diagnostic) : t(toTuiTextKey(item.textKey))}</span>
+              </text>
+            </box>
+          )}
+        </For>
+      </box>
+      <box>
+        <text fg={theme.text}>{t(toTuiTextKey(lspSummary().textKey))}</text>
+        <For each={sync.data.lsp_product}>
+          {(item) => (
+            <box flexDirection="row" gap={1}>
+              <text
+                flexShrink={0}
+                style={{
+                  fg: tone(item.severity),
+                }}
+              >
+                •
+              </text>
+              <text fg={theme.text} wrapMode="word">
+                <b>{item.name}</b>{" "}
+                <span style={{ fg: theme.textMuted }}>
+                  {item.diagnostic ? formatTuiProductError(item.diagnostic) : item.root}
+                </span>
+              </text>
+            </box>
+          )}
+        </For>
+      </box>
+      <box>
+        <text fg={theme.text}>{t(toTuiTextKey(formatterSummary().textKey))}</text>
+        <For each={sync.data.formatter_product}>
+          {(item) => (
+            <box flexDirection="row" gap={1}>
+              <text
+                flexShrink={0}
+                style={{
+                  fg: tone(item.severity),
+                }}
+              >
+                •
+              </text>
+              <text wrapMode="word" fg={theme.text}>
+                <b>{item.name}</b>{" "}<span style={{ fg: theme.textMuted }}>{t(toTuiTextKey(item.textKey))}</span>
+              </text>
+            </box>
+          )}
+        </For>
+      </box>
       <Show when={plugins().length > 0} fallback={<text fg={theme.text}>{t("dialog.status.noPlugins")}</text>}>
         <box>
           <text fg={theme.text}>{t("dialog.status.pluginCount", { count: plugins().length })}</text>
@@ -163,12 +148,4 @@ export function DialogStatus() {
       </Show>
     </box>
   )
-}
-
-function mcpStatusText(item: ProductMcpState) {
-  if (item.diagnostic) return formatTuiProductError(item.diagnostic)
-  if (item.availability === "connected") return t("dialog.status.connected")
-  if (item.availability === "disabled") return t("dialog.status.disabled")
-  if (item.availability === "needs_auth") return t("dialog.status.needsAuth", { name: item.name })
-  return item.availability
 }

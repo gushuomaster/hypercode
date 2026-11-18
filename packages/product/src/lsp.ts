@@ -19,6 +19,7 @@ export type ProductLspState = {
   root: string
   availability: ProductLspAvailability
   severity: ProductLspSeverity
+  textKey: Extract<ProductTextKey, `item.lsp.${string}`>
   diagnostic?: {
     message: string
     raw?: string
@@ -33,6 +34,7 @@ export function deriveProductLspState(input: ProductLspStateInput): ProductLspSt
     root: input.root,
     availability: input.status,
     severity: input.status === "error" ? "error" : "none",
+    textKey: input.status === "error" ? "item.lsp.error" : "item.lsp.connected",
     ...(input.status === "error"
       ? {
           diagnostic: {

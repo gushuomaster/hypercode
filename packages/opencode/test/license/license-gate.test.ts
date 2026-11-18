@@ -30,3 +30,20 @@ describe("license gate", () => {
     expect(shouldEnforceLicenseGate(["run"], { NODE_ENV: "production", OPENCODE_TEST_HOME: "/tmp/opencode-test-home" })).toBe(false)
   })
 })
+
+describe("license gate entrypoint", () => {
+  // Guards against upstream syncs that rewrite the CLI entrypoint and drop the gate.
+  test("main.ts enforces the gate in the global middleware before any command runs", async () => {
+    const source = await Bun.file(new URL("../../src/cli/main.ts", import.meta.url)).text()
+    const middleware = source.slice(source.indexOf(".middleware("), source.indexOf(".command("))
+    expect(source).toContain('import { LicenseCommand, enforceLicenseGate } from "./cmd/license"')
+    expect(middleware).toContain("await enforceLicenseGate(args)")
+    expect(source).toContain(".command(localizeCommand(LicenseCommand))")
+  })
+
+  test("keeps mcp and auth behind the gate", () => {
+    const env = { NODE_ENV: "production" }
+    expect(shouldEnforceLicenseGate(["mcp", "list"], env)).toBe(true)
+    expect(shouldEnforceLicenseGate(["auth", "login"], env)).toBe(true)
+  })
+})

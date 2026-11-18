@@ -15,7 +15,8 @@ test("projects TUI LSP statuses into the shared Product state", () => {
       availability: "error",
       severity: "error",
       diagnostic: { message: "LSP connection failed", textKey: "error.lsp.connection_failed" },
+      textKey: "item.lsp.error",
     },
-    { id: "ts", name: "TypeScript", root: "/workspace", availability: "connected", severity: "none" },
+    { id: "ts", name: "TypeScript", root: "/workspace", availability: "connected", severity: "none", textKey: "item.lsp.connected" },
   ])
 })

@@ -18,7 +18,8 @@ import { buildComposerSubmitParts, composerMentionAgentOverride } from "./compos
 import { ComposerFooter } from "./composer-footer"
 import { absorbFileSelectionSuffix, composerMentions as mentionsFromParts, composerPartsEqual, composerText, deleteStructuredRange, emptyComposerParts, ensureTextPart, replaceRangeWithMention, replaceRangeWithText } from "./composer-editor"
 import { getSelectionOffsets, parseComposerEditor, renderComposerEditor, setCursorPosition, syncComposerPillSelection } from "./composer-editor-dom"
-import { isCompletedSlashCommand, resolveComposerAutocompleteAction, resolveComposerSlashAction } from "./composer-actions"
+import { isCompletedSlashCommand, resolveComposerAutocompleteAction } from "./composer-actions"
+import { planComposerSubmit, runProductCommand, type VsCodeCommandHandlers } from "./command-dispatch"
 import { collectDroppedFilePaths, shouldHandleComposerFileDrop } from "./composer-drop"
 import { autocompleteItemView, buildComposerCommandCatalogInput, buildComposerMenuItems, mentionForQuery } from "./composer-menu"
 import { composerPrimaryAction } from "./composer-primary-action"
@@ -36,6 +37,7 @@ import { SessionPicker } from "./session-picker"
 import { composerRunningState } from "./composer-running-state"
 import { copyImageToClipboard, ImagePreviewOverlay, saveImageFromPreview, type PreviewImage } from "./image-preview"
 import { t } from "../../../i18n"
+import { toVsCodeTextKey } from "../lib/product-text-adapter"
 import { buildThemePickerItems, ThemePicker, type ThemePickerItem } from "./theme-picker"
 import { resolveTranscriptHistoryMode, shouldAutoLoadEarlierMessages, transcriptHistoryScrollThreshold } from "./transcript-history"
 import { AgentPicker, buildAgentPickerItems, type AgentPickerItem } from "./agent-picker"
@@ -183,6 +185,7 @@ export function App() {
     state.snapshot.formatterStates,
   ])
   const composerAutocomplete = useComposerAutocomplete(composerMenuItems)
+  const commandHandlersRef = React.useRef<VsCodeCommandHandlers | null>(null)
   const skillPickerItems = React.useMemo(() => skillPickerOpen
     ? filterItems(composerMenuItems, "skill", state.draft)
     : [], [composerMenuItems, skillPickerOpen, state.draft])
@@ -893,68 +896,15 @@ export function App() {
       return
     }
 
-    const slashAction = resolveComposerSlashAction(draft, commandCatalogInput)
-    if (slashAction) {
-      if (slashAction.kind === "builtin" && slashAction.commandID === "session.new") {
-        setState((current) => ({
-          ...current,
-          draft: "",
-          composerParts: emptyComposerParts(),
-          composerMentions: [],
-          composerMentionAgentOverride: undefined,
-          imageAttachments: [],
-          error: "",
-        }))
-        vscode.postMessage({ type: "newSession" })
-        return
-      }
-
-      if (slashAction.kind === "builtin" && slashAction.commandID === "skill.list") {
-        openSkillPicker()
-        return
-      }
-
-      if (slashAction.kind === "builtin" && slashAction.commandID === "agent.list") {
-        openAgentPicker()
-        return
-      }
-
-      if (slashAction.kind === "builtin" && slashAction.commandID === "session.list") {
-        setState((current) => ({
-          ...current,
-          draft: "",
-          composerParts: emptyComposerParts(),
-          composerMentions: [],
-          composerMentionAgentOverride: undefined,
-          imageAttachments: [],
-          error: "",
-        }))
-        openSessionPicker()
-        return
-      }
-
-      if (slashAction.kind === "builtin" && slashAction.commandID === "theme.list") {
-        setState((current) => ({
-          ...current,
-          draft: "",
-          composerParts: emptyComposerParts(),
-          composerMentions: [],
-          composerMentionAgentOverride: undefined,
-          error: "",
-        }))
-        openThemePicker()
-        return
-      }
-      if (slashAction.kind === "builtin" && slashAction.commandID === "mcp.list") {
-        setStatusPickerMode("mcp")
-        setComposerState(emptyComposerParts(), "")
-        return
-      }
-      if (slashAction.kind === "builtin" && slashAction.commandID === "system.status") {
-        setStatusPickerMode("system")
-        setComposerState(emptyComposerParts(), "")
-        return
-      }
+    const plan = planComposerSubmit(draft, commandCatalogInput)
+    if (plan.kind === "command") {
+      runProductCommand(plan.commandID, commandHandlersRef.current!)
+      return
+    }
+    if (plan.kind === "unavailable") {
+      // Keep the draft so the user can edit it; explain why the known command cannot run.
+      setState((current) => ({ ...current, error: t(toVsCodeTextKey(plan.reasonKey)) }))
+      return
     }
 
     const mentions = mentionsFromParts(finalized)
@@ -1462,9 +1412,10 @@ export function App() {
   }, [currentSelection.model, state.snapshot])
 
   const composerFooterBadges = React.useMemo(() => {
-    const mcpSummary = deriveProductMcpSummary({ configured: state.snapshot.capabilityConfigured?.mcp ?? state.snapshot.mcpStates.length > 0, states: state.snapshot.mcpStates })
-    const lspSummary = deriveProductLspSummary({ configured: state.snapshot.capabilityConfigured?.lsp ?? state.snapshot.lspStates.length > 0, states: state.snapshot.lspStates })
-    const formatterSummary = deriveProductFormatterSummary({ configured: state.snapshot.capabilityConfigured?.formatter ?? state.snapshot.formatterStates.length > 0, states: state.snapshot.formatterStates })
+    const config = state.snapshot.capabilityConfig ?? {}
+    const mcpSummary = deriveProductMcpSummary({ config, states: state.snapshot.mcpStates })
+    const lspSummary = deriveProductLspSummary({ config, states: state.snapshot.lspStates })
+    const formatterSummary = deriveProductFormatterSummary({ config, states: state.snapshot.formatterStates })
     const mcp = { tone: statusToneForProductSummary(mcpSummary), items: state.snapshot.mcpStates.map(statusItemForProductMcp) }
     const lsp = { tone: statusToneForProductSummary(lspSummary), items: state.snapshot.lspStates.map(statusItemForProductLsp) }
     const formatter = { tone: statusToneForProductSummary(formatterSummary), items: state.snapshot.formatterStates.map(statusItemForProductFormatter) }
@@ -1473,7 +1424,7 @@ export function App() {
       { label: "LSP", tone: lsp.tone, items: lsp.items, summary: lspSummary },
       { label: "Formatter", tone: formatter.tone, items: formatter.items, summary: formatterSummary },
     ]
-  }, [state.snapshot.capabilityConfigured, state.snapshot.formatterStates, state.snapshot.lspStates, state.snapshot.mcpStates])
+  }, [state.snapshot.capabilityConfig, state.snapshot.formatterStates, state.snapshot.lspStates, state.snapshot.mcpStates])
 
   const cycleComposerAgent = React.useCallback(() => {
     const next = cycleProductAgentName(toProductAgents(state.snapshot.agents), currentSelection.agent)
@@ -1602,6 +1553,61 @@ export function App() {
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [activeAutocomplete, clearEscPending, clearLeaderPending, isChildSession, navigateSession, runLeaderAction, startLeaderPending, state.bootstrap.status, state.snapshot.navigation.next, state.snapshot.navigation.parent, state.snapshot.navigation.prev])
 
+  // Shared Product command bindings for this host. Refreshed every render so callbacks never see stale state.
+  commandHandlersRef.current = {
+    newSession: () => {
+      clearComposerDraft()
+      postNewSession()
+    },
+    openSessionPicker: () => openSessionPicker(),
+    openAgentPicker: () => openAgentPicker(),
+    openModelPicker: () => {
+      clearComposerDraft()
+      openModelPicker()
+    },
+    openMcpStatus: () => {
+      setComposerState(emptyComposerParts(), "")
+      setStatusPickerMode("mcp")
+    },
+    openSystemStatus: () => {
+      setComposerState(emptyComposerParts(), "")
+      setStatusPickerMode("system")
+    },
+    compactSession: () => {
+      clearComposerDraft()
+      postProductAction({ type: "session.compact", model: currentSelection.model })
+    },
+    undoSession: () => {
+      clearComposerDraft()
+      postProductAction({ type: "session.undo" })
+    },
+    redoSession: () => {
+      clearComposerDraft()
+      postProductAction({ type: "session.redo" })
+    },
+    openSkillPicker: () => openSkillPicker(),
+    openThemePicker: () => {
+      clearComposerDraft()
+      openThemePicker()
+    },
+    // /help lists every available command with its description in the slash autocomplete menu.
+    openCommandHelp: () => {
+      autocompleteDismissedRef.current = null
+      const result = setComposerState(replaceRangeWithText(emptyComposerParts(), 0, 0, "/").parts, "")
+      restoreComposerCursor(result.draft, 1)
+    },
+    renameSession: () => {
+      vscode.postMessage({ type: "sessionPickerAction", sessionID: state.snapshotRef.sessionId, action: "rename" })
+    },
+    shareSession: () => {
+      vscode.postMessage({ type: "sessionPickerAction", sessionID: state.snapshotRef.sessionId, action: "share" })
+    },
+    unshareSession: () => {
+      vscode.postMessage({ type: "sessionPickerAction", sessionID: state.snapshotRef.sessionId, action: "unshare" })
+    },
+    forkSession: () => {},
+  }
+
   const acceptComposerAutocomplete = React.useCallback((item: ComposerAutocompleteItem, options?: { completeDirectory?: boolean }) => {
     if (composerMode === "shell") {
       composerAutocomplete.close()
@@ -1611,85 +1617,8 @@ export function App() {
     const autocompleteAction = resolveComposerAutocompleteAction(item)
     if (autocompleteAction) {
       if (autocompleteAction.type === "builtin") {
-        if (autocompleteAction.commandID === "session.new") {
-          clearComposerDraft()
-          postNewSession()
-        } else if (autocompleteAction.commandID === "session.list") {
-          openSessionPicker()
-        } else if (autocompleteAction.commandID === "agent.list") {
-          openAgentPicker()
-        } else if (autocompleteAction.commandID === "model.list" || autocompleteAction.commandID === "variant.list" || autocompleteAction.commandID === "provider.connect") {
-          openModelPicker()
-        } else if (autocompleteAction.commandID === "skill.list") {
-          openSkillPicker()
-        } else if (autocompleteAction.commandID === "theme.list") {
-          openThemePicker()
-        } else if (autocompleteAction.commandID === "mcp.list") {
-          setStatusPickerMode("mcp")
-        } else if (autocompleteAction.commandID === "system.status") {
-          setStatusPickerMode("system")
-        } else if (autocompleteAction.commandID === "session.compact") {
-          clearComposerDraft()
-          postProductAction({ type: "session.compact", model: currentSelection.model })
-        } else if (autocompleteAction.commandID === "session.undo") {
-          clearComposerDraft()
-          postProductAction({ type: "session.undo" })
-        } else if (autocompleteAction.commandID === "session.redo") {
-          clearComposerDraft()
-          postProductAction({ type: "session.redo" })
-        }
         composerAutocomplete.close()
-        return
-      }
-      if (autocompleteAction.type === "newSessionInPlace") {
-        clearComposerDraft()
-        postNewSession()
-        composerAutocomplete.close()
-        return
-      }
-
-      if (autocompleteAction.type === "openSkillPicker") {
-        openSkillPicker()
-        return
-      }
-
-      if (autocompleteAction.type === "openAgentPicker") {
-        openAgentPicker()
-        return
-      }
-
-      if (autocompleteAction.type === "undoSession") {
-        clearComposerDraft()
-        postProductAction({ type: "session.undo" })
-        composerAutocomplete.close()
-        return
-      }
-
-      if (autocompleteAction.type === "redoSession") {
-        clearComposerDraft()
-        postProductAction({ type: "session.redo" })
-        composerAutocomplete.close()
-        return
-      }
-
-      if (autocompleteAction.type === "compactSession") {
-        clearComposerDraft()
-        postProductAction({ type: "session.compact", model: currentSelection.model })
-        composerAutocomplete.close()
-        return
-      }
-
-      if (autocompleteAction.type === "openModelPicker") {
-        clearComposerDraft()
-        openModelPicker()
-        composerAutocomplete.close()
-        return
-      }
-
-      if (autocompleteAction.type === "openThemePicker") {
-        clearComposerDraft()
-        openThemePicker()
-        composerAutocomplete.close()
+        runProductCommand(autocompleteAction.commandID, commandHandlersRef.current!)
         return
       }
 
@@ -1711,11 +1640,6 @@ export function App() {
         clearComposerDraft()
         vscode.postMessage({ type: "composerAction", action: "refreshSession" })
         composerAutocomplete.close()
-        return
-      }
-
-      if (autocompleteAction.type === "openSessionPicker") {
-        openSessionPicker()
         return
       }
     }

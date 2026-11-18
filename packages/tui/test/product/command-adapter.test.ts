@@ -80,6 +80,23 @@ test("classifies shared and TUI-only palette commands without local shared owner
   ])
 })
 
+test("surface-optional commands appear in slash and palette when registered and reachable", () => {
+  const sharedTargets = ["session.new", "session.list", "mcp.list", "opencode.status", "help.show", "session.compact"]
+  const optionalTargets = ["session.rename", "session.fork"]
+  const all = [...sharedTargets, ...optionalTargets]
+
+  const slash = toTuiSlashCommands({
+    registered: all.map((name) => ({ name, title: `TUI ${name}` })),
+    reachable: all,
+  })
+  expect(slash.entries.some((e) => e.id === "session.rename")).toBe(true)
+  expect(slash.entries.some((e) => e.id === "session.fork")).toBe(true)
+
+  const palette = toTuiPaletteCommands({ registered: all, reachable: all })
+  expect(palette.some((e) => e.id === "session.rename" && e.scope === "shared_surface_optional")).toBe(true)
+  expect(palette.some((e) => e.id === "session.fork" && e.scope === "shared_surface_optional")).toBe(true)
+})
+
 test("resolves typed aliases before colliding server commands", () => {
   const projection = toTuiProductCommands({
     registered: ["mcp.list", "opencode.status"],

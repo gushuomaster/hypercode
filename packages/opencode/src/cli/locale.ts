@@ -1,7 +1,7 @@
 import path from "path"
 import { parse, type ParseError } from "jsonc-parser"
 import { Global } from "@opencode-ai/core/global"
-import { normalizeLocale, setLocale, type Locale } from "@opencode-ai/tui/i18n"
+import { localeEnvironment, normalizeLocale, setLocale, type Locale } from "@opencode-ai/tui/i18n"
 import { isRecord } from "@opencode-ai/tui/util/record"
 
 type Environment = Partial<Record<string, string | undefined>>
@@ -25,7 +25,7 @@ export async function initializeCliLocale(directory: string) {
   const locale = await resolveCliLocale({
     configFiles: discoverLocaleFiles(directory),
     stateFile: path.join(Global.Path.state, "kv.json"),
-    environment: process.env,
+    environment: localeEnvironment(),
   })
   setLocale(locale)
   return locale

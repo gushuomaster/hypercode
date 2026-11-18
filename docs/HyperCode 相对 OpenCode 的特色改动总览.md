@@ -14,7 +14,7 @@
 - HyperCode 把原本较轻的 VS Code 入口扩展为完整的集成式扩展，包含 Activity Bar、Sessions、Todo、Modified Files、Subagents 和 Session Panel。
 - HyperCode 建立了 `hypercode.*` 命令与配置体系，同时保留必要的内部兼容项，避免破坏 upstream 兼容性。
 - HyperCode 采用 workspace runtime 启动模型和完整的会话工作流，而不是停留在旧终端启动器叙事。
-- HyperCode 在产品定位上不把 license 门禁作为公开面的一部分，但维护时仍要把授权相关入口和路径当作需要人工确认的保留/回退边界。
+- HyperCode 交付版强制授权：license 采用非对称签名并绑定机器，授权门禁是受保护能力，不得被 upstream 同步或重构移除。
 - HyperCode 不是“把所有 `opencode` 字样都删掉”，而是保留必要的兼容字段、历史路径和内部命名，让 upstream sync 能持续进行。
 
 ## 特色改动明细
@@ -68,18 +68,16 @@ HyperCode 的另一个长期特征，是把工作区启动、会话承载和扩�
 
 这也是 HyperCode 和“旧终端启动器叙事”最本质的差异之一。后者强调单点启动，前者强调工作区内的完整协作面。
 
-### 5. license 边界与保留项
+### 5. 授权门禁（受保护能力）
 
-HyperCode 的长期产品方向，是不把 license 门禁作为公开面叙事的一部分；但这不等于可以直接假设仓库里已经没有任何授权相关入口或文件。
+HyperCode 交付版强制授权（2026-11-12 维护者决策，规格见 `openspec/specs/license-gate/spec.md`）：
 
-这条边界的含义是：
+- CLI 在执行受约束的命令前校验 license，失败时显示中文原因与下一步操作并退出；`license machine-id / path / status` 不受门禁约束，用于申请和排查授权。
+- license 为 Ed25519 签名的 `HCL2` 格式，产品只内置公钥；签发工具只在内部仓库，私钥不进入 git 与交付物。旧的共享密钥格式已停用。
+- 机器码由 Windows MachineGuid 或 Linux `/etc/machine-id` 派生；只支持 Windows 与 Linux。
+- 校验只在 CLI 中实现；VSCode 调用 `hypercode license status --json` 获取结果，只负责中文提示与打开授权文件。
 
-- 不恢复 `hypercode.openLicenseFile`
-- 不恢复 `packages/opencode/src/license/*` 与 `sdks/vscode/src/license/*`
-- 不恢复启动前授权阻断
-- 不恢复授权测试
-
-因此，后续同步 upstream 时，如果相关区域再次出现在公开流程里并形成真正的授权门禁，就应被视为需要人工确认的回退信号；如果只是仓库内部仍保留相关实现或入口，也应按兼容与保留边界谨慎处理，而不是简单当作“已清理干净”的既成事实。
+维护时，门禁调用、`license` 子命令、`src/license/*`、VSCode 授权提示与 `hypercode.openLicenseFile`、授权测试都属于必须保留的 HyperCode 能力。
 
 ### 6. 兼容保留策略
 
@@ -99,7 +97,7 @@ HyperCode 的特色不是“把一切都机械改名”，而是“公开面品�
 - 公开命令、公开配置、扩展元数据、Activity Bar、views 和 panels 必须保持 HyperCode 公开面。
 - `@opencode-ai/*`、`packages/opencode`、兼容字段和部分历史路径不应机械替换。
 - `sdks/vscode/package.json`、`sdks/vscode/README.md`、`sdks/vscode/src/*`、`packages/opencode/src/cli/*`、`packages/opencode/src/config/*` 是优先检查区。
-- 如果公开入口退回 `opencode.*`、README 退回旧终端启动器叙事、license 入口重新出现，就说明特色改动正在回退。
+- 如果公开入口退回 `opencode.*`、README 退回旧终端启动器叙事，或授权门禁被移除，就说明特色改动正在回退。
 - 维护时不要把“内部仍有 `opencode`”误判为问题本身，真正需要警惕的是用户可见公开面是否回退。
 
 ## 如何配合现有文档使用

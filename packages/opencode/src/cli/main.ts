@@ -135,7 +135,7 @@ try {
   const formatted = FormatError(e)
   if (formatted) UI.error(formatted)
   if (formatted === undefined) {
-    UI.error("Unexpected error" + EOL)
+    UI.error(cliText("Unexpected error") + EOL)
     process.stderr.write(errorMessage(e) + EOL)
   }
   process.exitCode = 1

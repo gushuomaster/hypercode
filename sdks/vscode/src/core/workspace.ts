@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import { client } from "./sdk"
 import { freeport, health, spawn, startupFailure, stop, type WorkspaceRuntime } from "./server"
-import { localizedLicenseMessage, openLicenseFile, promptForLicenseIssue, resolveLicensePath, validateLicense } from "../license"
+import { localizedLicenseMessage, openLicenseFile, promptForLicenseIssue, queryLicense } from "../license"
 import { t } from "../i18n"
 
 type WorkspaceManagerDeps = {
@@ -9,8 +9,7 @@ type WorkspaceManagerDeps = {
   health?: typeof health
   spawn?: typeof spawn
   client?: typeof client
-  resolveLicensePath?: typeof resolveLicensePath
-  validateLicense?: typeof validateLicense
+  queryLicense?: typeof queryLicense
   promptForLicenseIssue?: typeof promptForLicenseIssue
   openLicenseFile?: typeof openLicenseFile
 }
@@ -155,10 +154,10 @@ export class WorkspaceManager implements vscode.Disposable {
       await stop(cur.proc)
     }
 
-    const licensePath = (this.deps.resolveLicensePath ?? resolveLicensePath)()
-    const license = await (this.deps.validateLicense ?? validateLicense)({ licensePath })
+    // The CLI owns license semantics; `serve` enforces the gate again as a second line of defense.
+    const license = await (this.deps.queryLicense ?? queryLicense)()
     if (!license.ok) {
-      const message = localizedLicenseMessage(license)
+      const message = "path" in license ? localizedLicenseMessage(license) : (license.message ?? "")
       const rt: WorkspaceRuntime = {
         workspaceId: id,
         dir,
@@ -173,9 +172,10 @@ export class WorkspaceManager implements vscode.Disposable {
       }
       this.state.set(id, rt)
       this.dirIndex.set(dir, id)
-      this.log(rt, `license check failed: ${license.reason} ${license.message}`)
+      this.log(rt, `license check failed: ${license.status} ${license.message ?? ""}`)
       this.fire()
-      void this.handleLicenseFailure(message)
+      // A CLI that cannot run is a runtime failure, reported through the existing runtime error UI.
+      if ("path" in license) void this.handleLicenseFailure(message, license.path)
       return rt
     }
 
@@ -255,13 +255,13 @@ export class WorkspaceManager implements vscode.Disposable {
     this.log(rt, "server stopped")
   }
 
-  private async handleLicenseFailure(message: string) {
+  private async handleLicenseFailure(message: string, licensePath: string) {
     const action = await (this.deps.promptForLicenseIssue ?? promptForLicenseIssue)(
       t("license.checkFailed", { message }),
     )
 
     if (action === t("license.open") || action === t("license.create")) {
-      await (this.deps.openLicenseFile ?? openLicenseFile)()
+      await (this.deps.openLicenseFile ?? openLicenseFile)(licensePath)
       return
     }
 
