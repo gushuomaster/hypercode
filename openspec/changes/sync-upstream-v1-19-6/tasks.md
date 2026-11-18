@@ -27,13 +27,13 @@
 
 - [x] 5.1 五个包 typecheck：五个包通过（VSCode 为 `check-types`）
 - [x] 5.2 五个包全量测试，与已知失败签名对比并归因，新回归为 0：无新回归，归因见同步报告；商店版 PowerShell 的 Bun 1.4.4 问题已回移植 upstream 修复
-- [ ] 5.3 重测 fork tax，更新基线文档并解释差异
+- [x] 5.3 重测 fork tax，更新基线文档并解释差异：224 / 153 / 66 / 1574（相对 v1.19.6），差异已写入 `reports/slimming/post-slimming-baseline.md`
 
 ## 6. 产物与报告
 
-- [ ] 6.1 打包 Windows EXE、VSIX、Ubuntu 离线包，记录 SHA-256，完成内置冒烟与品牌检查
-- [ ] 6.2 在 `docs/阶段记录/` 输出同步报告（总纲要求的各项问题），更新升级说明
-- [ ] 6.3 生成人工验收清单，状态标为 `READY_FOR_HUMAN_VSIX` 或 `NEEDS_HUMAN_DECISION`
+- [x] 6.1 打包 Windows EXE、VSIX、Ubuntu 离线包，记录 SHA-256，完成内置冒烟与品牌检查：EXE `7cb622f3…`、VSIX `78975fb4…`、Ubuntu 离线包 `c202fe53…`；构建顺序与环境要求见同步报告
+- [x] 6.2 在 `docs/阶段记录/` 输出同步报告（总纲要求的各项问题），更新升级说明：`docs/阶段记录/专项_上游同步影响_20261118.md`；升级说明为 `docs/用户指南/1.19.6升级说明.md`
+- [x] 6.3 生成人工验收清单，状态标为 `READY_FOR_HUMAN_VSIX` 或 `NEEDS_HUMAN_DECISION`：`docs/阶段记录/验收清单_v1.19.6同步_20261118.md`，状态 `READY_FOR_HUMAN_VSIX`
 
 ## 7. 合入（人工验收通过后）
 

@@ -63,7 +63,7 @@ upstream v1.19.6 把 `packageManager` 从 `bun@1.3.14` 升到 `bun@1.4.4`（构�
 
 离线构建脚本 `script/build-offline-linux.ts`、`build-offline-windows.ts` 的交叉编译器校验和改为 Bun 1.4.4 官方 `SHASUMS256.txt` 中的值，Windows 脚本的版本检查改为 `1.4.4`。
 
-Bun 1.4.4 对 Microsoft Store 版 PowerShell 7 的应用执行别名（`%LOCALAPPDATA%\Microsoft\WindowsApps\pwsh.exe`）调用 `stat` 会抛出 `EACCES`。v1.19.6 的 `packages/core/src/shell.ts` 会对配置的 shell 和 `Shell.list()` 的候选执行 `stat`，所以装了商店版 pwsh 的 Windows 用户在配置 `shell: "pwsh"` 时 shell 工具初始化失败，PTY 的 shell 列表接口也会报错。pure upstream v1.19.6 在 1.4.4 下同样失败（24 个 `[pwsh]` 用例），upstream 只在 2.x 的 `b6cfbec4cc`（#61952）中修复。1.18.30 交付版（Bun 1.3.14）没有这个问题，属于对交付用户的回退，因此回移植该修复的最小部分：`packages/core/src/util/which.ts` 的 `isAppExecutionAlias()`，`shell.ts` 的 `resolve()` 先判断别名再 `stat`，以及 upstream 的测试 fixture `test/fixture/app-execution-alias.ts` 和一条 core 测试（本机有商店应用时执行，否则跳过）。变异验证：去掉别名判断后该用例失败。下次同步到 2.x 时以 upstream 实现为准。
+Bun 1.4.4 对 Microsoft Store 版 PowerShell 7 的应用执行别名（`%LOCALAPPDATA%\Microsoft\WindowsApps\pwsh.exe`）调用 `stat` 会抛出 `EACCES`。v1.19.6 的 `packages/core/src/shell.ts` 会对配置的 shell 和 `Shell.list()` 的候选执行 `stat`，所以装了商店版 pwsh 的 Windows 用户在配置 `shell: "pwsh"` 时 shell 工具初始化失败，PTY 的 shell 列表接口也会报错。pure upstream v1.19.6 在 1.4.4 下同样失败（`tool.shell` 的 `[pwsh]` 用例，HyperCode 分支上为 26 个），upstream 只在 2.x 的 `b6cfbec4cc`（#61952）中修复。1.18.30 交付版（Bun 1.3.14）没有这个问题，属于对交付用户的回退，因此回移植该修复的最小部分：`packages/core/src/util/which.ts` 的 `isAppExecutionAlias()`，`shell.ts` 的 `resolve()` 先判断别名再 `stat`，以及 upstream 的测试 fixture `test/fixture/app-execution-alias.ts` 和一条 core 测试（本机有商店应用时执行，否则跳过）。变异验证：去掉别名判断后该用例失败。下次同步到 2.x 时以 upstream 实现为准。
 
 ## 其他 Product Default Review
 

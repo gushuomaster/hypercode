@@ -1,8 +1,50 @@
 # HyperCode Post-Slimming Baseline
 
+## 2026-11-18 同步 upstream v1.19.6 后（当前正式基线）
+
+下一次同步以本节为准，2026-11-13 一节及更早内容保留为历史记录。来源：`openspec/changes/sync-upstream-v1-19-6`，合并提交 `8f3d1cf2dd`（分支 `sync-v1-19-6`）。
+
+### Fork Tax
+
+upstream commit 改为 `f4e363c8295fa90a03dddc451882fffe8fbce357`（v1.19.6），命令同下文"可重复测量命令"，只替换 `-UpstreamCommit`。
+
+| 测量点 | Modified upstream files | Production paths | Core patch paths | Technical surface |
+|---|---:|---:|---:|---:|
+| `467eb4d45`（相对 `193de13a8`，上一正式基线） | 221 | 149 | 62 | 1538 |
+| `8f3d1cf2dd`（相对 v1.19.6，**正式基线**） | 224 | 153 | 66 | 1574 |
+
+修改的 upstream 文件净增 3 个：
+
+- 新增 5 个：`packages/core/src/shell.ts`、`packages/core/src/util/which.ts`、`packages/core/test/shell.test.ts`（回移植 upstream 2.x 的 `b6cfbec4cc`，修复 Bun 1.4.4 下商店版 PowerShell 报 `EACCES`）；`packages/opencode/src/cli/upgrade.ts`（没有更新渠道时不检查 upstream 版本）；`packages/opencode/src/cli/cmd/import.ts`（分享 URL 报错本地化）。
+- 减少 2 个：upstream 删除的 `.github/workflows/pr-management.yml` 与 `packages/opencode/test/share/share-next.test.ts`。
+
+其中 `shell.ts`、`which.ts`、`shell.test.ts` 在同步到 upstream 2.x 时会与 upstream 实现重合，届时可回收。
+
+### 验证基线
+
+2026-11-18 在 `8f3d1cf2dd` 的暂存状态上运行（Windows，`core.autocrlf=true`，Bun 1.4.4 便携版）。归因：可疑失败在 pure upstream v1.19.6 worktree（`.worktrees/upstream-1.18.30-audit` 已检出 `v1.19.6`）上用同一 Bun 复跑。
+
+| 包 | typecheck | 测试 |
+|---|---|---|
+| `packages/product` | PASS | 100 pass / 0 fail |
+| `packages/core` | PASS | 1099 pass / 7 skip / 2 fail（回移植前）；回移植后 `shell.test.ts` 新增 1 条通过 |
+| `packages/tui` | PASS | 287 pass / 4 fail |
+| `packages/opencode` | PASS | 3745 pass / 58 skip / 1 todo / 15 fail（回移植前为 3718 pass / 41 fail，多出的 26 个 `tool.shell [pwsh]` 失败由回移植修复） |
+| `sdks/vscode` | PASS（`check-types`） | 445 pass / 25 fail / 20 errors |
+
+**新回归：0。** 已知失败签名在 2026-11-13 一节的基础上变化如下：
+
+| 包 | 失败 | 归因 |
+|---|---|---|
+| opencode | `header-timeout` 中 `cloudflare-ai-gateway applies headerTimeout…`、`…native passthrough applies chunkTimeout…` | upstream：v1.19.6 新增用例，pure upstream v1.19.6 同样失败，与 `cf-ai-gateway` ×4 同属 Cloudflare 原生透传 |
+| opencode | `plugin.openai.ws > surfaces websocket upgrade rejection messages` | 环境：只在 Bun 1.3.14 下失败；按 upstream 要求用 1.4.4 后通过，不计入签名 |
+| core | `Npm.add > reifies…` | 本轮未出现（偶发项，保留） |
+
+其余签名（symlink ×6、`cf-ai-gateway` ×4、`snapshot-tool-race`、`tool.shell` workdir、offline Linux tar、core 的 legacy config 与 Git Bash、tui ×4、vscode 动画 ×5 与 `vscode` 包 ×20）不变，见下方 2026-11-13 一节。
+
 ## 2026-11-13 基线刷新（Product 跨宿主对齐后）
 
-下文 2026-09-16 的内容保留为历史记录；同步对比以本节为准。来源：`openspec/changes/prepare-upstream-sync`。
+下文 2026-09-16 的内容保留为历史记录；本节已被上方 2026-11-18 一节取代。来源：`openspec/changes/prepare-upstream-sync`。
 
 ### Fork Tax
 

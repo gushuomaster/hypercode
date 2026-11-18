@@ -721,7 +721,7 @@
     },
     "packages/product": {
       "name": "@opencode-ai/product",
-      "version": "1.18.30",
+      "version": "1.19.6",
       "devDependencies": {
         "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
