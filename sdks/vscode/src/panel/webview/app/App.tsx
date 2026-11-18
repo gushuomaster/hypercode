@@ -2319,6 +2319,7 @@ export function App() {
                           mcp={state.snapshot.mcpStates}
                           lsp={state.snapshot.lspStates}
                           formatter={state.snapshot.formatterStates}
+                          plugins={state.snapshot.plugins}
                           summaries={{ mcp: composerFooterBadges[0].summary, lsp: composerFooterBadges[1].summary, formatter: composerFooterBadges[2].summary }}
                           onClose={() => setStatusPickerMode(null)}
                         />

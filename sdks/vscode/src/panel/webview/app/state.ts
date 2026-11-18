@@ -2,7 +2,7 @@ import type { ComposerFileSelection, ComposerPathKind, SessionBootstrap, Session
 import type { DisplaySettings, PanelColorScheme, PanelTheme } from "../../../core/settings"
 import type { AgentInfo, CommandInfo, FileDiff, FormatterStatus, LspStatus, McpResource, McpStatus, MessageInfo, PermissionRequest, ProviderAuthMethod, ProviderInfo, QuestionRequest, SessionInfo, SessionMessage, SessionStatus, Todo } from "../../../core/sdk"
 import type { CommandPromptCatalog, CommandPromptInvocation } from "./command-prompt"
-import { createProductSessionState, createProductSnapshot, mergePartialProductSnapshot, mergeProductSnapshot, type ProductCapabilityConfigInput, type ProductFormatterState, type ProductLspState, type ProductMcpState, type ProductProviderState, type ProductSnapshot } from "@opencode-ai/product"
+import { createProductSessionState, createProductSnapshot, mergePartialProductSnapshot, mergeProductSnapshot, type ProductCapabilityConfigInput, type ProductFormatterState, type ProductLspState, type ProductMcpState, type ProductPluginEntry, type ProductProviderState, type ProductSnapshot } from "@opencode-ai/product"
 import { toProductSnapshot } from "../lib/product-session-adapter"
 
 export type VsCodeApi = {
@@ -107,6 +107,7 @@ export type AppState = {
     lspStates: ProductLspState[]
     formatter: FormatterStatus[]
     formatterStates: ProductFormatterState[]
+    plugins: ProductPluginEntry[]
     commands: CommandInfo[]
     relatedSessionIds: string[]
     agentMode: "build" | "plan"
@@ -232,6 +233,7 @@ export function createInitialState(initialRef: SessionBootstrap["sessionRef"] | 
       lspStates: [],
       formatter: [],
       formatterStates: [],
+      plugins: [],
       commands: [],
       relatedSessionIds: [],
       agentMode: "build",
@@ -413,6 +415,7 @@ export function normalizeSnapshotPayload(
     lspStates: Array.isArray(payload.lspStates) ? payload.lspStates : [],
     formatter: Array.isArray(payload.formatter) ? payload.formatter : [],
     formatterStates: Array.isArray(payload.formatterStates) ? payload.formatterStates : [],
+    plugins: Array.isArray(payload.plugins) ? payload.plugins : [],
     commands: Array.isArray(payload.commands) ? payload.commands : [],
     relatedSessionIds: Array.isArray(payload.relatedSessionIds) ? payload.relatedSessionIds : [],
     agentMode: payload.agentMode === "plan" ? "plan" : "build",

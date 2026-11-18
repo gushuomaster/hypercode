@@ -146,6 +146,7 @@ export const dict = {
   "product.error.mcp.connectionFailed": "The MCP server connection failed. See the original error for details.",
   "product.error.mcp.unsupported": "This host does not support this MCP server.",
   "product.error.lsp.connectionFailed": "The LSP server connection failed.",
+  "product.error.config.remoteAuth": "Failed to load remote config: the server returned a login page, so authentication is missing or has expired. Run the command below in a terminal to sign in again.",
   "product.error.session.notFound": "The session no longer exists or cannot be found.",
   "product.error.session.unsupported": "This host does not support that session action.",
   "product.error.session.permissionDenied": "You do not have permission to modify this session.",

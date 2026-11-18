@@ -1,6 +1,6 @@
 import * as path from "node:path"
 import type { SessionPanelRef, SessionSnapshot } from "../../bridge/types"
-import { deriveComposerSelection, projectProductAgents, projectProductProviders } from "@opencode-ai/product"
+import { deriveComposerSelection, deriveProductPlugins, projectProductAgents, projectProductProviders } from "@opencode-ai/product"
 import { syncTrackedSession } from "../../core/session-list"
 import { loadSkillCatalog } from "../../core/skills"
 import { getDisplaySettings } from "../../core/settings"
@@ -11,6 +11,7 @@ import { summarizeSessionSnapshot } from "../shared/session-summary"
 import { filterPermission, filterQuestion, nav, relatedSessionMap, subtreeSessionIds } from "./navigation"
 import { sortMessages } from "./mutations"
 import { idle, text } from "./utils"
+import { remoteConfigAuthMessage } from "./remote-config-error"
 import { toProductProviderStates } from "../../product/provider-adapter"
 import { toProductMcpStates } from "../../product/mcp-adapter"
 import { toProductLspStates } from "../../product/lsp-adapter"
@@ -95,7 +96,7 @@ export async function buildSessionSnapshot({ ref, mgr, log, isSubmitting, messag
 
     if (!session) {
       return {
-        snapshot: fallbackSnapshot(ref, workspaceName, "error", t("panel.sessionMetadataMissing"), isSubmitting()),
+        snapshot: fallbackSnapshot(ref, workspaceName, "error", remoteConfigAuthMessage(sessionRes.error) ?? t("panel.sessionMetadataMissing"), isSubmitting()),
       }
     }
 
@@ -166,6 +167,7 @@ export async function buildSessionSnapshot({ ref, mgr, log, isSubmitting, messag
         lsp: configRes.data?.lsp !== false,
         formatter: configRes.data?.formatter !== false,
       },
+      plugins: deriveProductPlugins(configRes.data?.plugin),
       mcp: {},
       mcpStates: [],
       mcpResources: {},

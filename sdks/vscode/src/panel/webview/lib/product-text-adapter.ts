@@ -80,6 +80,7 @@ const textKeys = {
   "error.mcp.connection_failed": "product.error.mcp.connectionFailed",
   "error.mcp.unsupported": "product.error.mcp.unsupported",
   "error.lsp.connection_failed": "product.error.lsp.connectionFailed",
+  "error.config.remote_auth": "product.error.config.remoteAuth",
   "error.session.not_found": "product.error.session.notFound",
   "error.session.unsupported": "product.error.session.unsupported",
   "error.session.permission_denied": "product.error.session.permissionDenied",

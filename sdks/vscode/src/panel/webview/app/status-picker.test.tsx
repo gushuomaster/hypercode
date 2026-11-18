@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { deriveProductFormatterSummary, deriveProductLspSummary, deriveProductMcpState, deriveProductMcpSummary, type ProductCapabilityConfigInput } from "@opencode-ai/product"
+import { deriveProductFormatterSummary, deriveProductLspSummary, deriveProductMcpState, deriveProductMcpSummary, deriveProductPlugins, type ProductCapabilityConfigInput } from "@opencode-ai/product"
 import { t } from "../../../i18n"
 import { toVsCodeTextKey } from "../lib/product-text-adapter"
 import { buildStatusPickerItems } from "./status-picker"
@@ -44,6 +44,20 @@ test("a running reconnect is shown as connecting, not as the old failure", () =>
   assert.equal(item.value, t(toVsCodeTextKey("item.mcp.connecting")))
   assert.equal(item.tone, "gray")
   assert.equal(item.action, undefined)
+})
+
+test("system status lists plugins with versions, and says when there are none", () => {
+  const plugins = deriveProductPlugins(["@acme/audit@1.2.3", "file:///C:/Users/me/plugin/notify.ts"])
+  const items = buildStatusPickerItems("system", [], [], [], summaries(ready), plugins)
+  const plugin = t("statusPicker.plugin")
+  assert.deepEqual(items.filter((item) => item.name.startsWith(plugin)).map((item) => [item.name, item.value]), [
+    [`${plugin}: @acme/audit`, "@1.2.3"],
+    [`${plugin}: notify`, t("statusPicker.pluginLocal")],
+  ])
+
+  const empty = buildStatusPickerItems("system", [], [], [], summaries(ready))
+  assert.equal(empty.find((item) => item.name === plugin)?.value, t("statusPicker.noPlugins"))
+  assert.equal(buildStatusPickerItems("mcp", [], [], [], summaries(ready), plugins).some((item) => item.name.startsWith(plugin)), false)
 })
 
 test("zero configured MCP servers is reported as unconfigured, not disabled", () => {

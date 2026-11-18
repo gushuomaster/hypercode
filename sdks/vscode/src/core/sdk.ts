@@ -1,3 +1,4 @@
+import type { ProductPluginSpec } from "@opencode-ai/product"
 import type {
   File as OfficialWorkspaceFileStatus,
   FormatterStatus as OfficialFormatterStatus,
@@ -132,6 +133,7 @@ export type ConfigInfo = {
   mcp?: Record<string, { enabled?: boolean }>
   lsp?: false | Record<string, { disabled?: boolean }>
   formatter?: false | Record<string, { disabled?: boolean }>
+  plugin?: ProductPluginSpec[]
 }
 
 export type McpStatus =

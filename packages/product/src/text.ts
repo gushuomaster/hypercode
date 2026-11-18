@@ -79,6 +79,7 @@ export type ProductTextKey =
   | "error.mcp.client_registration_required"
   | "error.mcp.unsupported"
   | "error.lsp.connection_failed"
+  | "error.config.remote_auth"
   | "error.session.not_found"
   | "error.session.unsupported"
   | "error.session.permission_denied"
@@ -98,6 +99,7 @@ export function productTextKeyForModelSection(kind: ProductModelSection["kind"])
 }
 
 export function deriveProductErrorTextKey(code: string | undefined, message: string): ProductTextKey {
+  if (code === "ConfigRemoteAuthError") return "error.config.remote_auth"
   if (code === "MCPNeedsAuth" || /mcp.*auth|authentication required/i.test(message)) return "error.mcp.authentication_required"
   if (code === "MCPClientRegistration" || /client registration/i.test(message)) return "error.mcp.client_registration_required"
   if (code === "MCPUnsupported" || /mcp.*unsupported/i.test(message)) return "error.mcp.unsupported"

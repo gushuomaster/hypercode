@@ -176,7 +176,9 @@ test("fatal startup errors set a nonzero exit after scoped cleanup", async () =>
     )
 
     await task
-    expect(stderr).toContain("Run `opencode auth login https://example.com` to re-authenticate.")
+    // HyperCode: the re-login command users copy must be the HyperCode binary.
+    expect(stderr).toContain("Run `hypercode auth login https://example.com` to re-authenticate.")
+    expect(stderr).not.toContain("opencode auth login")
     expect(stderr).not.toContain("Unexpected server error")
     expect(process.exitCode).toBe(1)
     expect(setup.renderer.isDestroyed).toBe(true)

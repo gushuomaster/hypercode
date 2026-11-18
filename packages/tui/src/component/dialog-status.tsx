@@ -1,13 +1,11 @@
 import { TextAttributes } from "@opentui/core"
-import { fileURLToPath } from "bun"
-import path from "path"
 import { useTheme } from "../context/theme"
 import { useDialog } from "../ui/dialog"
 import { useSync } from "../context/sync"
 import { For, Show, createMemo } from "solid-js"
 import { translate as t } from "../context/language"
 import { formatTuiProductError } from "../product/text-adapter"
-import { deriveProductFormatterSummary, deriveProductLspSummary, deriveProductMcpSummary } from "@opencode-ai/product"
+import { deriveProductFormatterSummary, deriveProductLspSummary, deriveProductMcpSummary, deriveProductPlugins } from "@opencode-ai/product"
 import { toProductCapabilityConfig } from "../product/capability-adapter"
 import { toTuiTextKey } from "../product/text-adapter"
 
@@ -24,31 +22,7 @@ export function DialogStatus() {
   const formatterSummary = createMemo(() => deriveProductFormatterSummary({ config: config(), states: sync.data.formatter_product }))
   const tone = (severity: "none" | "warning" | "error") => (severity === "error" ? theme.error : severity === "warning" ? theme.warning : theme.textMuted)
 
-  const plugins = createMemo(() => {
-    const list = sync.data.config.plugin ?? []
-    const result = list.map((item) => {
-      const value = typeof item === "string" ? item : item[0]
-      if (value.startsWith("file://")) {
-        const filePath = fileURLToPath(value)
-        const parts = filePath.split(path.sep)
-        const filename = parts.pop() || filePath
-        if (!filename.includes(".")) return { name: filename }
-        const basename = filename.split(".")[0]
-        if (basename === "index") {
-          const dirname = parts.pop()
-          const name = dirname || basename
-          return { name }
-        }
-        return { name: basename }
-      }
-      const index = value.lastIndexOf("@")
-      if (index <= 0) return { name: value, version: "latest" }
-      const name = value.substring(0, index)
-      const version = value.substring(index + 1)
-      return { name, version }
-    })
-    return result.toSorted((a, b) => a.name.localeCompare(b.name))
-  })
+  const plugins = createMemo(() => deriveProductPlugins(sync.data.config.plugin))
 
   return (
     <box paddingLeft={2} paddingRight={2} gap={1} paddingBottom={1}>

@@ -18,6 +18,8 @@ describe("ProductTextKey", () => {
     expect(deriveProductErrorTextKey("ProviderAuthError", "Invalid API key")).toBe("error.provider.auth_failed")
     expect(deriveProductErrorTextKey("APIError", "Service unavailable")).toBe("error.provider.request_failed")
     expect(deriveProductErrorTextKey(undefined, "Unexpected failure")).toBe("error.unknown")
+    // The remote-config message mentions "Authentication"; it must not read as a provider auth failure.
+    expect(deriveProductErrorTextKey("ConfigRemoteAuthError", "Authentication is missing or has expired")).toBe("error.config.remote_auth")
 
     expect(projectProductEvent({
       type: "session.error",

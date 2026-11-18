@@ -80,9 +80,13 @@ Bun 1.4.4 对 Microsoft Store 版 PowerShell 7 的应用执行别名（`%LOCALAP
 
 - `/update`：不注册，两端都不出现，`CROSS_HOST_CONTRACT_PRESERVED`。
 - 会话分享：由 Product 统一判定为 `unsupported`，TUI 与 VSCode 结果一致，`CROSS_HOST_CONTRACT_PRESERVED`（见"会话分享停用"）。
-- `/status` 插件名路径分隔符修复：只影响展示文本，核对与 Product 状态契约一致。
-- 浏览器打开逻辑统一到 `@opencode-ai/core/open`：VSCode 不受影响。
+- `/status` 插件列表：扩展原本没有插件区块。插件名解析移入 `packages/product`（`deriveProductPlugins`），TUI 与扩展共用，`CROSS_HOST_CONTRACT_ADAPTED`。
+- 远端配置认证失败（upstream #49016）：Product 新增 `error.config.remote_auth`，扩展面板显示中文重新登录说明；TUI 提示中的 `opencode auth login` 改为 `hypercode`，`CROSS_HOST_CONTRACT_ADAPTED`。
+- 浏览器打开逻辑统一到 `@opencode-ai/core/open`：VSCode 使用 `openExternal`，`host_only`。
+- C++ 模块文件高亮：扩展按内容自动识别，结果未变差；扩展名映射与 TUI 的既有差距另行立项。
 - `/variants`：见上表。
+
+完整的宿主对等清单见专项报告第 4.1 节。
 
 ## 验证
 

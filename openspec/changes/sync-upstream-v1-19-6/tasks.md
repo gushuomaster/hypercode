@@ -22,6 +22,7 @@
 - [x] 4.1 Product Default Review：逐项确认 design 中的结论，补充合并中新发现的默认值变更：更新渠道 `PRESERVE_HYPERCODE_DEFAULT`；会话分享 `ACCEPT_UPSTREAM_DEFAULT`（维护者决定）；其余四项 `ACCEPT_UPSTREAM_DEFAULT`，用户文档的 `debug config` 示例不含明文凭据
 - [x] 4.2 Cross-Host Product Contract Review：`/update`、`/status`、`/variants`、浏览器打开：`/update` 与会话分享 `CROSS_HOST_CONTRACT_PRESERVED`；`/status`、浏览器打开不涉及 Product 契约；`/variants` 由服务端模型列表驱动，两端同源，列入人工验收
 - [x] 4.3 `bun run rebrand:check` 与基线签名对比：Blocked 0、Planned/Patchable 0/0、Manual 1，与基线一致
+- [x] 4.4 宿主对等清单（验收前由维护者指出遗漏后补做）：逐条列出 6 组 TUI 实质改动在扩展侧的结论；补齐 `/status` 插件列表与远端配置认证失败提示（Product 新增 `deriveProductPlugins`、`error.config.remote_auth`），修正 TUI 提示中的 `opencode auth login` 品牌残留；代码高亮映射的既有差距另行立项。规则已写入《上游同步工作流总纲》"宿主对等清单"
 
 ## 5. 验证
 
@@ -31,7 +32,7 @@
 
 ## 6. 产物与报告
 
-- [x] 6.1 打包 Windows EXE、VSIX、Ubuntu 离线包，记录 SHA-256，完成内置冒烟与品牌检查：EXE `7cb622f3…`、VSIX `78975fb4…`、Ubuntu 离线包 `c202fe53…`；构建顺序与环境要求见同步报告
+- [x] 6.1 打包 Windows EXE、VSIX、Ubuntu 离线包，记录 SHA-256，完成内置冒烟与品牌检查：EXE `8415d423…`、VSIX `e01bf1d1…`、Ubuntu 离线包 `a5c54d98…`；构建顺序与环境要求见同步报告
 - [x] 6.2 在 `docs/阶段记录/` 输出同步报告（总纲要求的各项问题），更新升级说明：`docs/阶段记录/专项_上游同步影响_20261118.md`；升级说明为 `docs/用户指南/1.19.6升级说明.md`
 - [x] 6.3 生成人工验收清单，状态标为 `READY_FOR_HUMAN_VSIX` 或 `NEEDS_HUMAN_DECISION`：`docs/阶段记录/验收清单_v1.19.6同步_20261118.md`，状态 `READY_FOR_HUMAN_VSIX`
 
