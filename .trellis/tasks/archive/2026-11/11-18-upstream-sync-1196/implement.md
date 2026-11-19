@@ -1,6 +1,6 @@
 # Implement
 
-执行清单见 `openspec/changes/sync-upstream-v1-19-6/tasks.md`，按 1→7 顺序执行。具体命令见 `docs/操作手册/上游同步操作流程.md`。
+执行清单见 `openspec/changes/archive/2026-11-19-sync-upstream-v1-19-6/tasks.md`，按 1→7 顺序执行。具体命令见 `docs/操作手册/上游同步操作流程.md`。
 
 审查节点：
 - 第 2 节合并后：若有无法判断的冲突，停止并交维护者

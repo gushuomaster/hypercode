@@ -38,5 +38,5 @@
 
 ## 7. 合入（人工验收通过后）
 
-- [ ] 7.1 维护者确认后，`dev` 合入 `sync-v1-19-6` 并推送
-- [ ] 7.2 归档本 change，把 spec delta 同步到 `openspec/specs/product-default-policy`
+- [x] 7.1 维护者确认后，`dev` 合入 `sync-v1-19-6` 并推送：维护者 2026-11-19 确认验收完毕；`origin/dev` 未前进，`dev` 快进合入后推送
+- [x] 7.2 归档本 change，把 spec delta 同步到 `openspec/specs/product-default-policy`：新增要求"交付版不使用 upstream 更新渠道"，`openspec validate --specs` 通过；归档到 `openspec/changes/archive/2026-11-19-sync-upstream-v1-19-6/`

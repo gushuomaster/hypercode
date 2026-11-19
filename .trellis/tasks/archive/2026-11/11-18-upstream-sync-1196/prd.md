@@ -6,7 +6,7 @@
 
 ## Requirements
 
-需求以 `openspec/changes/sync-upstream-v1-19-6/proposal.md` 与 `openspec/changes/sync-upstream-v1-19-6/specs/product-default-policy/spec.md` 为准，本文件不重复：
+需求以 `openspec/changes/archive/2026-11-19-sync-upstream-v1-19-6/proposal.md` 与 `openspec/changes/archive/2026-11-19-sync-upstream-v1-19-6/specs/product-default-policy/spec.md` 为准，本文件不重复：
 
 - 遵循 `docs/规范/上游同步工作流总纲.md`：隔离执行，人工验收前不动 `dev`、不推送
 - 交付版不检查、不提示、不安装 upstream 更新，不出现 OpenCode 2.0 推销（`PRESERVE_HYPERCODE_DEFAULT`）

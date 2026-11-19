@@ -2,7 +2,7 @@
 
 ## 2026-11-18 同步 upstream v1.19.6 后（当前正式基线）
 
-下一次同步以本节为准，2026-11-13 一节及更早内容保留为历史记录。来源：`openspec/changes/sync-upstream-v1-19-6`，合并提交 `8f3d1cf2dd`（分支 `sync-v1-19-6`）。
+下一次同步以本节为准，2026-11-13 一节及更早内容保留为历史记录。来源：`openspec/changes/archive/2026-11-19-sync-upstream-v1-19-6`，合并提交 `8f3d1cf2dd`（已合入 `dev`）。
 
 ### Fork Tax
 
