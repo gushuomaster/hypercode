@@ -18,6 +18,10 @@
 
 ## Acceptance Criteria
 
-- [ ] `openspec/changes/resolve-license-boundary/tasks.md` 第 1–5 组完成（第 6 组实机验收与发版由维护者执行）
-- [ ] `packages/opencode` 与 `sdks/vscode` 的 license 相关测试通过，两处 `bun typecheck` 通过
-- [ ] 仓库源码中不再出现旧共享密钥常量；git 中没有生产私钥
+- [x] `openspec/changes/resolve-license-boundary/tasks.md` 第 1–5 组完成（第 6 组实机验收与发版由维护者执行）
+- [x] `packages/opencode` 与 `sdks/vscode` 的 license 相关测试通过，两处 `bun typecheck` 通过
+- [x] 仓库源码中不再出现旧共享密钥常量；git 中没有生产私钥
+
+## 关闭说明（2026-11-20）
+
+由 `11-20-state-cleanup` 复核后归档：`packages/opencode` license 测试 25 pass、`bun typecheck` 通过；`sdks/vscode` `check-types` 通过，`license.test.ts` 用临时 `vscode` 模块桩运行 5 pass（直接 `bun test` 会因缺 `vscode` 包失败，属基线登记的环境性问题）；扫不到旧密钥常量，git 中没有私钥。OpenSpec change `resolve-license-boundary` 保留，第 6 组（实机验收、客户 v2 重签、归档 change）由维护者执行。
